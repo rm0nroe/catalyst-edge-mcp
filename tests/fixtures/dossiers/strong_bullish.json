@@ -1,0 +1,13 @@
+{
+  "scenario": "strong multi-source bullish catalyst",
+  "families": [
+    "filings_news",
+    "insider_trading",
+    "options_flow",
+    "technical",
+    "social"
+  ],
+  "expected_coverage": "complete",
+  "expected_direction": "bullish",
+  "verification": "test_FX_STRONG_BULLISH"
+}

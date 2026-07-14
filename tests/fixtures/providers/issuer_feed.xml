@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>NVIDIA News</title>
+    <link>https://nvidianews.nvidia.com/</link>
+    <description>Official NVIDIA releases</description>
+    <item>
+      <title>NVIDIA Announces New Platform</title>
+      <link>https://nvidianews.nvidia.com/news/nvidia-announces-new-platform?utm_source=rss</link>
+      <guid>release-2026-07-12</guid>
+      <pubDate>Sun, 12 Jul 2026 15:00:00 GMT</pubDate>
+      <description>Publisher body content must not be retained. secret-body-marker</description>
+    </item>
+  </channel>
+</rss>

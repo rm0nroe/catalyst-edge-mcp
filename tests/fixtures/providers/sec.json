@@ -1,0 +1,17 @@
+{
+  "ticker_map": {
+    "fields": ["cik", "name", "ticker", "exchange"],
+    "data": [[1045810, "NVIDIA CORP", "NVDA", "Nasdaq"]]
+  },
+  "submissions": {
+    "filings": {
+      "recent": {
+        "form": ["8-K"],
+        "filingDate": ["2026-07-12"],
+        "accessionNumber": ["0001045810-26-000001"],
+        "primaryDocument": ["nvda-8k.htm"],
+        "items": ["2.02,9.01"]
+      }
+    }
+  }
+}

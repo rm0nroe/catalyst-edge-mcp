@@ -1,0 +1,5 @@
+{
+  "scenario": "canonical but unconfigured families",
+  "expected_coverage": "partial",
+  "verification": "test_UT_QUALITY_CANONICAL_UNCONFIGURED_AND_LOW_CONFIDENCE"
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edgarSubmission>
+  <issuerInfo><issuerCik>0001045810</issuerCik><issuerName>NVIDIA CORP</issuerName></issuerInfo>
+  <filerInfo><filerName>DELTA OWNER</filerName></filerInfo>
+  <securitiesInformation>
+    <securitiesClassTitle>Common Stock</securitiesClassTitle>
+    <unitsToBeSold>2500</unitsToBeSold>
+    <aggregateMarketValue>325000</aggregateMarketValue>
+    <approxSaleDate>2026-07-15</approxSaleDate>
+    <brokerName>Example Broker</brokerName>
+  </securitiesInformation>
+</edgarSubmission>

@@ -1,0 +1,7 @@
+{
+  "scenario": "private yfinance diagnostic receives no production credit",
+  "expected_provider": "yfinance",
+  "expected_degraded": true,
+  "production_evidence_credit": false,
+  "verification": "test_FX_OPTIONS_UNLICENSED_NEUTRAL_yfinance_gets_no_credit"
+}

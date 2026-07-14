@@ -1,0 +1,5 @@
+{
+  "scenario": "source inclusion suppression and raw opt-in",
+  "raw_default": false,
+  "verifications": ["test_UT_PROVENANCE", "test_UT_RAW_DEFAULT"]
+}

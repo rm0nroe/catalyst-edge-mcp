@@ -1,0 +1,13 @@
+{
+  "sec": "approved",
+  "issuer_feed": "approved_per_registry",
+  "gdelt": "approved_discovery",
+  "bluesky": "approved_partial_attention",
+  "mastodon": "approved_per_registry",
+  "fmp": "permission_required",
+  "finnhub": "permission_required",
+  "occ": "permission_required",
+  "opra_vendor": "licensed_feed_required",
+  "user_ohlc": "licensed_feed_required",
+  "yfinance": "development_private_only"
+}

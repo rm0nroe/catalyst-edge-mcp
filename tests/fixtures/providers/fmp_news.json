@@ -1,0 +1,9 @@
+[
+  {
+    "publishedDate": "2026-07-12T12:00:00+00:00",
+    "title": "Company announces a material operating update",
+    "site": "Example Wire",
+    "url": "https://example.com/news/material-update",
+    "apiKey": "fixture-secret-must-be-redacted"
+  }
+]

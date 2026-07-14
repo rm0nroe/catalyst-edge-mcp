@@ -1,0 +1,6 @@
+{
+  "scenario": "invalid ticker and parameter bounds",
+  "invalid_tickers": ["A/B", "OR 1=1", "NVDA--"],
+  "invalid_lookback_days": [0, 91],
+  "verifications": ["test_UT_INPUT_INVALID_TICKER", "test_UT_INPUT_UNKNOWN_FIELDS_AND_BOUNDS"]
+}
