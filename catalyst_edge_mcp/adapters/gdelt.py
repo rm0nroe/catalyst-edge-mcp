@@ -32,7 +32,7 @@ PARSER_VERSION = "gdelt-doc-v1"
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_ARTICLES = 50
 MAX_RETRY_AFTER_SECONDS = 300.0
-GDELT_GATE = ProviderGate(concurrency=1, requests_per_second=0.2)
+GDELT_GATE = ProviderGate(concurrency=1, requests_per_second=1 / 6)
 
 
 class GdeltAdapter:
@@ -51,6 +51,8 @@ class GdeltAdapter:
         gate: ProviderGate = GDELT_GATE,
         clock=None,
         endpoint: str = GDELT_ENDPOINT,
+        live_refresh: bool = True,
+        request_timeout_seconds: float = 6.0,
     ) -> None:
         self.store = store or EvidenceStore(str(Path(store_path).expanduser()))
         self.registry = registry
@@ -58,6 +60,8 @@ class GdeltAdapter:
         self._gate = gate
         self._clock = clock or (lambda: datetime.now(UTC))
         self.endpoint = endpoint
+        self.live_refresh = live_refresh
+        self.request_timeout_seconds = request_timeout_seconds
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
         issuer = self.registry.get(ticker) or self.registry.get(ticker.replace(".", "-"))
@@ -71,6 +75,8 @@ class GdeltAdapter:
                 policy_decision=PolicyDecision.APPROVED_DISCOVERY,
                 collected_at=now,
             )
+        if not self.live_refresh:
+            return self._cache_only_result(issuer, lookback_days, now)
         self._require_endpoint(self.endpoint)
         if self._client is not None:
             return await self._collect(self._client, issuer, lookback_days, now)
@@ -79,7 +85,12 @@ class GdeltAdapter:
             "Accept": "application/json",
         }
         async with httpx.AsyncClient(
-            headers=headers, timeout=6.0, follow_redirects=True
+            headers=headers,
+            timeout=httpx.Timeout(
+                self.request_timeout_seconds,
+                connect=self.request_timeout_seconds,
+            ),
+            follow_redirects=True,
         ) as client:
             return await self._collect(client, issuer, lookback_days, now)
 
@@ -91,7 +102,11 @@ class GdeltAdapter:
         now: datetime,
     ) -> AdapterResult:
         state = self.store.collector_state(self.provider, issuer.issuer_key)
-        if state and state.get("last_checked_at"):
+        if (
+            state
+            and state.get("status") == SourceStatus.FRESH.value
+            and state.get("last_checked_at")
+        ):
             last_checked = self._parse_datetime(state["last_checked_at"])
             if last_checked and (now - last_checked).total_seconds() < issuer.refresh_seconds:
                 return self._cached_result(issuer, lookback_days, now)
@@ -157,6 +172,28 @@ class GdeltAdapter:
                 issuer, lookback_days, now, SourceStatus.STALE, type(exc).__name__
             )
 
+    def _cache_only_result(
+        self,
+        issuer: DiscoveryIssuer,
+        lookback_days: int,
+        now: datetime,
+    ) -> AdapterResult:
+        """Serve request-time discovery from cache while refresh runs out of band."""
+        state = self.store.collector_state(self.provider, issuer.issuer_key)
+        if state and state.get("last_success_at"):
+            return self._cached_result(issuer, lookback_days, now)
+        return self._cached_result(
+            issuer,
+            lookback_days,
+            now,
+            status=SourceStatus.STALE,
+            warning=(
+                "GDELT background cache has not completed a successful refresh; "
+                "run catalyst-edge-refresh-gdelt."
+            ),
+            degraded=True,
+        )
+
     def _observation(
         self,
         article: Mapping[str, Any],
@@ -178,7 +215,7 @@ class GdeltAdapter:
             source_name=f"GDELT discovery ({domain})",
             source_tier="discovery",
             issuer_key=issuer.issuer_key,
-            record_id=url[:500],
+            record_id=url[:160],
             canonical_url=url,
             title=title,
             published_at=published_at,
@@ -267,7 +304,7 @@ class GdeltAdapter:
                     source_tier=source.source_tier,
                     url=source.canonical_url,
                     canonical_url=source.canonical_url,
-                    accession_or_record_id=source.record_id,
+                    accession_or_record_id=source.record_id[:160],
                     published_at=source.published_at,
                     observed_at=source.observed_at,
                     retrieved_at=source.retrieved_at,
