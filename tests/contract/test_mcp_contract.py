@@ -2,17 +2,22 @@ import os
 import socket
 import subprocess
 import time
+from contextlib import asynccontextmanager
 from copy import deepcopy
 
 import httpx
 import pytest
+from jsonschema import Draft202012Validator
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 from pydantic import ValidationError
 
-from catalyst_edge_mcp.models import CatalystEdgeResponse, ToolInput
+from catalyst_edge_mcp.adapters.base import StaticAdapter
+from catalyst_edge_mcp.models import AdapterResult, CatalystEdgeResponse, ToolInput
 from catalyst_edge_mcp.server import catalyst_edge_score, mcp
+from catalyst_edge_mcp.service import CatalystService
+from tests.conftest import AS_OF, make_evidence
 
 
 def _offline_server_env(**overrides):
@@ -64,6 +69,63 @@ def _assert_structured_response(result):
     return response
 
 
+@asynccontextmanager
+async def _transport_session(transport):
+    if transport == "stdio":
+        parameters = StdioServerParameters(
+            command="uv",
+            args=["run", "catalyst-edge-mcp"],
+            env=_offline_server_env(CATALYST_EDGE_TRANSPORT="stdio"),
+        )
+        async with (
+            stdio_client(parameters) as (read_stream, write_stream),
+            ClientSession(read_stream, write_stream) as session,
+        ):
+            await session.initialize()
+            yield session
+        return
+
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+    environment = _offline_server_env(
+        CATALYST_EDGE_TRANSPORT="streamable-http",
+        CATALYST_EDGE_HOST="127.0.0.1",
+        CATALYST_EDGE_PORT=str(port),
+    )
+    process = subprocess.Popen(
+        ["uv", "run", "catalyst-edge-mcp"],
+        env=environment,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                pytest.fail(f"HTTP server exited: {process.stderr.read()}")
+            try:
+                httpx.get(f"http://127.0.0.1:{port}/mcp", timeout=0.2)
+                break
+            except httpx.TransportError:
+                time.sleep(0.05)
+        else:
+            pytest.fail("HTTP server did not start")
+        async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as streams:
+            read_stream, write_stream, _ = streams
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                yield session
+    finally:
+        process.terminate()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+
+
 @pytest.mark.asyncio
 async def test_CT_DISCOVERY():
     tools = {tool.name: tool for tool in await mcp.list_tools()}
@@ -109,6 +171,51 @@ def test_CT_INPUT_SCHEMA_REJECTS_UNKNOWN():
     assert schema["additionalProperties"] is False
     with pytest.raises(ValidationError):
         ToolInput.model_validate({"ticker": "NVDA", "other": 1})
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"ticker": "NVDA", "bogus": 1},
+        {"ticker": "NVDA", "lookback_days": "7"},
+        {"ticker": "NVDA", "include_sources": "false"},
+    ],
+)
+@pytest.mark.parametrize("transport", ["stdio", "streamable-http"])
+@pytest.mark.asyncio
+async def test_CT_TRANSPORT_REJECTS_UNKNOWN_AND_COERCED_INPUTS(transport, arguments):
+    async with _transport_session(transport) as session:
+        result = await session.call_tool("catalyst_edge_score", arguments)
+        assert result.isError is True
+        assert result.structuredContent is None
+
+
+@pytest.mark.asyncio
+async def test_CT_MCP_ROUND_TRIP_SERIALIZES_POPULATED_EVIDENCE(monkeypatch):
+    from catalyst_edge_mcp import server
+
+    evidence = make_evidence("filings_news", "material_filing")
+    adapter = StaticAdapter(
+        family="filings_news",
+        result=AdapterResult(family="filings_news", evidence=[evidence]),
+    )
+    monkeypatch.setattr(
+        server,
+        "_service",
+        CatalystService([adapter], clock=lambda: AS_OF),
+    )
+
+    _, structured = await mcp.call_tool("catalyst_edge_score", {"ticker": "NVDA"})
+
+    tools = {tool.name: tool for tool in await mcp.list_tools()}
+    Draft202012Validator(tools["catalyst_edge_score"].outputSchema).validate(structured)
+    assert len(structured["evidence"]) == 1
+    serialized_evidence = structured["evidence"][0]
+    assert serialized_evidence["source_count"] == len(serialized_evidence["sources"]) == 1
+    validation_payload = deepcopy(structured)
+    validation_payload["evidence"][0].pop("source_count")
+    response = CatalystEdgeResponse.model_validate(validation_payload)
+    assert len(response.evidence[0].sources) == 1
 
 
 @pytest.mark.asyncio
