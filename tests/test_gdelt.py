@@ -147,6 +147,58 @@ async def test_gdelt_timeout_returns_typed_cached_degradation(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_gdelt_request_path_is_cache_only_and_never_calls_upstream(tmp_path):
+    def transport(request):
+        raise AssertionError("request-time GDELT must not make a network request")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        adapter = _adapter(tmp_path, client, live_refresh=False)
+        result = await adapter.collect("NVDA", 14)
+
+    assert result.status == SourceStatus.STALE
+    assert result.degraded is True
+    assert result.evidence == []
+    assert "catalyst-edge-refresh-gdelt" in result.warnings[0]
+
+
+@pytest.mark.asyncio
+async def test_gdelt_request_path_reads_successful_background_cache(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, content=FIXTURE.read_bytes())
+        )
+    ) as client:
+        refresher = GdeltAdapter(
+            str(tmp_path / "events.sqlite3"),
+            registry={"NVDA": ISSUER},
+            store=store,
+            client=client,
+            gate=ProviderGate(concurrency=1),
+            clock=lambda: AS_OF,
+        )
+        await refresher.collect("NVDA", 14)
+
+    def transport(request):
+        raise AssertionError("request-time GDELT must use the successful cache")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        request_adapter = GdeltAdapter(
+            str(tmp_path / "events.sqlite3"),
+            registry={"NVDA": ISSUER},
+            store=store,
+            client=client,
+            gate=ProviderGate(concurrency=1),
+            clock=lambda: AS_OF,
+            live_refresh=False,
+        )
+        result = await request_adapter.collect("NVDA", 14)
+
+    assert result.status == SourceStatus.FRESH
+    assert len(result.evidence) == 1
+
+
+@pytest.mark.asyncio
 async def test_gdelt_rejects_redirect_outside_official_endpoint(tmp_path):
     def transport(request):
         if request.url.host == "api.gdeltproject.org":
@@ -231,3 +283,25 @@ def test_gdelt_graph_merge_preserves_issuer_primary_ranking_and_source_views(tmp
     assert discovery_view.event_id == issuer_view.event_id == merged.event_id
     assert discovery_view.primary_source.source_id == "gdelt"
     assert issuer_view.primary_source.source_id == "issuer_feed"
+
+
+@pytest.mark.asyncio
+async def test_gdelt_long_publisher_url_is_bounded_for_public_source_contract(tmp_path):
+    long_url = "https://publisher.example/" + "segment-" * 40
+    payload = {
+        "articles": [
+            {
+                "url": long_url,
+                "title": "NVIDIA Announces a New Platform",
+                "seendate": "20260712T153000Z",
+                "domain": "publisher.example",
+            }
+        ]
+    }
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+    ) as client:
+        result = await _adapter(tmp_path, client).collect("NVDA", 14)
+
+    assert len(result.evidence) == 1
+    assert len(result.evidence[0].sources[0].accession_or_record_id) == 160

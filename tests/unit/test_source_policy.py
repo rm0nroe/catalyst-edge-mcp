@@ -26,10 +26,10 @@ def test_UT_SOURCE_POLICY_fixture_matches_fail_closed_registry():
         get_source_policy("unknown_vendor")
 
 
-def test_PT_GDELT_THROTTLE_contract_is_serialized_one_per_five_seconds():
+def test_PT_GDELT_THROTTLE_contract_is_serialized_one_per_six_seconds():
     policy = get_source_policy("gdelt")
 
-    assert policy.requests_per_second == 0.2
+    assert policy.requests_per_second == 1 / 6
     assert policy.concurrency == 1
     assert policy.retention == "publisher metadata and links only"
 

@@ -52,3 +52,12 @@ behavior.
 This acceptance proves the required live provenance and directional-evidence
 gate. It does not claim full five-family coverage, provider entitlement for
 options/OHLC, or completion of the Bluesky collection window.
+
+## Subsequent provider-readiness remediation
+
+Later on 2026-07-14, repeated GDELT latency was removed from the MCP request
+path in favor of an explicit cache-refresh command. Bluesky was changed to fetch
+two complete historical seven-day windows directly; a live NVDA validation
+returned neutral fresh attention with six baseline and 11 current exact-match
+posts. The options/OHLC/sentiment entitlement blockers remain external and are
+recorded in the Phase 5 audit.

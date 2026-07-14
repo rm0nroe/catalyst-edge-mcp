@@ -89,6 +89,16 @@ The production composition root now makes no options request. Adapter code is
 retained only for isolated parser fixtures and explicit private diagnostics.
 Typed `licensed_feed_required` missingness remains the production behavior.
 
+## Live entitlement recheck — 2026-07-14
+
+Secret-free probes of the configured accounts confirmed that the FMP technical
+indicator endpoint returns HTTP 402 and Finnhub social sentiment returns HTTP
+403. No usable FlowAlgo or CheddarFlow credential is configured. These results
+confirm endpoint and account-plan unavailability; they do not create commercial,
+storage, inference, or derived-output rights. Options flow, licensed OHLC
+technicals, and sentiment therefore remain correctly uncomposed until the
+deployment owner supplies a qualifying contract and account binding.
+
 ## Verification
 
 - `UT_SENTIMENT_CANDIDATES_ARE_DISABLED_FAIL_CLOSED`
