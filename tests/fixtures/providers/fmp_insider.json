@@ -1,0 +1,24 @@
+[
+  {
+    "transactionDate": "2026-07-11T12:00:00+00:00",
+    "transactionType": "P-Purchase",
+    "reportingName": "Person A",
+    "securitiesTransacted": 100,
+    "price": 100,
+    "filingUrl": "https://example.com/insider/current"
+  },
+  {
+    "transactionDate": "2026-07-10T12:00:00+00:00",
+    "transactionType": "P-Purchase",
+    "reportingName": "Person B",
+    "securitiesTransacted": 50,
+    "price": 100
+  },
+  {
+    "transactionDate": "2026-07-03T12:00:00+00:00",
+    "transactionType": "S-Sale",
+    "reportingName": "Person C",
+    "securitiesTransacted": 10,
+    "price": 100
+  }
+]

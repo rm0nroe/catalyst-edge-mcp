@@ -1,0 +1,424 @@
+{
+  "revision": "phase6-historical-v1",
+  "description": "Dated sanitized product cases. Tickers are synthetic and cases make no claim about a real issuer.",
+  "cases": [
+    {
+      "id": "01_strong_bullish_multi_source",
+      "as_of": "2024-01-10T16:00:00Z",
+      "ticker": "CASE1",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "acquisition", "direction": "bullish", "source_id": "sec"}
+          ]
+        },
+        {
+          "family": "insider_trading",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "insider_purchase_strong_cluster", "direction": "bullish", "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bullish", "missing": ["options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "02_weak_bullish_observation",
+      "as_of": "2024-01-25T16:00:00Z",
+      "ticker": "CASE2",
+      "adapters": [
+        {
+          "family": "insider_trading",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "open_market_purchase", "direction": "bullish", "strength": 0.6, "confidence": 0.6, "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "03_bearish_material_filing",
+      "as_of": "2024-02-14T16:00:00Z",
+      "ticker": "CASE3",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "bankruptcy", "direction": "bearish", "strength": 1.0, "confidence": 1.0, "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bearish", "missing": ["insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "04_neutral_issuer_release",
+      "as_of": "2024-03-01T16:00:00Z",
+      "ticker": "CASE4",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "issuer_feed",
+          "evidence": [
+            {"signal": "issuer_release", "direction": "neutral", "source_id": "issuer_feed", "source_policy": "approved_per_registry", "source_quality": 0.95}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": ["issuer_feed"], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "05_neutral_discovery_metadata",
+      "as_of": "2024-03-20T16:00:00Z",
+      "ticker": "CASE5",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "gdelt",
+          "evidence": [
+            {"signal": "publisher_metadata", "direction": "neutral", "source_id": "gdelt", "source_policy": "approved_discovery", "source_quality": 0.65}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": ["gdelt"], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "06_two_insider_cluster",
+      "as_of": "2024-04-05T16:00:00Z",
+      "ticker": "CASE6",
+      "adapters": [
+        {
+          "family": "insider_trading",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "insider_purchase_cluster", "direction": "bullish", "strength": 0.85, "confidence": 0.82, "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bullish", "missing": ["filings_news", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "07_three_insider_strong_cluster",
+      "as_of": "2024-04-25T16:00:00Z",
+      "ticker": "CASE7",
+      "adapters": [
+        {
+          "family": "insider_trading",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "insider_purchase_strong_cluster", "direction": "bullish", "strength": 0.95, "confidence": 0.9, "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bullish", "missing": ["filings_news", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "08_reported_insider_sale",
+      "as_of": "2024-05-15T16:00:00Z",
+      "ticker": "CASE8",
+      "adapters": [
+        {
+          "family": "insider_trading",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "open_market_sale", "direction": "bearish", "strength": 0.9, "confidence": 0.8, "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bearish", "missing": ["filings_news", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "09_form144_proposed_intent",
+      "as_of": "2024-06-03T16:00:00Z",
+      "ticker": "CASE9",
+      "adapters": [
+        {
+          "family": "insider_trading",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "form_144_proposed_sale", "direction": "neutral", "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": false}
+    },
+    {
+      "id": "10_material_event_missing_insider",
+      "as_of": "2024-06-21T16:00:00Z",
+      "ticker": "CASE10",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "acquisition", "direction": "bullish", "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bullish", "missing": ["insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "11_stale_options_observation",
+      "as_of": "2024-07-15T16:00:00Z",
+      "ticker": "CASE11",
+      "adapters": [
+        {
+          "family": "options_flow",
+          "provider": "authorized_options_fixture",
+          "evidence": [
+            {"signal": "call_flow_increase", "direction": "bullish", "timestamp": "2024-06-01T16:00:00Z", "source_id": "authorized_options_fixture", "source_policy": "approved"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": ["options_flow"], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "12_technical_provider_timeout",
+      "as_of": "2024-08-01T16:00:00Z",
+      "ticker": "CASE12",
+      "adapters": [
+        {"family": "technical", "provider": "ohlc_fixture", "status": "timeout", "warnings": ["technical provider timed out"]}
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "13_primary_provider_schema_error",
+      "as_of": "2024-08-19T16:00:00Z",
+      "ticker": "CASE13",
+      "adapters": [
+        {"family": "filings_news", "provider": "sec", "status": "schema_error", "warnings": ["filings schema_error"]}
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "14_social_rate_limited",
+      "as_of": "2024-09-06T16:00:00Z",
+      "ticker": "CASE14",
+      "adapters": [
+        {"family": "social", "provider": "bluesky", "status": "rate_limited", "warnings": ["social collector rate_limited"]}
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "15_bluesky_warmup",
+      "as_of": "2024-09-24T16:00:00Z",
+      "ticker": "CASE15",
+      "adapters": [
+        {"family": "social", "provider": "bluesky", "status": "no_observations", "warnings": ["social warm_up: 7 of 14 collected days"]}
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "16_bluesky_collector_outage",
+      "as_of": "2024-10-11T16:00:00Z",
+      "ticker": "CASE16",
+      "adapters": [
+        {"family": "social", "provider": "bluesky", "status": "timeout", "warnings": ["social coverage 0.71 includes collector outage"]}
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "17_bluesky_sample_insufficient",
+      "as_of": "2024-10-29T16:00:00Z",
+      "ticker": "CASE17",
+      "adapters": [
+        {"family": "social", "provider": "bluesky", "status": "no_observations", "warnings": ["social sample_insufficient in one comparison window"]}
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "18_equal_primary_contradiction",
+      "as_of": "2024-11-18T16:00:00Z",
+      "ticker": "CASE18",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "acquisition", "direction": "bullish", "source_id": "sec"},
+            {"signal": "restatement", "direction": "bearish", "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "19_unlicensed_options_rejected",
+      "as_of": "2024-12-06T16:00:00Z",
+      "ticker": "CASE19",
+      "adapters": [
+        {
+          "family": "options_flow",
+          "provider": "flowalgo",
+          "policy_decision": "licensed_feed_required",
+          "evidence": [
+            {"signal": "call_flow_increase", "direction": "bullish", "source_id": "flowalgo"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "20_yfinance_private_diagnostic_rejected",
+      "as_of": "2025-01-07T16:00:00Z",
+      "ticker": "CASE20",
+      "adapters": [
+        {
+          "family": "options_flow",
+          "provider": "yfinance",
+          "policy_decision": "development_private_only",
+          "degraded": true,
+          "evidence": [
+            {"signal": "chain_activity", "direction": "bullish", "source_id": "yfinance"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "21_technical_license_missing",
+      "as_of": "2025-02-03T16:00:00Z",
+      "ticker": "CASE21",
+      "adapters": [
+        {"family": "technical", "provider": "user_ohlc", "policy_decision": "licensed_feed_required"}
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "22_attention_only_with_sec_provenance",
+      "as_of": "2025-03-04T16:00:00Z",
+      "ticker": "CASE22",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "sec_form_10_q", "direction": "neutral", "source_id": "sec"}
+          ]
+        },
+        {
+          "family": "social",
+          "provider": "bluesky",
+          "evidence": [
+            {"signal": "attention_change", "direction": "neutral", "source_id": "bluesky", "source_policy": "approved_partial_attention", "source_quality": 0.55}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["insider_trading", "options_flow", "technical"], "stale": [], "source_ids": ["bluesky", "sec"], "sec_provenance": true, "launch_ready": false}
+    },
+    {
+      "id": "23_sentiment_candidate_disabled",
+      "as_of": "2025-04-02T16:00:00Z",
+      "ticker": "CASE23",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "sec_form_10_q", "direction": "neutral", "source_id": "sec"}
+          ]
+        },
+        {
+          "family": "social",
+          "provider": "finnhub",
+          "policy_decision": "permission_required",
+          "evidence": [
+            {"signal": "social_sentiment_increase", "direction": "bullish", "source_id": "finnhub"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": false}
+    },
+    {
+      "id": "24_no_data",
+      "as_of": "2025-05-01T16:00:00Z",
+      "ticker": "CASE24",
+      "adapters": [],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "25_strong_bearish_multi_family",
+      "as_of": "2025-06-05T16:00:00Z",
+      "ticker": "CASE25",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "restatement", "direction": "bearish", "strength": 1.0, "confidence": 1.0, "source_id": "sec"}
+          ]
+        },
+        {
+          "family": "insider_trading",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "insider_sale_strong_cluster", "direction": "bearish", "strength": 0.9, "confidence": 0.85, "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bearish", "missing": ["options_flow", "social", "technical"], "stale": [], "source_ids": ["sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "26_issuer_material_event_with_sec_baseline",
+      "as_of": "2025-08-12T16:00:00Z",
+      "ticker": "CASE26",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "sec_form_10_q", "direction": "neutral", "source_id": "sec"}
+          ]
+        },
+        {
+          "family": "filings_news",
+          "provider": "issuer_feed",
+          "evidence": [
+            {"signal": "acquisition", "direction": "bullish", "source_id": "issuer_feed", "source_policy": "approved_per_registry", "source_quality": 0.95}
+          ]
+        }
+      ],
+      "expected": {"direction": "bullish", "missing": ["insider_trading", "options_flow", "social", "technical"], "stale": [], "source_ids": ["issuer_feed", "sec"], "sec_provenance": true, "launch_ready": true}
+    },
+    {
+      "id": "27_stale_primary_event",
+      "as_of": "2025-10-01T16:00:00Z",
+      "ticker": "CASE27",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "bankruptcy", "direction": "bearish", "timestamp": "2025-08-01T16:00:00Z", "source_id": "sec"}
+          ]
+        }
+      ],
+      "expected": {"direction": "neutral", "missing": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "stale": ["filings_news"], "source_ids": [], "sec_provenance": false, "launch_ready": false}
+    },
+    {
+      "id": "28_hypothetical_authorized_options_contract",
+      "as_of": "2026-01-15T16:00:00Z",
+      "ticker": "CASE28",
+      "adapters": [
+        {
+          "family": "filings_news",
+          "provider": "sec",
+          "evidence": [
+            {"signal": "sec_form_10_q", "direction": "neutral", "source_id": "sec"}
+          ]
+        },
+        {
+          "family": "options_flow",
+          "provider": "authorized_options_fixture",
+          "policy_decision": "approved",
+          "evidence": [
+            {"signal": "call_flow_increase", "direction": "bullish", "strength": 1.0, "confidence": 0.9, "source_quality": 0.9, "source_id": "authorized_options_fixture", "source_policy": "approved"}
+          ]
+        }
+      ],
+      "expected": {"direction": "bullish", "missing": ["insider_trading", "social", "technical"], "stale": [], "source_ids": ["authorized_options_fixture", "sec"], "sec_provenance": true, "launch_ready": true}
+    }
+  ]
+}

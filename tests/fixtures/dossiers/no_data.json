@@ -1,0 +1,7 @@
+{
+  "scenario": "canonical no-data response",
+  "expected_score": 50,
+  "expected_confidence": 0,
+  "expected_coverage": "none",
+  "verification": "test_FX_NO_DATA"
+}

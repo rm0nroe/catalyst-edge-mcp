@@ -1,0 +1,13 @@
+{
+  "list": [],
+  "finnhub_social": {"reddit": [], "twitter": []},
+  "data": {"data": []},
+  "sec": {
+    "ticker_map": {
+      "fields": ["cik", "name", "ticker", "exchange"],
+      "data": [[1045810, "NVIDIA CORP", "NVDA", "Nasdaq"]]
+    },
+    "submissions": {"filings": {"recent": {"form": []}}}
+  },
+  "yfinance": {"expiration": "2026-07-17", "calls": [], "puts": []}
+}

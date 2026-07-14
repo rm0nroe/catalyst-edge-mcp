@@ -1,0 +1,7 @@
+{
+  "reddit": [
+    {"atTime": "2026-07-11T12:00:00+00:00", "mention": 100, "score": 0.4, "url": "https://example.com/social/current"},
+    {"atTime": "2026-07-03T12:00:00+00:00", "mention": 50, "score": 0.1}
+  ],
+  "twitter": []
+}

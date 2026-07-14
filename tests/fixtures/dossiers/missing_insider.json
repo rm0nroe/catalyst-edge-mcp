@@ -1,0 +1,5 @@
+{
+  "scenario": "missing insider data",
+  "expected_missing_families": ["insider_trading"],
+  "verification": "test_FX_MISSING_INSIDER"
+}

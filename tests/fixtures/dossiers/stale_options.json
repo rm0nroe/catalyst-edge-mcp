@@ -1,0 +1,7 @@
+{
+  "scenario": "stale options data",
+  "age_days": 30,
+  "lookback_days": 14,
+  "expected_stale_families": ["options_flow"],
+  "verification": "test_FX_STALE_OPTIONS"
+}

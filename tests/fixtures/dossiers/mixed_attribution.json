@@ -1,0 +1,5 @@
+{
+  "scenario": "mixed bullish bearish family attribution",
+  "expected_contribution_signs": ["positive", "negative"],
+  "verification": "test_UT_SCORE_ATTRIBUTION"
+}

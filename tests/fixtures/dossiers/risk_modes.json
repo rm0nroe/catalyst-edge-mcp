@@ -1,0 +1,6 @@
+{
+  "scenario": "all risk modes and prohibited-language checks",
+  "risk_modes": ["research", "alert_triage", "thesis_review"],
+  "prohibited": ["buy", "sell", "guaranteed", "alpha", "expected return"],
+  "verification": "test_UT_LANGUAGE_ALL_MODES"
+}

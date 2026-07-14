@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "symbol": "NVDA",
+      "timestamp": "2026-07-11T12:00:00+00:00",
+      "premium": 2000,
+      "type": "call",
+      "trade_type": "sweep",
+      "volume": 100,
+      "open_interest": 200,
+      "url": "https://example.com/flowalgo/current"
+    },
+    {
+      "symbol": "NVDA",
+      "timestamp": "2026-07-03T12:00:00+00:00",
+      "premium": 500,
+      "type": "call",
+      "volume": 40,
+      "open_interest": 160
+    }
+  ]
+}

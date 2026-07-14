@@ -1,0 +1,6 @@
+{
+  "scenario": "weak single-source social-only catalyst",
+  "expected_direction": "neutral",
+  "expected_coverage": "partial",
+  "verification": "test_FX_WEAK_SOCIAL"
+}
