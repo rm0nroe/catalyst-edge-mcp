@@ -120,6 +120,11 @@ unlicensed options/technical missingness. All 28 expected-versus-produced
 assertions pass. See
 [`docs/validation/phase6-historical-validation-2026-07-13.md`](docs/validation/phase6-historical-validation-2026-07-13.md).
 
+The live evidence-semantic launch gate passed for RKLB on 2026-07-14 from
+merged `main`; the other four acceptance tickers correctly remained
+fail-closed. See
+[`docs/validation/live-launch-acceptance-2026-07-14.md`](docs/validation/live-launch-acceptance-2026-07-14.md).
+
 ## Run
 
 Stdio:
