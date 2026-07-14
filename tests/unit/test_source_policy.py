@@ -26,11 +26,12 @@ def test_UT_SOURCE_POLICY_fixture_matches_fail_closed_registry():
         get_source_policy("unknown_vendor")
 
 
-def test_PT_GDELT_THROTTLE_contract_is_serialized_one_per_six_seconds():
+def test_PT_GDELT_WEB_NGRAMS_contract_uses_only_reviewed_official_hosts():
     policy = get_source_policy("gdelt")
 
-    assert policy.requests_per_second == 1 / 6
+    assert policy.requests_per_second is None
     assert policy.concurrency == 1
+    assert policy.official_hosts == ("api.gdeltproject.org", "storage.googleapis.com")
     assert policy.retention == "publisher metadata and links only"
 
 
