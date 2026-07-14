@@ -80,6 +80,25 @@ def test_evidence_store_path_is_environment_overridable(monkeypatch, tmp_path):
     assert Settings.from_env().evidence_store_path == str(store_path)
 
 
+@pytest.mark.parametrize(
+    ("name", "value", "message"),
+    [
+        ("CATALYST_EDGE_TRANSPORT", "websocket", "CATALYST_EDGE_TRANSPORT"),
+        ("CATALYST_EDGE_HOST", "0.0.0.0", "CATALYST_EDGE_HOST"),
+        ("CATALYST_EDGE_PORT", "not-a-port", "CATALYST_EDGE_PORT must be an integer"),
+        ("CATALYST_EDGE_PORT", "0", "CATALYST_EDGE_PORT must be between 1 and 65535"),
+        ("CATALYST_EDGE_PORT", "65536", "CATALYST_EDGE_PORT must be between 1 and 65535"),
+    ],
+)
+def test_transport_settings_reject_invalid_environment(monkeypatch, name, value, message):
+    for variable in ("CATALYST_EDGE_TRANSPORT", "CATALYST_EDGE_HOST", "CATALYST_EDGE_PORT"):
+        monkeypatch.delenv(variable, raising=False)
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValueError, match=message):
+        Settings.from_env()
+
+
 def test_issuer_feed_toggle_is_explicit(monkeypatch):
     monkeypatch.setenv("CATALYST_EDGE_ISSUER_FEEDS", "disabled")
     assert Settings.from_env().issuer_feeds_enabled is False
