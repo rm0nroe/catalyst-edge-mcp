@@ -1,6 +1,8 @@
 import os
 import socket
 import subprocess
+import sys
+import tempfile
 import time
 from contextlib import asynccontextmanager
 from copy import deepcopy
@@ -109,18 +111,25 @@ def _terminate_process(process):
         process.wait(timeout=5)
 
 
-def _wait_for_http_server(process, port):
+def _read_captured_stderr(stderr_file):
+    # Read the child's captured stderr. The buffer is a real temp file rather than
+    # a pipe, so the child never blocks on a full pipe buffer mid-session.
+    stderr_file.seek(0)
+    return stderr_file.read().decode(errors="replace")
+
+
+def _wait_for_http_server(process, port, stderr_file):
     deadline = time.monotonic() + HTTP_START_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         if process.poll() is not None:
-            return process.stderr.read()
+            return _read_captured_stderr(stderr_file)
         try:
             httpx.get(f"http://127.0.0.1:{port}/mcp", timeout=0.2)
             return None
         except httpx.TransportError:
             time.sleep(0.05)
     _terminate_process(process)
-    stderr = process.stderr.read()
+    stderr = _read_captured_stderr(stderr_file)
     return f"readiness timeout after {HTTP_START_TIMEOUT_SECONDS}s\n{stderr}"
 
 
@@ -154,28 +163,28 @@ async def _transport_session(transport, *, populated_evidence=False):
             CATALYST_EDGE_HOST="127.0.0.1",
             CATALYST_EDGE_PORT=str(port),
         )
-        process = subprocess.Popen(
-            command,
-            env=environment,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        try:
-            startup_error = _wait_for_http_server(process, port)
-            if startup_error is not None:
-                last_error = startup_error
-                if _is_bind_collision(startup_error) and attempt + 1 < HTTP_START_ATTEMPTS:
-                    continue
-                pytest.fail(f"HTTP server did not start:\n{startup_error}")
-            async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as streams:
-                read_stream, write_stream, _ = streams
-                async with ClientSession(read_stream, write_stream) as session:
-                    await session.initialize()
-                    yield session
-            return
-        finally:
-            _terminate_process(process)
+        with tempfile.TemporaryFile() as stderr_file:
+            process = subprocess.Popen(
+                command,
+                env=environment,
+                stdout=subprocess.DEVNULL,
+                stderr=stderr_file,
+            )
+            try:
+                startup_error = _wait_for_http_server(process, port, stderr_file)
+                if startup_error is not None:
+                    last_error = startup_error
+                    if _is_bind_collision(startup_error) and attempt + 1 < HTTP_START_ATTEMPTS:
+                        continue
+                    pytest.fail(f"HTTP server did not start:\n{startup_error}")
+                async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as streams:
+                    read_stream, write_stream, _ = streams
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        yield session
+                return
+            finally:
+                _terminate_process(process)
     pytest.fail(f"HTTP server could not bind after {HTTP_START_ATTEMPTS} attempts:\n{last_error}")
 
 
@@ -294,3 +303,29 @@ async def test_CT_HTTP_INVOCATION():
     async with _transport_session("streamable-http") as session:
         result = await session.call_tool("catalyst_edge_score", {"ticker": " nvda "})
     _assert_empty_structured_response(result)
+
+
+def test_large_stderr_does_not_block_subprocess():
+    # Regression guard for the transport-session stderr buffer. An OS pipe blocks the
+    # child at ~64 KiB when the parent is not draining it; a temp file must not. A
+    # blocked child could never reach its sleep, so observing a live child that has
+    # already flushed 300 KiB proves the buffer is unbounded.
+    with tempfile.TemporaryFile() as stderr_file:
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "import sys, time; sys.stderr.write('x' * 300000); "
+                "sys.stderr.flush(); time.sleep(2)",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=stderr_file,
+        )
+        try:
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and len(_read_captured_stderr(stderr_file)) < 300000:
+                time.sleep(0.05)
+            assert process.poll() is None
+            assert len(_read_captured_stderr(stderr_file)) == 300000
+        finally:
+            _terminate_process(process)
