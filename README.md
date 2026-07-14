@@ -32,8 +32,8 @@ executable offline.
 | --- | --- | --- |
 | Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required production baseline; missing identity blocks live collection |
 | Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; `CATALYST_EDGE_ISSUER_FEEDS=enabled` | Enabled by default; unregistered tickers make no feed request and return typed no-observation status |
-| GDELT DOC 2.0 discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Enabled by default; metadata/links only, neutral discovery, and never launch-readiness credit |
-| Bluesky partial attention | Reviewed exact aliases; `CATALYST_EDGE_BLUESKY=enabled` | Enabled by default; official cached AppView then direct AppView fallback, 14-day warm-up, neutral attention only |
+| GDELT DOC 2.0 discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Request-time reads are cache-only; refresh out of band; metadata/links remain neutral and never receive launch-readiness credit |
+| Bluesky partial attention | Reviewed exact aliases; `CATALYST_EDGE_BLUESKY=enabled` | Two complete historical seven-day windows are fetched from official AppView hosts; attention remains neutral |
 | Mastodon attention | Reviewed-instance registry required | No instance is composed: measured representative coverage has not justified an allowlist |
 | FMP and Finnhub | Key plus recorded policy approval | Keys alone do not establish commercial rights and are not composed by default |
 | FlowAlgo/CheddarFlow/future OPRA vendor | Key plus recorded transaction-and-quote license | Otherwise `options_flow` is `licensed_feed_required` |
@@ -53,6 +53,7 @@ cp .env.example .env
 set -a
 source .env
 set +a
+uv run catalyst-edge-refresh-gdelt AAPL NVDA TSLA BRK.B RKLB --lookback-days 14
 uv run catalyst-edge-smoke NVDA --lookback-days 14
 ```
 
@@ -69,7 +70,7 @@ Runtime settings:
 | `CATALYST_EDGE_HOST` | `127.0.0.1` | Loopback addresses only |
 | `CATALYST_EDGE_PORT` | `8000` | Streamable HTTP port |
 | `CATALYST_EDGE_ISSUER_FEEDS` | `enabled` | Set `disabled` to suppress issuer-feed requests |
-| `CATALYST_EDGE_GDELT` | `enabled` | Set `disabled` to suppress GDELT requests |
+| `CATALYST_EDGE_GDELT` | `enabled` | Set `disabled` to suppress request-time cache reads; refresh network calls occur only through `catalyst-edge-refresh-gdelt` |
 | `CATALYST_EDGE_BLUESKY` | `enabled` | Set `disabled` to suppress AppView requests; disable all three public collectors for a fully offline runtime |
 | `CATALYST_EDGE_EVIDENCE_STORE` | `~/.local/state/catalyst-edge-mcp/evidence.sqlite3` | Local SQLite/WAL collector state and canonical event graph |
 | `CATALYST_EDGE_SENTIMENT_MODEL` | `disabled` | Any other value fails configuration until a reviewed candidate passes every gate |
@@ -83,23 +84,27 @@ run before same-issuer, 48-hour RapidFuzz matching at a token-set score of 92;
 corrections and materially changed numbers become linked event versions. The local
 store also snapshots the reviewed source-policy decisions used by collectors.
 
-GDELT uses reviewed company aliases, the official HTTPS DOC 2.0 endpoint, a
-process-global concurrency limit of one, and at most one request start every five
-seconds. Responses are bounded to two megabytes and 50 article records. Only
-publisher titles, timestamps, domains, hashes, and HTTPS links are retained; article
-bodies are never fetched or stored. HTTP 429, timeout, malformed schema, and upstream
-failure states return typed degraded results with source-scoped cached evidence.
-Discovery observations merge into the same 48-hour canonical graph but remain below
-SEC and issuer-primary sources in global ranking.
+GDELT uses reviewed company aliases and the official HTTPS DOC 2.0 endpoint. The
+legacy endpoint repeatedly exceeded the MCP request deadline in live validation, so
+production requests now read only from the local discovery cache. The explicit
+`catalyst-edge-refresh-gdelt` command performs serialized network refreshes out of
+band, starts at most one request every six seconds, and allows the upstream request a
+30-second budget. Responses remain bounded to two megabytes and 50 article records.
+Only publisher titles, timestamps, domains, hashes, and HTTPS links are retained;
+article bodies are never fetched or stored. HTTP 429, timeout, malformed schema, and
+upstream failure states remain typed and preserve cached evidence. Discovery
+observations merge into the same 48-hour canonical graph but remain below SEC and
+issuer-primary sources in global ranking.
 
 Bluesky searches reviewed exact cashtags and company aliases through
 `public.api.bsky.app`, falling back only to `api.bsky.app`. Both are documented,
 unauthenticated AppView hosts; no proxy or scraper path exists. The collector
-deduplicates post URIs, counts unique authors, and persists derived time buckets plus
-at most three representative links—not post bodies. It emits no trend before 14
-collected days, requires at least five exact-match posts in each seven-day comparison
-window and 80% collector coverage, and always keeps attention direction neutral.
-Outages remain in the coverage denominator. Mastodon remains uncomposed because no
+queries non-overlapping historical seven-day windows using documented `since`,
+`until`, and cursor parameters. It fetches at most three 100-post pages per window,
+deduplicates post URIs, counts unique authors, and persists derived window metrics
+plus at most three representative links—not post bodies. Both windows must paginate
+completely and contain at least five exact-match posts; otherwise no trend is emitted.
+Attention direction always remains neutral. Mastodon remains uncomposed because no
 reviewed instance set was available to establish representative cross-instance
 coverage; no instance is treated as a global index.
 
@@ -115,7 +120,7 @@ options provider before policy evaluation. See
 Phase 6 validates 28 dated, sanitized product-contract cases covering strong and
 weak bullish evidence, bearish material events, neutral issuer/discovery items,
 insider clusters, Form 144 intent, missing/stale/provider failures, Bluesky
-warm-up/outage/sample states, contradictions, rejected sentiment, and
+historical warm-up/outage/sample regressions, contradictions, rejected sentiment, and
 unlicensed options/technical missingness. All 28 expected-versus-produced
 assertions pass. See
 [`docs/validation/phase6-historical-validation-2026-07-13.md`](docs/validation/phase6-historical-validation-2026-07-13.md).

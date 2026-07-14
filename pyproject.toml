@@ -34,6 +34,7 @@ diagnostic = [
 catalyst-edge-mcp = "catalyst_edge_mcp.server:main"
 catalyst-edge-score = "catalyst_edge_mcp.cli:main"
 catalyst-edge-smoke = "catalyst_edge_mcp.smoke:main"
+catalyst-edge-refresh-gdelt = "catalyst_edge_mcp.gdelt_refresh:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["catalyst_edge_mcp"]

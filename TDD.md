@@ -153,7 +153,7 @@ Unavailable options are represented explicitly and never as evidence:
 }
 ```
 
-The same shape expresses `technical` missingness and social warm-up,
+The same shape expresses `technical` missingness and incomplete social windows,
 permission, rate-limit, or outage states. A status object is data quality, not
 a bullish or bearish signal, and cannot enter the scoring evidence list.
 
@@ -260,10 +260,10 @@ Change rules are family-specific:
   EMA-12, and EMA-26. Only crossovers or threshold transitions create evidence;
   static levels do not.
 - Social attention: exact cashtag/reviewed-alias matches, unique authors,
-  deduplicated posts, time-bucket counts, and collected-baseline change. It is
+  deduplicated posts, and two non-overlapping historical seven-day windows. It is
   always source-scoped and never called market-wide sentiment. No trend is
-  emitted before 14 days of warm-up and minimum sample thresholds. Collector
-  downtime remains in the coverage denominator so outages cannot look bearish.
+  emitted unless both cursor-bounded windows complete and meet the minimum sample
+  threshold. Upstream failure or pagination truncation cannot look bearish.
 - Social sentiment: separate optional evidence, disabled by default. It may
   influence scoring only after fixed preprocessing, labeled accuracy and
   compatibility gates, explicit model/lexicon rights, rounded outputs, and
@@ -305,9 +305,10 @@ Baseline contracts:
 - Issuer feeds: a reviewed registry defines canonical feeds and aliases.
   Collect with conditional `ETag`/`Last-Modified` requests every 5–15 minutes;
   broken feeds become `stale`, not “no news.”
-- GDELT: call `https://api.gdeltproject.org/api/v2/doc/doc` no more than once
-  per five seconds, serialize calls, honor stricter future `429` instructions,
-  and store publisher metadata/links rather than article bodies.
+- GDELT: request-time evaluation is cache-only. The explicit background refresh
+  command calls `https://api.gdeltproject.org/api/v2/doc/doc` no more than once
+  per six seconds, serializes calls, honors stricter future `429` instructions,
+  and stores publisher metadata/links rather than article bodies.
 - Bluesky: search exact cashtags/reviewed aliases through the documented
   `public.api.bsky.app` AppView host, then the documented `api.bsky.app`
   fallback. Reads are unauthenticated. Never use proxies or scraping to bypass
@@ -323,12 +324,12 @@ use a distinct `options_eod_activity` diagnostic family but never
 `options_flow`. `CATALYST_EDGE_OPTIONS_PROVIDER` defaults to `none`; selecting
 `yfinance` is valid only in explicit private diagnostic mode.
 
-Provider clients use a six-second request timeout and the service applies an
-eight-second outer timeout. Request-time work may make at most one high-value
-refresh when cache age and deadline permit; broad collection runs in the
-background. There are no unbounded retries. `429`, permission, license, schema,
-network, and timeout failures map to typed statuses and cached partial results
-with freshness. Cancellation always propagates.
+Request-time provider clients use a six-second request timeout and the service
+applies an eight-second outer timeout. GDELT is never refreshed on that path; its
+explicit background command has a 30-second upstream budget. Broad collection
+runs outside request latency. There are no unbounded retries. `429`, permission,
+license, schema, network, and timeout failures map to typed statuses and cached
+partial results with freshness. Cancellation always propagates.
 
 The evidence store uses SQLite/WAL tables for `source_observation`,
 `canonical_event`, `event_source`, `insider_transaction`, `insider_cluster`,
@@ -386,7 +387,7 @@ Warnings are required for:
 
 - every absent canonical family and affected provider;
 - every `permission_required` or `licensed_feed_required` policy block;
-- social warm-up, sample insufficiency, and collector coverage gaps;
+- incomplete social windows, sample insufficiency, and collector coverage gaps;
 - stale evidence;
 - each provider failure or timeout;
 - degraded provider use;
@@ -556,11 +557,12 @@ covered by offline contract/parser fixtures. Phase 1 was live-validated against
 representative SEC Forms 4/144 and 8-K archive metadata. Phase 2 was live-validated
 against the reviewed Apple and NVIDIA issuer feeds, including conditional state.
 Phase 3 has bounded success/empty/malformed/rate-limit/timeout/host/provenance
-fixtures; its sanitized live POC returned an upstream timeout and verified typed
-degradation without response-body retention.
+fixtures. Repeated live request-path timeouts moved DOC refreshes into an explicit
+out-of-band command; MCP evaluation now reads the typed cache without response-body
+retention.
 Phase 4 uses only the two documented Bluesky AppView hosts, persists derived
-attention buckets without post bodies, enforces warm-up/sample/coverage gates, and
-keeps attention neutral. No Mastodon instance registry is composed because the
+attention windows without post bodies, enforces complete pagination and sample gates,
+and keeps attention neutral. No Mastodon instance registry is composed because the
 review found no approved instance set from which representative cross-instance
 coverage could be established. The live Bluesky POC confirmed the current 403 on
 the cached public search host and successful unauthenticated direct-AppView fallback.
@@ -578,13 +580,14 @@ direction, provenance, missingness, staleness, and readiness assertions pass.
    distinguish three-plus strong clusters, and keep Form 144 as proposed intent.
 2. Implemented: reviewed issuer RSS/Atom feeds, conditional retrieval, canonical
    event graph, exact/fuzzy dedupe, correction versioning, and primary-source ranking.
-3. Implemented: serialized GDELT discovery at one request per five seconds,
-   reviewed issuer aliases, metadata-only retention, cached typed degradation,
-   Retry-After deferral, and canonical-event integration below primary sources.
+3. Implemented: request-time GDELT cache reads plus serialized out-of-band discovery
+   at one request per six seconds, reviewed issuer aliases, metadata-only retention,
+   cached typed degradation, Retry-After deferral, and canonical-event integration.
 4. Implemented: Bluesky exact-match partial attention with cached-to-direct official
-   AppView fallback, derived buckets, 14-day warm-up, minimum samples, coverage-aware
-   outages, and neutral semantics. Mastodon remains uncomposed after the measured
-   allowlist decision found no reviewed instance set for representative coverage.
+   AppView fallback, two bounded historical windows, complete pagination, minimum
+   samples, failure-aware coverage, and neutral semantics. Mastodon remains
+   uncomposed after the measured allowlist decision found no reviewed instance
+   set for representative coverage.
 5. Implemented: audited Finnhub sentiment, TextBlob, VADER, DistilBERT SST-2,
    and ProsusAI FinBERT against rights, Python, preprocessing, labeled-quality,
    rounding, and threshold gates. Audited FlowAlgo, CheddarFlow, a future OPRA
@@ -592,7 +595,7 @@ direction, provenance, missingness, staleness, and readiness assertions pass.
    None passes; all remain disabled and uncomposed.
 6. Implemented: 28 dated sanitized cases cover directional strength, primary
    and discovery provenance, insider clusters, Form 144, missing/stale/provider
-   failures, Bluesky warm-up/outage/sample gates, contradictions, rejected
+   failures, Bluesky historical warm-up/outage/sample regressions, contradictions, rejected
    sentiment, and options/technical entitlement boundaries. All assertions pass;
    package/runtime verification outcomes are recorded in the Phase 6 report.
 
@@ -622,8 +625,9 @@ Required deterministic dossier scenarios:
 - `permission_required` and `licensed_feed_required` typed missingness;
 - options without a licensed transaction-plus-quote feed stay unavailable;
 - technical without licensed OHLC stays neutrally missing;
-- social warm-up, sample insufficiency, and collector outage stay neutral;
-- GDELT one-per-five-seconds throttling and publisher-body exclusion;
+- incomplete social windows, sample insufficiency, and collector outage stay neutral;
+- GDELT request-path cache isolation, one-per-six-seconds refresh throttling,
+  and publisher-body exclusion;
 - Bluesky documented official-host fallback without proxying;
 - sentiment/model-disabled behavior;
 - missing baseline and valid current-vs-prior change calculations;

@@ -30,10 +30,9 @@ from catalyst_edge_mcp.social_registry import SOCIAL_ISSUER_INDEX, SocialIssuer
 APPVIEW_HOSTS = ("public.api.bsky.app", "api.bsky.app")
 SEARCH_PATH = "/xrpc/app.bsky.feed.searchPosts"
 MAX_RESPONSE_BYTES = 2_000_000
-MAX_POSTS = 50
-WARMUP_DAYS = 14
+MAX_POSTS_PER_PAGE = 100
+MAX_PAGES_PER_WINDOW = 3
 MIN_POSTS_PER_WINDOW = 5
-MIN_COVERAGE = 0.80
 PARSER_VERSION = "bluesky-attention-v1"
 BLUESKY_GATE = ProviderGate(concurrency=1, requests_per_second=1.0)
 
@@ -57,6 +56,7 @@ class BlueskyAdapter:
         self._client = client
         self._gate = gate
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._preferred_host = APPVIEW_HOSTS[0]
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
         issuer = self.registry.get(ticker) or self.registry.get(ticker.replace(".", "-"))
@@ -85,36 +85,35 @@ class BlueskyAdapter:
         lookback_days: int,
         now: datetime,
     ) -> AdapterResult:
-        params = {
-            "q": issuer.bluesky_query,
-            "limit": str(MAX_POSTS),
-            "sort": "latest",
-            "since": (now - timedelta(days=min(lookback_days, 90))).isoformat(),
-        }
+        window_days = min(lookback_days, 90)
+        split = now - timedelta(days=max(1, window_days / 2))
+        baseline_start = now - timedelta(days=window_days)
         try:
-            response = await self._request_with_fallback(client, params)
-            if response.status_code == 429:
-                retry_after = self._retry_delay(response, now)
-                if retry_after is not None:
-                    await self._gate.defer_for(min(retry_after, 300.0))
-            response.raise_for_status()
-            content = response.content
-            if len(content) > MAX_RESPONSE_BYTES:
-                raise ValueError("Bluesky response exceeded the bounded response size")
-            payload = json.loads(content)
-            posts = payload.get("posts") if isinstance(payload, dict) else None
-            if not isinstance(posts, list):
-                raise ValueError("Bluesky response did not contain a post list")
-            metrics = self._metrics(posts[:MAX_POSTS], issuer)
-            metrics["coverage"] = 1.0
-            metrics["raw_sha256"] = hashlib.sha256(content).hexdigest()
-            self.store.record_social_bucket(
-                issuer_key=issuer.issuer_key,
-                source_id=self.provider,
-                bucket_at=now,
-                metrics=metrics,
+            baseline, baseline_complete = await self._fetch_window(
+                client, issuer, baseline_start, split, now
             )
-            return self._attention_result(issuer, now)
+            current, current_complete = await self._fetch_window(
+                client, issuer, split, now, now
+            )
+            self._record_window(issuer, split, baseline_start, split, baseline, baseline_complete)
+            self._record_window(issuer, now, split, now, current, current_complete)
+            if not baseline_complete or not current_complete:
+                return self._result(
+                    status=SourceStatus.STALE,
+                    now=now,
+                    warning=(
+                        "Bluesky search pagination did not complete both comparison windows; "
+                        "no attention trend was inferred."
+                    ),
+                    degraded=True,
+                )
+            return self._attention_result(
+                issuer,
+                now,
+                baseline,
+                current,
+                comparison_days=window_days / 2,
+            )
         except httpx.HTTPStatusError as exc:
             status = (
                 SourceStatus.RATE_LIMITED
@@ -131,11 +130,64 @@ class BlueskyAdapter:
         except httpx.HTTPError as exc:
             return self._failure(issuer, now, SourceStatus.UNAVAILABLE, type(exc).__name__)
 
+    async def _fetch_window(
+        self,
+        client: httpx.AsyncClient,
+        issuer: SocialIssuer,
+        start: datetime,
+        end: datetime,
+        now: datetime,
+    ) -> tuple[dict[str, Any], bool]:
+        posts: list[Any] = []
+        content_hashes: list[str] = []
+        cursor: str | None = None
+        hits_total: int | None = None
+        complete = False
+        for _ in range(MAX_PAGES_PER_WINDOW):
+            params = {
+                "q": issuer.bluesky_query,
+                "limit": str(MAX_POSTS_PER_PAGE),
+                "sort": "latest",
+                "since": start.isoformat(),
+                "until": end.isoformat(),
+            }
+            if cursor:
+                params["cursor"] = cursor
+            response = await self._request_with_fallback(client, params)
+            if response.status_code == 429:
+                retry_after = self._retry_delay(response, now)
+                if retry_after is not None:
+                    await self._gate.defer_for(min(retry_after, 300.0))
+            response.raise_for_status()
+            content = response.content
+            if len(content) > MAX_RESPONSE_BYTES:
+                raise ValueError("Bluesky response exceeded the bounded response size")
+            payload = json.loads(content)
+            page = payload.get("posts") if isinstance(payload, dict) else None
+            if not isinstance(page, list):
+                raise ValueError("Bluesky response did not contain a post list")
+            posts.extend(page)
+            content_hashes.append(hashlib.sha256(content).hexdigest())
+            raw_hits_total = payload.get("hitsTotal")
+            hits_total = raw_hits_total if isinstance(raw_hits_total, int) else hits_total
+            raw_cursor = payload.get("cursor")
+            cursor = raw_cursor if isinstance(raw_cursor, str) and raw_cursor else None
+            if not cursor or (hits_total is not None and hits_total <= len(posts)):
+                complete = True
+                break
+        metrics = self._metrics(posts, issuer, start=start, end=end)
+        metrics["raw_sha256"] = hashlib.sha256("".join(content_hashes).encode()).hexdigest()
+        return metrics, complete
+
     async def _request_with_fallback(
         self, client: httpx.AsyncClient, params: dict[str, str]
     ) -> httpx.Response:
         last_error: Exception | None = None
-        for index, host in enumerate(APPVIEW_HOSTS):
+        hosts = (
+            self._preferred_host,
+            *(host for host in APPVIEW_HOSTS if host != self._preferred_host),
+        )
+        for index, host in enumerate(hosts):
             try:
                 async with self._gate.request():
                     response = await client.get(f"https://{host}{SEARCH_PATH}", params=params)
@@ -145,6 +197,8 @@ class BlueskyAdapter:
                     403,
                 }
                 if not fallback_status or index == len(APPVIEW_HOSTS) - 1:
+                    if response.is_success:
+                        self._preferred_host = host
                     return response
                 last_error = httpx.HTTPStatusError(
                     "Bluesky AppView unavailable",
@@ -159,7 +213,14 @@ class BlueskyAdapter:
             raise last_error
         raise httpx.NetworkError("No Bluesky AppView host was attempted")
 
-    def _metrics(self, posts: list[Any], issuer: SocialIssuer) -> dict[str, Any]:
+    def _metrics(
+        self,
+        posts: list[Any],
+        issuer: SocialIssuer,
+        *,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> dict[str, Any]:
         seen_uris: set[str] = set()
         authors: set[str] = set()
         representative_urls: list[str] = []
@@ -174,6 +235,13 @@ class BlueskyAdapter:
             text = str(record.get("text") or "")
             if not self._matches(text, issuer):
                 continue
+            created_at = self._parse_datetime(record.get("createdAt") or post.get("indexedAt"))
+            if created_at is None:
+                continue
+            if start is not None and created_at < start:
+                continue
+            if end is not None and created_at >= end:
+                continue
             uri = str(post.get("uri") or "")
             if not uri.startswith("at://") or uri in seen_uris:
                 continue
@@ -181,8 +249,7 @@ class BlueskyAdapter:
             identity = str(author.get("did") or author.get("handle") or "")
             if identity:
                 authors.add(identity)
-            created_at = self._parse_datetime(record.get("createdAt") or post.get("indexedAt"))
-            if created_at is not None and (newest_at is None or created_at > newest_at):
+            if newest_at is None or created_at > newest_at:
                 newest_at = created_at
             url = self._post_url(uri, str(author.get("handle") or ""))
             if url and len(representative_urls) < 3:
@@ -194,31 +261,39 @@ class BlueskyAdapter:
             "newest_at": newest_at.isoformat() if newest_at else None,
         }
 
-    def _attention_result(
-        self, issuer: SocialIssuer, now: datetime
-    ) -> AdapterResult:
-        buckets = self.store.social_buckets(
-            issuer.issuer_key, self.provider, now - timedelta(days=28)
+    def _record_window(
+        self,
+        issuer: SocialIssuer,
+        bucket_at: datetime,
+        start: datetime,
+        end: datetime,
+        metrics: dict[str, Any],
+        complete: bool,
+    ) -> None:
+        self.store.record_social_bucket(
+            issuer_key=issuer.issuer_key,
+            source_id=self.provider,
+            bucket_at=bucket_at.replace(hour=0, minute=0, second=0, microsecond=0),
+            metrics={
+                **metrics,
+                "coverage": 1.0 if complete else 0.0,
+                "window_start": start.isoformat(),
+                "window_end": end.isoformat(),
+            },
         )
-        if not buckets or buckets[0]["bucket_at"] > now - timedelta(days=WARMUP_DAYS):
-            return self._result(
-                status=SourceStatus.NO_OBSERVATIONS,
-                now=now,
-                warning="Bluesky attention is warming up; 14 collected days are required.",
-            )
-        split = now - timedelta(days=7)
-        baseline = [bucket for bucket in buckets if bucket["bucket_at"] < split]
-        current = [bucket for bucket in buckets if bucket["bucket_at"] >= split]
-        coverage = sum(float(bucket.get("coverage", 0)) for bucket in buckets) / len(buckets)
-        baseline_count = sum(int(bucket.get("post_count", 0)) for bucket in baseline)
-        current_count = sum(int(bucket.get("post_count", 0)) for bucket in current)
-        if (
-            not baseline
-            or not current
-            or coverage < MIN_COVERAGE
-            or baseline_count < MIN_POSTS_PER_WINDOW
-            or current_count < MIN_POSTS_PER_WINDOW
-        ):
+
+    def _attention_result(
+        self,
+        issuer: SocialIssuer,
+        now: datetime,
+        baseline: dict[str, Any],
+        current: dict[str, Any],
+        *,
+        comparison_days: float,
+    ) -> AdapterResult:
+        baseline_count = int(baseline.get("post_count", 0))
+        current_count = int(current.get("post_count", 0))
+        if baseline_count < MIN_POSTS_PER_WINDOW or current_count < MIN_POSTS_PER_WINDOW:
             return self._result(
                 status=SourceStatus.NO_OBSERVATIONS,
                 now=now,
@@ -227,9 +302,8 @@ class BlueskyAdapter:
                     "collector outages remain in coverage."
                 ),
             )
-        latest = current[-1]
-        urls = [str(url) for url in latest.get("representative_urls", [])[:3]]
-        newest_at = self._parse_datetime(latest.get("newest_at")) or now
+        urls = [str(url) for url in current.get("representative_urls", [])[:3]]
+        newest_at = self._parse_datetime(current.get("newest_at")) or now
         evidence = Evidence(
             family=self.family,
             signal="attention_change",
@@ -241,13 +315,15 @@ class BlueskyAdapter:
             change=Change(
                 description=(
                     f"Bluesky exact-match posts changed from {baseline_count} to "
-                    f"{current_count} across collected 7-day windows."
+                    f"{current_count} across complete {comparison_days:g}-day windows."
                 ),
                 current_value=float(current_count),
                 baseline_value=float(baseline_count),
                 delta=float(current_count - baseline_count),
                 unit="posts",
-                comparison_window="collected current 7 days vs preceding 7 days",
+                comparison_window=(
+                    f"current {comparison_days:g} days vs preceding equal window"
+                ),
             ),
             sources=[
                 Source(
@@ -258,11 +334,11 @@ class BlueskyAdapter:
                     canonical_url=url,
                     observed_at=now,
                     retrieved_at=now,
-                    raw_sha256=str(latest.get("raw_sha256") or "") or None,
+                    raw_sha256=str(current.get("raw_sha256") or "") or None,
                     parser_version=PARSER_VERSION,
                     policy_decision=PolicyDecision.APPROVED_PARTIAL_ATTENTION,
                 )
-                for url in urls
+                for url in (urls or [None])
             ],
             notes=(
                 "Source-scoped partial attention only; no sentiment or market-wide "
@@ -271,7 +347,7 @@ class BlueskyAdapter:
             raw_signal={
                 "post_count": current_count,
                 "baseline_post_count": baseline_count,
-                "coverage_ratio": round(coverage, 3),
+                "coverage_ratio": 1.0,
             },
         )
         return self._result(status=SourceStatus.FRESH, now=now, evidence=[evidence])
@@ -318,7 +394,10 @@ class BlueskyAdapter:
 
     @staticmethod
     def _matches(text: str, issuer: SocialIssuer) -> bool:
-        if re.search(rf"(?i)(?<!\w)\${re.escape(issuer.tickers[0])}(?!\w)", text):
+        if any(
+            re.search(rf"(?i)(?<!\w)\${re.escape(ticker)}(?!\w)", text)
+            for ticker in issuer.tickers
+        ):
             return True
         return any(
             re.search(rf"(?i)(?<!\w){re.escape(alias)}(?!\w)", text)
