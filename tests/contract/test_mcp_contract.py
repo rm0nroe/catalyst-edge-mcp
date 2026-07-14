@@ -139,8 +139,8 @@ def _is_bind_collision(stderr):
 
 
 @asynccontextmanager
-async def _transport_session(transport, *, populated_evidence=False):
-    command = _server_command(populated_evidence=populated_evidence)
+async def _transport_session(transport, *, populated_evidence=False, server_command=None):
+    command = server_command or _server_command(populated_evidence=populated_evidence)
     if transport == "stdio":
         parameters = StdioServerParameters(
             command=command[0],
@@ -305,27 +305,18 @@ async def test_CT_HTTP_INVOCATION():
     _assert_empty_structured_response(result)
 
 
-def test_large_stderr_does_not_block_subprocess():
-    # Regression guard for the transport-session stderr buffer. An OS pipe blocks the
-    # child at ~64 KiB when the parent is not draining it; a temp file must not. A
-    # blocked child could never reach its sleep, so observing a live child that has
-    # already flushed 300 KiB proves the buffer is unbounded.
-    with tempfile.TemporaryFile() as stderr_file:
-        process = subprocess.Popen(
-            [
-                sys.executable,
-                "-c",
-                "import sys, time; sys.stderr.write('x' * 300000); "
-                "sys.stderr.flush(); time.sleep(2)",
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=stderr_file,
-        )
-        try:
-            deadline = time.monotonic() + 5
-            while time.monotonic() < deadline and len(_read_captured_stderr(stderr_file)) < 300000:
-                time.sleep(0.05)
-            assert process.poll() is None
-            assert len(_read_captured_stderr(stderr_file)) == 300000
-        finally:
-            _terminate_process(process)
+@pytest.mark.asyncio
+async def test_large_stderr_does_not_block_http_transport():
+    server_command = _server_command(populated_evidence=False)
+    flood_then_exec = (
+        "import os, sys; "
+        "sys.stderr.buffer.write(b'x' * 300000); "
+        "sys.stderr.flush(); "
+        "os.execvpe(sys.argv[1], sys.argv[1:], os.environ)"
+    )
+    command = [sys.executable, "-c", flood_then_exec, *server_command]
+
+    async with _transport_session("streamable-http", server_command=command) as session:
+        tools = await session.list_tools()
+
+    assert [tool.name for tool in tools.tools] == ["catalyst_edge_score"]
