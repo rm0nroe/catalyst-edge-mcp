@@ -1,0 +1,6 @@
+{
+  "scenario": "evidence and overall low confidence warnings",
+  "evidence_confidence": 0.4,
+  "expected_warning_fragments": ["confidence below 0.50", "Overall confidence"],
+  "verification": "test_UT_QUALITY_CANONICAL_UNCONFIGURED_AND_LOW_CONFIDENCE"
+}

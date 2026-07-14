@@ -1,0 +1,6 @@
+{
+  "scenario": "recursive redaction and raw size limit",
+  "raw_limit_bytes": 8192,
+  "redacted_keys": ["token", "Authorization", "user-id"],
+  "verification": "test_UT_RAW_RECURSIVE_REDACTION_AND_LIMIT"
+}

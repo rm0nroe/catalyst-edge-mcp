@@ -1,0 +1,5 @@
+{
+  "scenario": "missing baseline and valid current-vs-prior calculations",
+  "expected_warning_fragment": "baseline_unavailable",
+  "verification": "test_PT_FMP_INSIDER_NORMALIZATION"
+}

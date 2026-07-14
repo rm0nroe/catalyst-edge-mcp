@@ -1,0 +1,34 @@
+{
+  "posts": [
+    {
+      "uri": "at://did:plc:alpha/app.bsky.feed.post/one",
+      "cid": "bafy-one",
+      "author": {"did": "did:plc:alpha", "handle": "alpha.example"},
+      "record": {
+        "$type": "app.bsky.feed.post",
+        "text": "$NVDA platform coverage is increasing",
+        "createdAt": "2026-07-12T15:30:00Z"
+      },
+      "indexedAt": "2026-07-12T15:31:00Z"
+    },
+    {
+      "uri": "at://did:plc:beta/app.bsky.feed.post/two",
+      "cid": "bafy-two",
+      "author": {"did": "did:plc:beta", "handle": "beta.example"},
+      "record": {
+        "$type": "app.bsky.feed.post",
+        "text": "NVIDIA announced a platform",
+        "createdAt": "2026-07-12T15:00:00Z"
+      },
+      "privateBody": "secret-social-body-marker"
+    },
+    {
+      "uri": "at://did:plc:gamma/app.bsky.feed.post/three",
+      "author": {"did": "did:plc:gamma", "handle": "gamma.example"},
+      "record": {
+        "text": "Unrelated market discussion",
+        "createdAt": "2026-07-12T14:00:00Z"
+      }
+    }
+  ]
+}

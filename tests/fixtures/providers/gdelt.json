@@ -1,0 +1,14 @@
+{
+  "articles": [
+    {
+      "url": "https://publisher.example/nvidia-announces-new-platform?utm_source=gdelt",
+      "title": "NVIDIA Announces New Platform",
+      "seendate": "20260712T153000Z",
+      "domain": "publisher.example",
+      "language": "English",
+      "sourcecountry": "United States",
+      "body": "secret-publisher-body-marker",
+      "content": "secret-publisher-content-marker"
+    }
+  ]
+}

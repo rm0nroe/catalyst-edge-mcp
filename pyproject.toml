@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "catalyst-edge-mcp"
+version = "0.1.0"
+description = "Source-linked deterministic catalyst evidence scoring over MCP"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Ryan Monroe" }]
+dependencies = [
+  "feedparser>=6.0.12,<7",
+  "httpx>=0.28,<1",
+  "lxml>=6.1,<7",
+  "mcp>=1.27,<2",
+  "pydantic>=2.11,<3",
+  "rapidfuzz>=3.14,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<10",
+  "pytest-asyncio>=0.25,<2",
+  "ruff>=0.12,<1",
+]
+diagnostic = [
+  "yfinance>=0.2.65,<1",
+]
+
+[project.scripts]
+catalyst-edge-mcp = "catalyst_edge_mcp.server:main"
+catalyst-edge-score = "catalyst_edge_mcp.cli:main"
+catalyst-edge-smoke = "catalyst_edge_mcp.smoke:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["catalyst_edge_mcp"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]

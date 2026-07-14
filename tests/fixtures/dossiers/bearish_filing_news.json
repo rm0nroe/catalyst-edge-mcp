@@ -1,0 +1,6 @@
+{
+  "scenario": "bearish filing and news catalyst",
+  "expected_direction": "bearish",
+  "expected_family": "filings_news",
+  "verification": "test_FX_BEARISH_FILING_NEWS"
+}

@@ -1,0 +1,5 @@
+{
+  "scenario": "collector timeout and provider exception",
+  "expected_warning_fragments": ["timed out", "failed"],
+  "verifications": ["test_UT_TIMEOUT", "test_UT_PARTIAL_FAILURE_IS_SANITIZED"]
+}
