@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -16,14 +17,14 @@ PROVIDER_ENV = (
 )
 
 
-def _clear_provider_env(monkeypatch):
-    for name in PROVIDER_ENV:
-        monkeypatch.delenv(name, raising=False)
+@pytest.fixture(autouse=True)
+def _isolate_settings_environment(monkeypatch):
+    for name in tuple(os.environ):
+        if name.startswith("CATALYST_EDGE_") or name in CONDITIONAL_ENVIRONMENT_VARIABLES:
+            monkeypatch.delenv(name, raising=False)
 
 
-def test_launch_configuration_identifies_exact_credential_requirements(monkeypatch):
-    _clear_provider_env(monkeypatch)
-
+def test_launch_configuration_identifies_exact_credential_requirements():
     status = Settings.from_env().launch_configuration()
 
     assert status["configuration_ready"] is False
@@ -35,7 +36,6 @@ def test_launch_configuration_identifies_exact_credential_requirements(monkeypat
 def test_launch_configuration_does_not_treat_conditional_key_as_rights(
     monkeypatch, conditional_name
 ):
-    _clear_provider_env(monkeypatch)
     monkeypatch.setenv("CATALYST_EDGE_SEC_USER_AGENT", " Catalyst Edge ops@example.com ")
     monkeypatch.setenv(conditional_name, " fixture-key ")
 
@@ -56,7 +56,6 @@ def test_launch_configuration_does_not_treat_conditional_key_as_rights(
 
 
 def test_launch_configuration_rejects_invalid_sec_identity(monkeypatch):
-    _clear_provider_env(monkeypatch)
     monkeypatch.setenv("CATALYST_EDGE_SEC_USER_AGENT", "anonymous-client")
     monkeypatch.setenv("FMP_API_KEY", "fixture-key")
 
@@ -78,6 +77,23 @@ def test_evidence_store_path_is_environment_overridable(monkeypatch, tmp_path):
     monkeypatch.setenv("CATALYST_EDGE_EVIDENCE_STORE", str(store_path))
 
     assert Settings.from_env().evidence_store_path == str(store_path)
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "message"),
+    [
+        ("CATALYST_EDGE_TRANSPORT", "websocket", "CATALYST_EDGE_TRANSPORT"),
+        ("CATALYST_EDGE_HOST", "0.0.0.0", "CATALYST_EDGE_HOST"),
+        ("CATALYST_EDGE_PORT", "not-a-port", "CATALYST_EDGE_PORT must be an integer"),
+        ("CATALYST_EDGE_PORT", "0", "CATALYST_EDGE_PORT must be between 1 and 65535"),
+        ("CATALYST_EDGE_PORT", "65536", "CATALYST_EDGE_PORT must be between 1 and 65535"),
+    ],
+)
+def test_transport_settings_reject_invalid_environment(monkeypatch, name, value, message):
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValueError, match=message):
+        Settings.from_env()
 
 
 def test_issuer_feed_toggle_is_explicit(monkeypatch):
