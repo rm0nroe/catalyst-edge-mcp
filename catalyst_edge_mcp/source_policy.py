@@ -61,7 +61,7 @@ SOURCE_POLICIES: dict[str, SourcePolicy] = {
         "publisher metadata and links only",
         0.60,
         0.70,
-        requests_per_second=0.2,
+        requests_per_second=1 / 6,
         official_hosts=("api.gdeltproject.org",),
     ),
     "bluesky": SourcePolicy(
@@ -69,7 +69,7 @@ SOURCE_POLICIES: dict[str, SourcePolicy] = {
         frozenset({"social"}),
         "partial_attention",
         PolicyDecision.APPROVED_PARTIAL_ATTENTION,
-        "minimal post metadata, derived buckets, and representative links",
+        "minimal post metadata, derived windows, and representative links",
         0.50,
         0.60,
         official_hosts=("public.api.bsky.app", "api.bsky.app"),

@@ -32,7 +32,7 @@ def _adapter(tmp_path, client, *, store=None, clock=lambda: AS_OF):
 
 
 @pytest.mark.asyncio
-async def test_PT_BLUESKY_HOST_FALLBACK_and_metadata_only_warmup(tmp_path):
+async def test_PT_BLUESKY_HOST_FALLBACK_and_metadata_only_window_backfill(tmp_path):
     requests = []
 
     def transport(request):
@@ -48,37 +48,53 @@ async def test_PT_BLUESKY_HOST_FALLBACK_and_metadata_only_warmup(tmp_path):
     assert [request.url.host for request in requests] == [
         "public.api.bsky.app",
         "api.bsky.app",
+        "api.bsky.app",
     ]
     assert all(request.url.path == "/xrpc/app.bsky.feed.searchPosts" for request in requests)
     assert requests[0].url.params["q"] == '("$NVDA" OR "NVIDIA")'
+    assert all(request.url.params.get("since") for request in requests)
+    assert all(request.url.params.get("until") for request in requests)
     assert result.status == SourceStatus.NO_OBSERVATIONS
     assert result.evidence == []
-    assert "warming up" in result.warnings[0]
-    buckets = store.social_buckets(ISSUER.issuer_key, "bluesky", AS_OF - timedelta(days=1))
-    assert buckets[0]["post_count"] == 2
-    assert buckets[0]["unique_authors"] == 2
+    assert "sample is insufficient" in result.warnings[0]
+    buckets = store.social_buckets(ISSUER.issuer_key, "bluesky", AS_OF - timedelta(days=15))
+    assert [bucket["post_count"] for bucket in buckets] == [0, 2]
+    assert buckets[-1]["unique_authors"] == 2
     assert "secret-social-body-marker" not in str(buckets)
 
 
 @pytest.mark.asyncio
-async def test_bluesky_emits_neutral_attention_only_after_baseline(tmp_path):
+async def test_bluesky_emits_neutral_attention_from_complete_historical_windows(tmp_path):
     store = EvidenceStore(str(tmp_path / "events.sqlite3"))
-    store.record_social_bucket(
-        issuer_key=ISSUER.issuer_key,
-        source_id="bluesky",
-        bucket_at=AS_OF - timedelta(days=14),
-        metrics={"post_count": 6, "unique_authors": 5, "coverage": 1.0},
-    )
-    store.record_social_bucket(
-        issuer_key=ISSUER.issuer_key,
-        source_id="bluesky",
-        bucket_at=AS_OF - timedelta(days=6),
-        metrics={"post_count": 8, "unique_authors": 7, "coverage": 1.0},
-    )
-    async with httpx.AsyncClient(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(200, content=FIXTURE.read_bytes())
+
+    def posts(count, created_at, prefix):
+        return [
+            {
+                "uri": f"at://did:plc:{prefix}{index}/app.bsky.feed.post/{index}",
+                "author": {
+                    "did": f"did:plc:{prefix}{index}",
+                    "handle": f"{prefix}{index}.example",
+                },
+                "record": {
+                    "text": f"$NVDA exact match {index}",
+                    "createdAt": created_at.isoformat(),
+                },
+            }
+            for index in range(count)
+        ]
+
+    def transport(request):
+        until = request.url.params["until"]
+        baseline = until.startswith((AS_OF - timedelta(days=7)).date().isoformat())
+        rows = (
+            posts(6, AS_OF - timedelta(days=10), "baseline")
+            if baseline
+            else posts(8, AS_OF - timedelta(days=1), "current")
         )
+        return httpx.Response(200, json={"posts": rows, "hitsTotal": len(rows)})
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(transport)
     ) as client:
         result = await _adapter(tmp_path, client, store=store).collect("NVDA", 14)
 
@@ -88,12 +104,40 @@ async def test_bluesky_emits_neutral_attention_only_after_baseline(tmp_path):
     assert item.signal == "attention_change"
     assert item.direction == Direction.NEUTRAL
     assert item.change.baseline_value == 6
-    assert item.change.current_value == 10
+    assert item.change.current_value == 8
     assert item.sources[0].source_id == "bluesky"
     assert item.sources[0].source_tier == "partial_attention"
     assert item.sources[0].policy_decision == PolicyDecision.APPROVED_PARTIAL_ATTENTION
-    assert str(item.sources[0].url) == "https://bsky.app/profile/alpha.example/post/one"
+    assert str(item.sources[0].url) == "https://bsky.app/profile/current0.example/post/0"
     assert "secret-social-body-marker" not in item.model_dump_json()
+
+
+@pytest.mark.asyncio
+async def test_bluesky_incomplete_pagination_fails_closed(tmp_path):
+    def transport(request):
+        posts = [
+            {
+                "uri": f"at://did:plc:author/app.bsky.feed.post/{index}",
+                "author": {"did": "did:plc:author", "handle": "author.example"},
+                "record": {
+                    "text": "$NVDA exact match",
+                    "createdAt": (AS_OF - timedelta(days=1)).isoformat(),
+                },
+            }
+            for index in range(100)
+        ]
+        return httpx.Response(
+            200,
+            json={"posts": posts, "hitsTotal": 1000, "cursor": "more"},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        result = await _adapter(tmp_path, client).collect("NVDA", 14)
+
+    assert result.status == SourceStatus.STALE
+    assert result.degraded is True
+    assert result.evidence == []
+    assert "pagination did not complete" in result.warnings[0]
 
 
 @pytest.mark.asyncio

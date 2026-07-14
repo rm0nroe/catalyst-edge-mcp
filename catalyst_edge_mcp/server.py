@@ -40,7 +40,9 @@ def build_service(settings: Settings) -> CatalystService:
     if settings.issuer_feeds_enabled:
         adapters.append(IssuerFeedAdapter(settings.evidence_store_path))
     if settings.gdelt_enabled:
-        adapters.append(GdeltAdapter(settings.evidence_store_path))
+        # GDELT's legacy search API is not reliable within the request deadline.
+        # Production requests read its cache; the bounded refresh CLI owns network I/O.
+        adapters.append(GdeltAdapter(settings.evidence_store_path, live_refresh=False))
     if settings.bluesky_enabled:
         adapters.append(BlueskyAdapter(settings.evidence_store_path))
     # Conditional vendor keys are intentionally not composed until a deployed

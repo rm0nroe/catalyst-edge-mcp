@@ -33,7 +33,7 @@ async def test_provider_gate_enforces_two_request_starts_per_second(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_PT_GDELT_THROTTLE_enforces_serialized_five_second_starts(monkeypatch):
+async def test_PT_GDELT_THROTTLE_enforces_serialized_six_second_starts(monkeypatch):
     now = 0.0
     starts = []
     active = 0
@@ -50,7 +50,7 @@ async def test_PT_GDELT_THROTTLE_enforces_serialized_five_second_starts(monkeypa
 
     monkeypatch.setattr(base.time, "monotonic", monotonic)
     monkeypatch.setattr(base.asyncio, "sleep", sleep)
-    gate = base.ProviderGate(concurrency=1, requests_per_second=0.2)
+    gate = base.ProviderGate(concurrency=1, requests_per_second=1 / 6)
 
     async def request():
         nonlocal active, max_active
@@ -63,5 +63,5 @@ async def test_PT_GDELT_THROTTLE_enforces_serialized_five_second_starts(monkeypa
 
     await asyncio.gather(*(request() for _ in range(3)))
 
-    assert starts == [0.0, 5.0, 10.0]
+    assert starts == [0.0, 6.0, 12.0]
     assert max_active == 1
