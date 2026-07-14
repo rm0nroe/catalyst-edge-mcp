@@ -84,6 +84,8 @@ def test_build_service_enables_sec_only_when_declared(monkeypatch):
         "insider_trading",
         "social",
     }
+    gdelt = next(adapter for adapter in configured.adapters if adapter.provider == "gdelt")
+    assert gdelt.live_refresh is False
 
     monkeypatch.setenv("CATALYST_EDGE_ISSUER_FEEDS", "disabled")
     disabled = build_service(Settings.from_env())
