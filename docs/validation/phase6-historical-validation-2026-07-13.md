@@ -79,3 +79,7 @@ Executed from the untracked `implement/tdd-prd-complete` worktree on
 The live outcome proves safe runtime behavior but is not a launch-readiness
 pass. A future live run still needs SEC provenance plus a qualifying fresh
 directional observation.
+
+That live gate subsequently passed for RKLB on 2026-07-14. See
+[`live-launch-acceptance-2026-07-14.md`](live-launch-acceptance-2026-07-14.md)
+for the dated evidence and deployment handoff.
