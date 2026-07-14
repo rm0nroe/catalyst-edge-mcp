@@ -4,6 +4,7 @@ import subprocess
 import time
 from contextlib import asynccontextmanager
 from copy import deepcopy
+from pathlib import Path
 
 import httpx
 import pytest
@@ -13,18 +14,28 @@ from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 from pydantic import ValidationError
 
-from catalyst_edge_mcp.adapters.base import StaticAdapter
-from catalyst_edge_mcp.models import AdapterResult, CatalystEdgeResponse, ToolInput
+from catalyst_edge_mcp.models import CatalystEdgeResponse, ToolInput
 from catalyst_edge_mcp.server import catalyst_edge_score, mcp
-from catalyst_edge_mcp.service import CatalystService
-from tests.conftest import AS_OF, make_evidence
+
+TRANSPORTS = ("stdio", "streamable-http")
+INVALID_ARGUMENTS = (
+    {"ticker": "NVDA", "bogus": 1},
+    {"ticker": "NVDA", "lookback_days": "7"},
+    {"ticker": "NVDA", "include_sources": "false"},
+)
+POPULATED_EVIDENCE_SERVER = Path(__file__).with_name("populated_evidence_server.py")
+HTTP_START_ATTEMPTS = 3
+HTTP_START_TIMEOUT_SECONDS = 30
 
 
 def _offline_server_env(**overrides):
-    environment = {**os.environ, **overrides}
+    environment = {
+        name: value for name, value in os.environ.items() if not name.startswith("CATALYST_EDGE_")
+    }
     environment["CATALYST_EDGE_ISSUER_FEEDS"] = "disabled"
     environment["CATALYST_EDGE_GDELT"] = "disabled"
     environment["CATALYST_EDGE_BLUESKY"] = "disabled"
+    environment.update(overrides)
     for name in (
         "CATALYST_EDGE_SEC_USER_AGENT",
         "FMP_API_KEY",
@@ -40,16 +51,22 @@ def _offline_server_env(**overrides):
     return environment
 
 
-def _assert_structured_response(result):
+def _validated_response(result, *, output_schema=None):
     assert result.isError is False
     payload = result.structuredContent
     if set(payload or {}) == {"result"}:
         payload = payload["result"]
+    if output_schema is not None:
+        Draft202012Validator(output_schema).validate(payload)
     assert all(item["source_count"] == len(item["sources"]) for item in payload["evidence"])
     validation_payload = deepcopy(payload)
     for item in validation_payload["evidence"]:
         item.pop("source_count")
-    response = CatalystEdgeResponse.model_validate(validation_payload)
+    return CatalystEdgeResponse.model_validate(validation_payload)
+
+
+def _assert_empty_structured_response(result):
+    response = _validated_response(result)
     assert response.ticker == "NVDA"
     assert response.lookback_days == 14
     assert response.edge.scoring_method == "deterministic_v1"
@@ -69,12 +86,56 @@ def _assert_structured_response(result):
     return response
 
 
+def _server_command(*, populated_evidence):
+    if populated_evidence:
+        return ["uv", "run", "python", str(POPULATED_EVIDENCE_SERVER)]
+    return ["uv", "run", "catalyst-edge-mcp"]
+
+
+def _ephemeral_port():
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        return listener.getsockname()[1]
+
+
+def _terminate_process(process):
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
+def _wait_for_http_server(process, port):
+    deadline = time.monotonic() + HTTP_START_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            return process.stderr.read()
+        try:
+            httpx.get(f"http://127.0.0.1:{port}/mcp", timeout=0.2)
+            return None
+        except httpx.TransportError:
+            time.sleep(0.05)
+    _terminate_process(process)
+    stderr = process.stderr.read()
+    return f"readiness timeout after {HTTP_START_TIMEOUT_SECONDS}s\n{stderr}"
+
+
+def _is_bind_collision(stderr):
+    message = stderr.lower()
+    return "address already in use" in message or "errno 48" in message
+
+
 @asynccontextmanager
-async def _transport_session(transport):
+async def _transport_session(transport, *, populated_evidence=False):
+    command = _server_command(populated_evidence=populated_evidence)
     if transport == "stdio":
         parameters = StdioServerParameters(
-            command="uv",
-            args=["run", "catalyst-edge-mcp"],
+            command=command[0],
+            args=command[1:],
             env=_offline_server_env(CATALYST_EDGE_TRANSPORT="stdio"),
         )
         async with (
@@ -85,45 +146,37 @@ async def _transport_session(transport):
             yield session
         return
 
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        port = listener.getsockname()[1]
-    environment = _offline_server_env(
-        CATALYST_EDGE_TRANSPORT="streamable-http",
-        CATALYST_EDGE_HOST="127.0.0.1",
-        CATALYST_EDGE_PORT=str(port),
-    )
-    process = subprocess.Popen(
-        ["uv", "run", "catalyst-edge-mcp"],
-        env=environment,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    try:
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                pytest.fail(f"HTTP server exited: {process.stderr.read()}")
-            try:
-                httpx.get(f"http://127.0.0.1:{port}/mcp", timeout=0.2)
-                break
-            except httpx.TransportError:
-                time.sleep(0.05)
-        else:
-            pytest.fail("HTTP server did not start")
-        async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as streams:
-            read_stream, write_stream, _ = streams
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                yield session
-    finally:
-        process.terminate()
+    last_error = ""
+    for attempt in range(HTTP_START_ATTEMPTS):
+        port = _ephemeral_port()
+        environment = _offline_server_env(
+            CATALYST_EDGE_TRANSPORT="streamable-http",
+            CATALYST_EDGE_HOST="127.0.0.1",
+            CATALYST_EDGE_PORT=str(port),
+        )
+        process = subprocess.Popen(
+            command,
+            env=environment,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
+            startup_error = _wait_for_http_server(process, port)
+            if startup_error is not None:
+                last_error = startup_error
+                if _is_bind_collision(startup_error) and attempt + 1 < HTTP_START_ATTEMPTS:
+                    continue
+                pytest.fail(f"HTTP server did not start:\n{startup_error}")
+            async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as streams:
+                read_stream, write_stream, _ = streams
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    yield session
+            return
+        finally:
+            _terminate_process(process)
+    pytest.fail(f"HTTP server could not bind after {HTTP_START_ATTEMPTS} attempts:\n{last_error}")
 
 
 @pytest.mark.asyncio
@@ -173,48 +226,28 @@ def test_CT_INPUT_SCHEMA_REJECTS_UNKNOWN():
         ToolInput.model_validate({"ticker": "NVDA", "other": 1})
 
 
-@pytest.mark.parametrize(
-    "arguments",
-    [
-        {"ticker": "NVDA", "bogus": 1},
-        {"ticker": "NVDA", "lookback_days": "7"},
-        {"ticker": "NVDA", "include_sources": "false"},
-    ],
-)
-@pytest.mark.parametrize("transport", ["stdio", "streamable-http"])
+@pytest.mark.parametrize("transport", TRANSPORTS)
 @pytest.mark.asyncio
-async def test_CT_TRANSPORT_REJECTS_UNKNOWN_AND_COERCED_INPUTS(transport, arguments):
+async def test_CT_TRANSPORT_REJECTS_UNKNOWN_AND_COERCED_INPUTS(transport):
     async with _transport_session(transport) as session:
-        result = await session.call_tool("catalyst_edge_score", arguments)
-        assert result.isError is True
-        assert result.structuredContent is None
+        for arguments in INVALID_ARGUMENTS:
+            result = await session.call_tool("catalyst_edge_score", arguments)
+            assert result.isError is True
+            assert result.structuredContent is None
 
 
+@pytest.mark.parametrize("transport", TRANSPORTS)
 @pytest.mark.asyncio
-async def test_CT_MCP_ROUND_TRIP_SERIALIZES_POPULATED_EVIDENCE(monkeypatch):
-    from catalyst_edge_mcp import server
+async def test_CT_TRANSPORT_SERIALIZES_POPULATED_EVIDENCE(transport):
+    async with _transport_session(transport, populated_evidence=True) as session:
+        tools = {tool.name: tool for tool in (await session.list_tools()).tools}
+        result = await session.call_tool("catalyst_edge_score", {"ticker": "NVDA"})
 
-    evidence = make_evidence("filings_news", "material_filing")
-    adapter = StaticAdapter(
-        family="filings_news",
-        result=AdapterResult(family="filings_news", evidence=[evidence]),
+    response = _validated_response(
+        result,
+        output_schema=tools["catalyst_edge_score"].outputSchema,
     )
-    monkeypatch.setattr(
-        server,
-        "_service",
-        CatalystService([adapter], clock=lambda: AS_OF),
-    )
-
-    _, structured = await mcp.call_tool("catalyst_edge_score", {"ticker": "NVDA"})
-
-    tools = {tool.name: tool for tool in await mcp.list_tools()}
-    Draft202012Validator(tools["catalyst_edge_score"].outputSchema).validate(structured)
-    assert len(structured["evidence"]) == 1
-    serialized_evidence = structured["evidence"][0]
-    assert serialized_evidence["source_count"] == len(serialized_evidence["sources"]) == 1
-    validation_payload = deepcopy(structured)
-    validation_payload["evidence"][0].pop("source_count")
-    response = CatalystEdgeResponse.model_validate(validation_payload)
+    assert len(response.evidence) == 1
     assert len(response.evidence[0].sources) == 1
 
 
@@ -237,119 +270,27 @@ async def test_UT_INPUT_VALIDATION_PRECEDES_COMPOSITION(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_CT_STDIO_DISCOVERY():
-    parameters = StdioServerParameters(
-        command="uv",
-        args=["run", "catalyst-edge-mcp"],
-        env=_offline_server_env(CATALYST_EDGE_TRANSPORT="stdio"),
-    )
-    async with (
-        stdio_client(parameters) as (read_stream, write_stream),
-        ClientSession(read_stream, write_stream) as session,
-    ):
-        await session.initialize()
+    async with _transport_session("stdio") as session:
         tools = await session.list_tools()
     assert [tool.name for tool in tools.tools] == ["catalyst_edge_score"]
 
 
 @pytest.mark.asyncio
 async def test_CT_STDIO_INVOCATION():
-    parameters = StdioServerParameters(
-        command="uv",
-        args=["run", "catalyst-edge-mcp"],
-        env=_offline_server_env(CATALYST_EDGE_TRANSPORT="stdio"),
-    )
-    async with (
-        stdio_client(parameters) as (read_stream, write_stream),
-        ClientSession(read_stream, write_stream) as session,
-    ):
-        await session.initialize()
+    async with _transport_session("stdio") as session:
         result = await session.call_tool("catalyst_edge_score", {"ticker": " nvda "})
-    _assert_structured_response(result)
+    _assert_empty_structured_response(result)
 
 
 @pytest.mark.asyncio
 async def test_CT_HTTP_DISCOVERY():
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        port = listener.getsockname()[1]
-    environment = _offline_server_env(
-        CATALYST_EDGE_TRANSPORT="streamable-http",
-        CATALYST_EDGE_HOST="127.0.0.1",
-        CATALYST_EDGE_PORT=str(port),
-    )
-    process = subprocess.Popen(
-        ["uv", "run", "catalyst-edge-mcp"],
-        env=environment,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    try:
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                pytest.fail(f"HTTP server exited: {process.stderr.read()}")
-            try:
-                httpx.get(f"http://127.0.0.1:{port}/mcp", timeout=0.2)
-                break
-            except httpx.TransportError:
-                time.sleep(0.05)
-        else:
-            pytest.fail("HTTP server did not start")
-        async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as streams:
-            read_stream, write_stream, _ = streams
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                tools = await session.list_tools()
-        assert [tool.name for tool in tools.tools] == ["catalyst_edge_score"]
-    finally:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
+    async with _transport_session("streamable-http") as session:
+        tools = await session.list_tools()
+    assert [tool.name for tool in tools.tools] == ["catalyst_edge_score"]
 
 
 @pytest.mark.asyncio
 async def test_CT_HTTP_INVOCATION():
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        port = listener.getsockname()[1]
-    environment = _offline_server_env(
-        CATALYST_EDGE_TRANSPORT="streamable-http",
-        CATALYST_EDGE_HOST="127.0.0.1",
-        CATALYST_EDGE_PORT=str(port),
-    )
-    process = subprocess.Popen(
-        ["uv", "run", "catalyst-edge-mcp"],
-        env=environment,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    try:
-        deadline = time.monotonic() + 10
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                pytest.fail(f"HTTP server exited: {process.stderr.read()}")
-            try:
-                httpx.get(f"http://127.0.0.1:{port}/mcp", timeout=0.2)
-                break
-            except httpx.TransportError:
-                time.sleep(0.05)
-        else:
-            pytest.fail("HTTP server did not start")
-        async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as streams:
-            read_stream, write_stream, _ = streams
-            async with ClientSession(read_stream, write_stream) as session:
-                await session.initialize()
-                result = await session.call_tool("catalyst_edge_score", {"ticker": " nvda "})
-        _assert_structured_response(result)
-    finally:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
+    async with _transport_session("streamable-http") as session:
+        result = await session.call_tool("catalyst_edge_score", {"ticker": " nvda "})
+    _assert_empty_structured_response(result)

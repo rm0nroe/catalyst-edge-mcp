@@ -81,6 +81,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "jsonschema" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -93,6 +94,7 @@ diagnostic = [
 requires-dist = [
     { name = "feedparser", specifier = ">=6.0.12,<7" },
     { name = "httpx", specifier = ">=0.28,<1" },
+    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.20,<5" },
     { name = "lxml", specifier = ">=6.1,<7" },
     { name = "mcp", specifier = ">=1.27,<2" },
     { name = "pydantic", specifier = ">=2.11,<3" },
