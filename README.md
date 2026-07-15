@@ -16,15 +16,20 @@ reviewed issuer feeds, GDELT Web NGrams discovery, and Bluesky partial attention
 The MCP transports, schemas, provenance, typed missingness, event graph, and
 deterministic scorer are implemented and tested.
 
+The first product-completion slice landed on 2026-07-15: evidence now carries
+event type, materiality, novelty, correction lineage, source-record support, and
+factual why-it-matters context. SEC 8-K item codes and insider transaction facts
+drive event-specific headlines, invalidation criteria, and next checks. The slice
+is covered by fixed real RKLB SEC metadata and was rechecked against live RKLB
+Form 144 and 8-K records.
+
 The build is not yet product-complete. The remaining local work is to:
 
-1. turn collected facts into event-specific synthesis, including what changed,
-   why it matters, corroboration or conflict, invalidation, and next checks;
-2. complete the local collection lifecycle with automatic GDELT refresh/catch-up,
+1. complete the local collection lifecycle with automatic GDELT refresh/catch-up,
    freshness health, and locally configurable reviewed ticker/alias registries;
-3. evaluate 20–30 real catalyst cases for link validity, classification,
+2. evaluate 20–30 real catalyst cases for link validity, classification,
    duplicate merge/split behavior, freshness, and research value; and
-4. tune deterministic weights and thresholds from those documented real cases,
+3. tune deterministic weights and thresholds from those documented real cases,
    then run final local acceptance over the target cohort and a recent real 8-K.
 
 The 28 Phase 6 fixtures are synthetic contract scenarios. They prove deterministic

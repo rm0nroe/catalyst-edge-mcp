@@ -91,6 +91,22 @@ class Change(BaseModel):
     comparison_window: str | None = Field(default=None, max_length=80)
 
 
+class EvidenceContext(BaseModel):
+    """Factual product meaning attached to a normalized observation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    event_type: str = Field(min_length=1, max_length=80)
+    event_label: str = Field(min_length=1, max_length=160)
+    novelty: str = Field(min_length=1, max_length=40)
+    materiality: str = Field(min_length=1, max_length=40)
+    why_it_matters: str = Field(min_length=1, max_length=500)
+    source_record_count: int = Field(default=1, ge=0, le=100)
+    corroborating_source_count: int = Field(default=0, ge=0, le=100)
+    source_tiers: list[str] = Field(default_factory=list, max_length=10)
+    correction_of_event_id: int | None = Field(default=None, ge=1)
+
+
 class Evidence(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -102,6 +118,7 @@ class Evidence(BaseModel):
     timestamp: datetime
     source_quality: float = Field(default=0.5, ge=0, le=1)
     change: Change | None = None
+    context: EvidenceContext | None = None
     sources: list[Source] = Field(default_factory=list)
     notes: str | None = Field(default=None, max_length=500)
     contribution: float = 0.0

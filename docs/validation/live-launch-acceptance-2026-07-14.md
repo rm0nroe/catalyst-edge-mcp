@@ -79,3 +79,18 @@ recorded in the Phase 5 audit.
 
 These results distinguish a valid quiet/no-event response from a collector or
 coverage gap; `launch_ready=false` alone is not a build defect.
+
+## 2026-07-15 event-synthesis verification
+
+The event-specific synthesis slice was verified against live RKLB primary-source
+records after the implementation change:
+
+- Form 144 accession `0001958244-26-000433` produced a “Proposed insider sale
+  notice” with explicit language that proposed intent does not establish a
+  completed disposition, plus a Form 4 follow-up check.
+- 8-K accession `0001753926-26-001085` classified Item 1.01 as a material
+  definitive agreement, surfaced Items 7.01 and 9.01, explained the contract
+  relevance, and directed the user to the exact accession and exhibits.
+
+These dated runs validate synthesis semantics, not investment performance or the
+still-pending 20–30 real-case product gate.
