@@ -61,8 +61,8 @@ SOURCE_POLICIES: dict[str, SourcePolicy] = {
         "publisher metadata and links only",
         0.60,
         0.70,
-        requests_per_second=1 / 6,
-        official_hosts=("api.gdeltproject.org",),
+        official_hosts=("api.gdeltproject.org", "storage.googleapis.com"),
+        reviewed_on="2026-07-14",
     ),
     "bluesky": SourcePolicy(
         "bluesky",
