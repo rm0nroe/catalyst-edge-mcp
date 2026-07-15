@@ -175,6 +175,8 @@ class CatalystService:
         ]
 
         compact = self._compact(scored.evidence)
+        summary = build_summary(compact, missing, request.risk_mode)
+        checks = next_checks(compact, request.risk_mode)
         output = self._apply_options(compact, request)
         coverage = (
             "none"
@@ -189,14 +191,14 @@ class CatalystService:
                 status = SourceStatus.FRESH
                 available = True
                 reason = "fresh_evidence"
-                observed_at = max(
-                    item.timestamp for item in evidence if item.family == family
-                )
+                observed_at = max(item.timestamp for item in evidence if item.family == family)
                 coverage_ratio = 1.0
             else:
                 candidates = statuses_by_family[family]
-                status = max(candidates, key=STATUS_PRIORITY.__getitem__) if candidates else (
-                    DEFAULT_MISSING_STATUS.get(family, SourceStatus.NO_OBSERVATIONS)
+                status = (
+                    max(candidates, key=STATUS_PRIORITY.__getitem__)
+                    if candidates
+                    else (DEFAULT_MISSING_STATUS.get(family, SourceStatus.NO_OBSERVATIONS))
                 )
                 available = False
                 reason = (
@@ -223,7 +225,7 @@ class CatalystService:
             as_of=as_of,
             lookback_days=request.lookback_days,
             edge=scored.edge,
-            summary=build_summary(output, missing, request.risk_mode),
+            summary=summary,
             evidence=output,
             data_quality=DataQuality(
                 coverage=coverage,
@@ -232,7 +234,7 @@ class CatalystService:
                 warnings=(list(dict.fromkeys(warnings))[: MAX_WARNINGS - len(caveats)] + caveats),
                 family_statuses=family_statuses,
             ),
-            next_checks=next_checks(request.risk_mode),
+            next_checks=checks,
         )
         return response
 
@@ -288,10 +290,9 @@ class CatalystService:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            schema_error = (
-                isinstance(exc, (KeyError, TypeError, ValueError))
-                or type(exc).__name__ in {"JSONDecodeError", "XMLSyntaxError"}
-            )
+            schema_error = isinstance(exc, (KeyError, TypeError, ValueError)) or type(
+                exc
+            ).__name__ in {"JSONDecodeError", "XMLSyntaxError"}
             return (
                 family,
                 provider,
@@ -355,8 +356,7 @@ class CatalystService:
             contradiction = next(
                 item
                 for item in ranked[MAX_EVIDENCE_TOTAL:]
-                if item.direction not in compact_directions
-                and item.direction.value != "neutral"
+                if item.direction not in compact_directions and item.direction.value != "neutral"
             )
             compact[-1] = contradiction
         return compact

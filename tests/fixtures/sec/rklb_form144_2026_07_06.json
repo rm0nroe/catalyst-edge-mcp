@@ -1,0 +1,18 @@
+{
+  "ticker": "RKLB",
+  "cik": "0001819994",
+  "source": "SEC Form 144 accession 0001958244-26-000433 observed 2026-07-15",
+  "facts": {
+    "issuer_name": "Rocket Lab Corporation",
+    "issuer_cik": "0001819994",
+    "filer_name": "Peter Beck",
+    "security_class": "Class A Common Stock",
+    "units_to_be_sold": 5000000.0,
+    "aggregate_market_value": 465450000.0,
+    "approx_sale_date": "07/06/2026",
+    "broker_name": "Goldman Sachs & Co. LLC"
+  },
+  "accession": "0001958244-26-000433",
+  "primary_document": "primary_doc.xml",
+  "accepted_at": "2026-07-06T22:19:36Z"
+}

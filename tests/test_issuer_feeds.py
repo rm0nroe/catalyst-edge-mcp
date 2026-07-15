@@ -57,6 +57,9 @@ async def test_PT_ISSUER_FEED_NORMALIZATION_and_conditional_cache(tmp_path):
     assert len(first.evidence) == len(second.evidence) == 1
     item = first.evidence[0]
     assert item.signal == "issuer_release"
+    assert item.context.event_type == "issuer_release"
+    assert item.context.novelty == "new_event"
+    assert item.context.source_record_count == 1
     assert item.direction == Direction.NEUTRAL
     assert item.source_quality == 0.95
     assert item.sources[0].source_id == "issuer_feed"

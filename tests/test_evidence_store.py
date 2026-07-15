@@ -85,6 +85,8 @@ def test_event_graph_exact_fuzzy_dedupe_and_primary_source_ranking(tmp_path):
     )
     assert regulator.event_id == discovery.event_id
     assert regulator.primary_source.source_id == "sec"
+    assert regulator.source_count == 3
+    assert regulator.source_tiers == ("discovery", "issuer_primary", "primary_regulator")
     assert set(regulator.related_urls) == {
         "https://publisher.example/event",
         "https://nvidianews.nvidia.com/news/company-quarter",
@@ -120,9 +122,11 @@ def test_event_graph_links_corrections_as_versions(tmp_path):
     assert correction.event_id != original.event_id
     assert correction.correction_of_event_id == original.event_id
     assert correction.version == 2
+    assert correction.source_count == 1
 
 
 def test_canonical_url_normalization_removes_tracking_and_fragments():
-    assert canonicalize_url(
-        "https://Example.com//news/item/?b=2&utm_source=rss&a=1#section"
-    ) == "https://example.com/news/item?a=1&b=2"
+    assert (
+        canonicalize_url("https://Example.com//news/item/?b=2&utm_source=rss&a=1#section")
+        == "https://example.com/news/item?a=1&b=2"
+    )

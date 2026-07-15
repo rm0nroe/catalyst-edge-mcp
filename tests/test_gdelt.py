@@ -53,6 +53,8 @@ async def test_PT_GDELT_NORMALIZATION_is_neutral_metadata_only(tmp_path):
     assert len(result.evidence) == 1
     item = result.evidence[0]
     assert item.signal == "publisher_link_discovery"
+    assert item.context.event_type == "publisher_coverage"
+    assert item.context.materiality == "discovery_only"
     assert item.direction == Direction.NEUTRAL
     assert item.source_quality == 0.65
     assert item.sources[0].source_id == "gdelt"
