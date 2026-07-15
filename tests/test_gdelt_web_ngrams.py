@@ -1,0 +1,189 @@
+import gzip
+import json
+from datetime import datetime, timedelta
+
+import httpx
+import pytest
+
+from catalyst_edge_mcp.compat import UTC
+from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX
+from catalyst_edge_mcp.evidence_store import EvidenceStore
+from catalyst_edge_mcp.gdelt_web_ngrams import (
+    GDELT_WEB_NGRAMS_BASE,
+    GdeltWebNgramsRefresher,
+)
+from catalyst_edge_mcp.models import SourceStatus
+
+NOW = datetime(2026, 7, 14, 23, 6, tzinfo=UTC)
+STAMP = "20260714230100"
+
+
+def _gzip_lines(*lines: str) -> bytes:
+    return gzip.compress(("\n".join(lines) + "\n").encode())
+
+
+def _transport(request: httpx.Request) -> httpx.Response:
+    target = str(request.url)
+    toc_url = f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.toc.json.gz"
+    ngrams_url = f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.ngrams.txt.gz"
+    if request.method == "HEAD":
+        if target == toc_url:
+            return httpx.Response(200, headers={"Content-Length": "512"})
+        return httpx.Response(404)
+    if target == ngrams_url:
+        return httpx.Response(
+            200,
+            content=_gzip_lines(
+                "1\tNVIDIA Corporation launches new\t2",
+                "1\tNVIDIA launches new platform\t1",
+                "2\tRocket Lab USA signs\t1",
+                "3\tApple fruit growers report\t1",
+            ),
+        )
+    if target == toc_url:
+        return httpx.Response(
+            200,
+            content=_gzip_lines(
+                json.dumps(
+                    {
+                        "ID": 1,
+                        "date": "2026-07-14T23:01:00.000Z",
+                        "lang": "en",
+                        "title": "NVIDIA launches a new platform",
+                        "url": "https://publisher.example/nvidia-platform",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "ID": 2,
+                        "date": "2026-07-14T23:01:00.000Z",
+                        "lang": "en",
+                        "title": "Rocket Lab signs a launch agreement",
+                        "url": "https://space.example/rocket-lab-agreement",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "ID": 3,
+                        "date": "2026-07-14T23:01:00.000Z",
+                        "lang": "en",
+                        "title": "Apple growers report a strong harvest",
+                        "url": "https://fruit.example/apple-harvest",
+                    }
+                ),
+            ),
+        )
+    raise AssertionError(f"unexpected request: {request.method} {target}")
+
+
+@pytest.mark.asyncio
+async def test_web_ngrams_batch_download_matches_multiple_issuers_once(tmp_path):
+    requests = []
+
+    def transport(request):
+        requests.append((request.method, str(request.url)))
+        return _transport(request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        refresher = GdeltWebNgramsRefresher(
+            str(tmp_path / "events.sqlite3"),
+            registry=DISCOVERY_ISSUER_INDEX,
+            client=client,
+            clock=lambda: NOW,
+            candidate_minutes=5,
+            max_files=1,
+        )
+        results = await refresher.refresh(["NVDA", "RKLB", "AAPL"], 14)
+
+    assert results["NVDA"].status == SourceStatus.FRESH
+    assert results["NVDA"].evidence_count == 1
+    assert results["NVDA"].matched_documents == 1
+    assert results["RKLB"].status == SourceStatus.FRESH
+    assert results["RKLB"].evidence_count == 1
+    assert results["AAPL"].status == SourceStatus.NO_OBSERVATIONS
+    assert results["AAPL"].evidence_count == 0
+    assert requests.count(("GET", f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.ngrams.txt.gz")) == 1
+    assert requests.count(("GET", f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.toc.json.gz")) == 1
+
+
+@pytest.mark.asyncio
+async def test_web_ngrams_stores_metadata_only_with_provenance(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_transport)) as client:
+        refresher = GdeltWebNgramsRefresher(
+            str(tmp_path / "events.sqlite3"),
+            registry=DISCOVERY_ISSUER_INDEX,
+            store=store,
+            client=client,
+            clock=lambda: NOW,
+            candidate_minutes=5,
+            max_files=1,
+        )
+        await refresher.refresh(["NVDA"], 14)
+
+    issuer = DISCOVERY_ISSUER_INDEX["NVDA"]
+    event = store.list_events_for_source(
+        issuer.issuer_key, "gdelt", NOW - timedelta(days=1)
+    )[0]
+    assert event.title == "NVIDIA launches a new platform"
+    assert event.primary_source.parser_version == "gdelt-web-ngrams-v1"
+    assert event.primary_source.raw_sha256
+    assert event.primary_source.canonical_url == "https://publisher.example/nvidia-platform"
+    state = store.collector_state("gdelt", issuer.issuer_key)
+    assert state["status"] == SourceStatus.FRESH.value
+    assert state["last_success_at"] == NOW.isoformat()
+
+
+@pytest.mark.asyncio
+async def test_web_ngrams_no_recent_file_is_typed_stale(tmp_path):
+    def transport(request):
+        return httpx.Response(404)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        refresher = GdeltWebNgramsRefresher(
+            str(tmp_path / "events.sqlite3"),
+            registry=DISCOVERY_ISSUER_INDEX,
+            client=client,
+            clock=lambda: NOW,
+            candidate_minutes=6,
+        )
+        result = (await refresher.refresh(["NVDA"], 14))["NVDA"]
+
+    assert result.status == SourceStatus.STALE
+    assert result.degraded is True
+    assert result.files_processed == 0
+    assert "NoRecentWebNgramsFile" in result.warnings[0]
+
+
+@pytest.mark.asyncio
+async def test_web_ngrams_rejects_malformed_gzip_without_leaking_content(tmp_path):
+    def transport(request):
+        if request.method == "HEAD":
+            return httpx.Response(200, headers={"Content-Length": "20"})
+        return httpx.Response(200, content=b"secret malformed compressed payload")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        refresher = GdeltWebNgramsRefresher(
+            str(tmp_path / "events.sqlite3"),
+            registry=DISCOVERY_ISSUER_INDEX,
+            client=client,
+            clock=lambda: NOW,
+            candidate_minutes=5,
+            max_files=1,
+        )
+        result = (await refresher.refresh(["NVDA"], 14))["NVDA"]
+
+    assert result.status == SourceStatus.SCHEMA_ERROR
+    assert result.degraded is True
+    assert "secret malformed compressed payload" not in repr(result)
+
+
+def test_web_ngrams_endpoint_is_exact_https_google_storage_path():
+    valid = f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.toc.json.gz"
+    GdeltWebNgramsRefresher._require_endpoint(valid)
+    with pytest.raises(ValueError):
+        GdeltWebNgramsRefresher._require_endpoint(valid.replace("https://", "http://"))
+    with pytest.raises(ValueError):
+        GdeltWebNgramsRefresher._require_endpoint(
+            valid.replace("storage.googleapis.com", "attacker.example")
+        )

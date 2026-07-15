@@ -286,7 +286,7 @@ hosts, and review date. A key or reachable endpoint cannot override policy.
 | --- | --- | --- |
 | SEC submissions/archive, Forms 3/4/5/144, 8-K/6-K | `approved` | Required baseline; identifying user agent; parsed facts/hashes/links |
 | Reviewed issuer RSS/Atom | `approved_per_registry` | Only reviewed feeds/terms; metadata and factual extraction by default |
-| GDELT DOC 2.0 | `approved_discovery` | Metadata/links only; discovery never outranks primary evidence |
+| GDELT Web NGrams/TOC | `approved_discovery` | Official downloadable index plus article metadata/links only; discovery never outranks primary evidence |
 | Bluesky AppView | `approved_partial_attention` | Minimal post metadata/derived buckets; deletion/takedown honored |
 | Reviewed Mastodon instance | `approved_per_registry` | Instance-scoped partial attention only |
 | FMP/Finnhub/Reddit/Stocktwits/OCC | `permission_required` | Disabled until written rights are recorded |
@@ -306,9 +306,11 @@ Baseline contracts:
   Collect with conditional `ETag`/`Last-Modified` requests every 5–15 minutes;
   broken feeds become `stale`, not “no news.”
 - GDELT: request-time evaluation is cache-only. The explicit background refresh
-  command calls `https://api.gdeltproject.org/api/v2/doc/doc` no more than once
-  per six seconds, serializes calls, honors stricter future `429` instructions,
-  and stores publisher metadata/links rather than article bodies.
+  command downloads the newest bounded Web NGrams index/TOC pairs from the official
+  `storage.googleapis.com/data.gdeltproject.org/gdeltv5/weblegacy/ngrams` path,
+  matches all reviewed issuers in one pass, and stores publisher metadata/links
+  rather than article bodies or ngram context. Exact host/path validation, byte
+  ceilings, a five-file run limit, and per-issuer document caps bound the collector.
 - Bluesky: search exact cashtags/reviewed aliases through the documented
   `public.api.bsky.app` AppView host, then the documented `api.bsky.app`
   fallback. Reads are unauthenticated. Never use proxies or scraping to bypass
@@ -326,7 +328,7 @@ use a distinct `options_eod_activity` diagnostic family but never
 
 Request-time provider clients use a six-second request timeout and the service
 applies an eight-second outer timeout. GDELT is never refreshed on that path; its
-explicit background command has a 30-second upstream budget. Broad collection
+explicit background command has a 30-second per-file upstream budget. Broad collection
 runs outside request latency. There are no unbounded retries. `429`, permission,
 license, schema, network, and timeout failures map to typed statuses and cached
 partial results with freshness. Cancellation always propagates.
@@ -580,9 +582,10 @@ direction, provenance, missingness, staleness, and readiness assertions pass.
    distinguish three-plus strong clusters, and keep Form 144 as proposed intent.
 2. Implemented: reviewed issuer RSS/Atom feeds, conditional retrieval, canonical
    event graph, exact/fuzzy dedupe, correction versioning, and primary-source ranking.
-3. Implemented: request-time GDELT cache reads plus serialized out-of-band discovery
-   at one request per six seconds, reviewed issuer aliases, metadata-only retention,
-   cached typed degradation, Retry-After deferral, and canonical-event integration.
+3. Implemented: request-time GDELT cache reads plus batch out-of-band discovery from
+   official Web NGrams index/TOC files, reviewed issuer aliases, metadata-only
+   retention, bounded file processing, cached typed degradation, and canonical-event
+   integration. The legacy DOC endpoint is no longer used by the refresh command.
 4. Implemented: Bluesky exact-match partial attention with cached-to-direct official
    AppView fallback, two bounded historical windows, complete pagination, minimum
    samples, failure-aware coverage, and neutral semantics. Mastodon remains
@@ -626,8 +629,8 @@ Required deterministic dossier scenarios:
 - options without a licensed transaction-plus-quote feed stay unavailable;
 - technical without licensed OHLC stays neutrally missing;
 - incomplete social windows, sample insufficiency, and collector outage stay neutral;
-- GDELT request-path cache isolation, one-per-six-seconds refresh throttling,
-  and publisher-body exclusion;
+- GDELT request-path cache isolation, one-download-per-file batch matching, bounded
+  Web NGrams processing, exact official-host enforcement, and publisher-body exclusion;
 - Bluesky documented official-host fallback without proxying;
 - sentiment/model-disabled behavior;
 - missing baseline and valid current-vs-prior change calculations;
@@ -694,7 +697,7 @@ Test identifiers below are mandatory names or markers in the test suite.
 | TR15 evidence-semantic readiness | §14 | `UT_SMOKE_*` direct-insider/event/authorized cases |
 | TR16 options integrity | §5–§6, §9 | `FX_OPTIONS_UNLICENSED_NEUTRAL`, `UT_OPTIONS_ENTITLEMENTS_*` |
 | TR17 attention/sentiment separation | §5, §8–§9 | `FX_SOCIAL_ATTENTION_NEUTRAL`, `FX_SENTIMENT_MODEL_DISABLED` |
-| TR18 free-source rate/host policy | §6 | `PT_GDELT_THROTTLE`, `PT_BLUESKY_HOST_FALLBACK` |
+| TR18 free-source rate/host policy | §6 | `PT_GDELT_WEB_NGRAMS`, `PT_BLUESKY_HOST_FALLBACK` |
 | TR19 Phase 6 product validation | §13–§14 | `FX_PHASE6_HISTORICAL_PRODUCT_CASES` |
 
 ### Acceptance criteria, fixtures, and Definition of Done
