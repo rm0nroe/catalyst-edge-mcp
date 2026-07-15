@@ -6,6 +6,24 @@
 
 **Source reports:** [Codex research](./codex-catalyst-edge-free-data-research.md) · [Claude research](./claude-catalyst-edge-free-data-research.md)
 
+## Implementation status correction — 2026-07-15
+
+The research succeeded in defining a sufficient free dependency set for the
+current owner-operated local MCP. Direct SEC data is the primary backbone;
+issuer feeds, GDELT Web NGrams discovery, and Bluesky partial attention extend
+the evidence graph. The implemented GDELT collector uses the official Web
+NGrams files rather than the legacy DOC query path described in the original
+phase plan.
+
+Phases 1–4 are substantially implemented, but the product-validation gate below
+is still open. The 28 Phase 6 scenarios are synthetic contract fixtures; they do
+not replace the required 20–30 real-catalyst evaluation. The remaining local
+work is event-specific synthesis, automatic refresh/freshness health,
+configurable reviewed aliases, real-case evaluation, and deterministic scorer
+tuning from those results. Paid options flow, licensed OHLC, sentiment, hosted
+deployment, packaging, CI, and distribution are optional future capabilities,
+not blockers for this local completion boundary.
+
 ## Executive decision
 
 **Proceed with the project, but narrow the product promise.** Catalyst Edge remains worthwhile as a primary-source catalyst intelligence layer: a source-linked, deterministic dossier that explains what changed, how important it is, which evidence agrees or conflicts, how confident the system should be, and what an analyst should verify next.
