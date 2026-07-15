@@ -581,15 +581,19 @@ missingness, staleness, and readiness assertions pass, but these fixtures do not
 satisfy the 20–30 real-catalyst product-validation gate from the free-data
 research.
 
+Completed on 2026-07-15: the first event-intelligence slice adds a typed evidence
+context for event type, label, novelty, materiality, correction lineage, source
+record counts, source tiers, and factual why-it-matters text. SEC 8-K item
+taxonomy and insider semantics now produce evidence-specific summaries,
+invalidation criteria, and source-aware next checks. Fixed real RKLB accessions
+and live local runs verify the 8-K and Form 144 paths.
+
 The remaining local-build work is:
 
-- enrich SEC event taxonomy and factual context, surface novelty, corrections,
-  contradictions, corroboration, and GDELT publisher/domain quality tiers;
-- replace generic summary templates with one event-specific synthesis describing
-  what changed, why it matters, agreeing/conflicting sources, invalidation, and
-  next checks;
 - automate local GDELT refresh/catch-up, expose freshness health, and make the
   reviewed ticker/alias registries locally configurable;
+- complete publisher/domain quality tiers and broaden event-context mapping where
+  real-case evaluation exposes unsupported event classes;
 - evaluate 20–30 real catalyst cases for primary-link validity, event/transaction
   classification, duplicate merge/split errors, freshness, and research value;
 - tune deterministic weights, confidence, and thresholds from those recorded

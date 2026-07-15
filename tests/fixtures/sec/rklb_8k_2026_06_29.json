@@ -1,0 +1,15 @@
+{
+  "ticker": "RKLB",
+  "cik": "0001819994",
+  "source": "SEC submissions metadata observed 2026-07-15",
+  "filings": {
+    "recent": {
+      "form": ["8-K"],
+      "filingDate": ["2026-06-29"],
+      "acceptanceDateTime": ["2026-06-29T12:11:57Z"],
+      "accessionNumber": ["0001753926-26-001085"],
+      "primaryDocument": ["g085783_8k.htm"],
+      "items": ["1.01,7.01,9.01"]
+    }
+  }
+}

@@ -77,6 +77,8 @@ async def test_sec_adapter_normalizes_recent_primary_source_evidence():
     evidence = result.evidence[0]
     assert evidence.signal == "sec_form_8_k"
     assert evidence.direction == Direction.NEUTRAL
+    assert evidence.context.event_type == "financial_results"
+    assert evidence.context.event_label == "Results of operations and financial condition"
     assert evidence.source_quality == 1
     assert evidence.source_count == 1
     assert str(evidence.sources[0].url).endswith("/000104581026000001/nvda-8k.htm")

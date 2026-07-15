@@ -22,6 +22,7 @@ from catalyst_edge_mcp.models import (
     Change,
     Direction,
     Evidence,
+    EvidenceContext,
     PolicyDecision,
     Source,
     SourceStatus,
@@ -297,6 +298,20 @@ class GdeltAdapter:
             timestamp=event.published_at,
             source_quality=0.65,
             change=Change(description=f"Publisher coverage discovered: {event.title}"[:240]),
+            context=EvidenceContext(
+                event_type="publisher_coverage",
+                event_label="Publisher coverage discovery",
+                novelty="correction" if event.version > 1 else "new_coverage",
+                materiality="discovery_only",
+                why_it_matters=(
+                    "Publisher metadata can corroborate awareness or lead to a primary "
+                    "source, but it does not establish the underlying event by itself."
+                ),
+                source_record_count=event.source_count,
+                corroborating_source_count=max(0, event.source_count - 1),
+                source_tiers=list(event.source_tiers),
+                correction_of_event_id=event.correction_of_event_id,
+            ),
             sources=[
                 Source(
                     name=source.source_name,
@@ -323,6 +338,8 @@ class GdeltAdapter:
                 "version": event.version,
                 "title": event.title,
                 "record_id": source.record_id,
+                "source_count": event.source_count,
+                "source_tiers": list(event.source_tiers),
             },
         )
 

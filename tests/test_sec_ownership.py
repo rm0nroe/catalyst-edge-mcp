@@ -130,6 +130,9 @@ async def test_PT_SEC_INSIDER_NORMALIZATION_builds_strong_cluster_and_neutral_fo
     )
     assert cluster.direction == Direction.BULLISH
     assert cluster.confidence == 0.88
+    assert cluster.context.event_type == "open_market_purchase_strong_cluster"
+    assert cluster.context.novelty == "new_activity"
+    assert cluster.context.corroborating_source_count == 2
     assert cluster.change.current_value == 30_800
     assert cluster.change.baseline_value == 0
     assert len(cluster.sources) == 3
@@ -138,6 +141,7 @@ async def test_PT_SEC_INSIDER_NORMALIZATION_builds_strong_cluster_and_neutral_fo
     assert all(source.accession_or_record_id for source in cluster.sources)
     assert len(cluster.raw_signal) == 3
     assert proposed.direction == Direction.NEUTRAL
+    assert proposed.context.event_type == "proposed_insider_sale"
     assert proposed.raw_signal["completed_execution"] is False
     assert "not evidence of completed execution" in proposed.notes
 
