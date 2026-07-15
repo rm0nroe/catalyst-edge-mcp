@@ -21,10 +21,13 @@ uv run ruff check .
 All default tests are offline. Provider tests use sanitized fixtures and
 `httpx.MockTransport`; live credentials are not required. Direct SEC event,
 ownership, and Form 144 parsing plus issuer RSS/Atom collection and event-graph
-behavior and GDELT DOC 2.0 discovery are implemented with fixed fixtures.
+behavior and GDELT Web NGrams discovery are implemented with fixed fixtures.
 Official-host Bluesky partial-attention collection is also fixture-covered.
 Phase 5 sentiment/options gates and 28 dated Phase 6 product cases are also
 executable offline.
+
+The live Web NGrams replacement evidence is recorded in
+[`docs/validation/gdelt-web-ngrams-live-2026-07-14.md`](docs/validation/gdelt-web-ngrams-live-2026-07-14.md).
 
 ## Source and provider configuration
 
@@ -32,7 +35,7 @@ executable offline.
 | --- | --- | --- |
 | Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required production baseline; missing identity blocks live collection |
 | Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; `CATALYST_EDGE_ISSUER_FEEDS=enabled` | Enabled by default; unregistered tickers make no feed request and return typed no-observation status |
-| GDELT DOC 2.0 discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Request-time reads are cache-only; refresh out of band; metadata/links remain neutral and never receive launch-readiness credit |
+| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Request-time reads are cache-only; the batch refresher scans official minute index/TOC files out of band; metadata/links remain neutral and never receive launch-readiness credit |
 | Bluesky partial attention | Reviewed exact aliases; `CATALYST_EDGE_BLUESKY=enabled` | Two complete historical seven-day windows are fetched from official AppView hosts; attention remains neutral |
 | Mastodon attention | Reviewed-instance registry required | No instance is composed: measured representative coverage has not justified an allowlist |
 | FMP and Finnhub | Key plus recorded policy approval | Keys alone do not establish commercial rights and are not composed by default |
@@ -84,17 +87,18 @@ run before same-issuer, 48-hour RapidFuzz matching at a token-set score of 92;
 corrections and materially changed numbers become linked event versions. The local
 store also snapshots the reviewed source-policy decisions used by collectors.
 
-GDELT uses reviewed company aliases and the official HTTPS DOC 2.0 endpoint. The
-legacy endpoint repeatedly exceeded the MCP request deadline in live validation, so
-production requests now read only from the local discovery cache. The explicit
-`catalyst-edge-refresh-gdelt` command performs serialized network refreshes out of
-band, starts at most one request every six seconds, and allows the upstream request a
-30-second budget. Responses remain bounded to two megabytes and 50 article records.
-Only publisher titles, timestamps, domains, hashes, and HTTPS links are retained;
-article bodies are never fetched or stored. HTTP 429, timeout, malformed schema, and
-upstream failure states remain typed and preserve cached evidence. Discovery
-observations merge into the same 48-hour canonical graph but remain below SEC and
-issuer-primary sources in global ranking.
+GDELT uses reviewed company aliases and the official downloadable Web NGrams feed at
+`storage.googleapis.com/data.gdeltproject.org/gdeltv5/weblegacy/ngrams`. The legacy
+DOC 2.0 endpoint now directs high-traffic callers to these files, so production
+requests remain cache-only while `catalyst-edge-refresh-gdelt` scans the newest
+bounded minute index/TOC pairs out of band. Each pair is downloaded once and matched
+against all requested issuers. Exact HTTPS host/path validation, compressed and
+decompressed byte ceilings, a five-file run limit, and a 50-document per-issuer cap
+bound the work. Only publisher titles, timestamps, domains, hashes, and HTTPS links
+are retained; article bodies and ngram context are never stored. HTTP, timeout,
+malformed schema, and missing-file states remain typed and preserve cached evidence.
+Discovery observations merge into the same 48-hour canonical graph but remain below
+SEC and issuer-primary sources in global ranking.
 
 Bluesky searches reviewed exact cashtags and company aliases through
 `public.api.bsky.app`, falling back only to `api.bsky.app`. Both are documented,
