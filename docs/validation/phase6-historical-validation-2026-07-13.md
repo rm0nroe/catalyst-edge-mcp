@@ -1,4 +1,9 @@
-# Phase 6 historical product validation — 2026-07-13
+# Phase 6 synthetic contract validation — 2026-07-13
+
+> **Status correction — 2026-07-15:** This report validates deterministic
+> contracts and fail-closed behavior. It does not satisfy the separate product
+> gate requiring evaluation of 20–30 real catalyst cases for link validity,
+> classification, deduplication, freshness, and research value.
 
 ## Result
 
@@ -82,4 +87,4 @@ directional observation.
 
 That live gate subsequently passed for RKLB on 2026-07-14. See
 [`live-launch-acceptance-2026-07-14.md`](live-launch-acceptance-2026-07-14.md)
-for the dated evidence and deployment handoff.
+for the dated evidence and local runtime handoff.
