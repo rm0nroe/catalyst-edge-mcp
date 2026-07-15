@@ -1,5 +1,10 @@
 # Phase 5 capability gate audit — 2026-07-13
 
+> **Current scope note — 2026-07-15:** These gates govern optional future
+> sentiment and licensed-options capabilities. They are not blockers for
+> completing and testing the current zero-subscription local MCP, which must
+> continue to represent those absent families as typed neutral missingness.
+
 ## Decision
 
 No sentiment model, lexicon, or vendor aggregate is production-enabled. No

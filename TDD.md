@@ -1,15 +1,15 @@
-# Catalyst Edge MCP — PRD-Complete Technical Design
+# Catalyst Edge MCP — Technical Design
 
-**Revision:** Phases 0–6 implementation and product validation, 2026-07-13
+**Revision:** Contract foundation implemented; product-validation correction, 2026-07-15
 
 ## 1. Scope, outcome, and fixed decisions
 
 This document is the implementation design for the complete `PRD.md`. The
 deliverable is a standalone, read-only MCP server in this repository exposing
 one tool, `catalyst_edge_score`. Completion means the tool can return a compact,
-source-linked catalyst dossier backed by legally usable evidence, with explicit
+source-linked catalyst dossier backed by usable free evidence, with explicit
 missingness for unavailable families. A schema-valid no-data result is required
-failure behavior, but is not sufficient for product acceptance. Product launch
+failure behavior, but is not sufficient for product acceptance. Local acceptance
 requires SEC provenance and at least one fresh directional observation whose
 semantics, not provider name, satisfy the readiness rule in §14.
 
@@ -25,21 +25,22 @@ Fixed decisions:
 - FastMCP with verified local stdio and local streamable HTTP transports.
 - Deterministic scoring only: `scoring_method=deterministic_v1` and
   `model_status=not_trained`.
-- The production baseline is direct SEC data, reviewed issuer feeds, GDELT
+- The zero-subscription local baseline is direct SEC data, reviewed issuer feeds, GDELT
   discovery metadata, Bluesky AppView, and reviewed Mastodon instances. Each
   non-SEC source remains constrained by the source-policy registry in §6.
 - FMP, Finnhub, Reddit, Stocktwits, OCC, and any options vendor are conditional:
   credentials alone never prove commercial authorization. Their adapters may
-  run in production only after an explicit policy decision records the needed
+  run only after an explicit policy decision records the needed
   permission or license.
 - True `options_flow` requires a licensed transaction-plus-quote source.
   yfinance is development/private diagnostic data only and never supplies
-  production evidence, canonical coverage, or launch-readiness credit.
+  local product evidence, canonical coverage, or readiness credit.
 - Five canonical families are always expected: `filings_news`,
   `insider_trading`, `options_flow`, `technical`, and `social`.
   `alternative` is optional.
 - `technical` requires a user-supplied/licensed OHLC source or typed neutral
-  missingness; this TDD does not claim a cleared zero-subscription OHLC source.
+  missingness. Licensed OHLC is an optional future extension and is not a
+  blocker for the current local product boundary.
 - MediaCrawler, ai-berkshire, trained/calibrated scoring, licensed options flow,
   and execution of the sibling Flask migration remain future/conditional items.
 
@@ -84,7 +85,9 @@ Installed commands:
 - `catalyst-edge-smoke TICKER`: opt-in live credential/provenance check; it
   prints provider status but never raw payloads or credentials.
 
-`build_service(settings)` is the only production composition root. Tests inject
+`build_service(settings)` is the only real, non-fixture composition root. Here,
+“production” in older code comments means this runtime path; it does not imply a
+hosted service, paid-provider requirement, or consumer deployment. Tests inject
 adapters, scorer, settings, clock, and HTTP transports without environment or
 network access.
 
@@ -554,8 +557,9 @@ silent defaults in the local server.
 
 ## 13. Implementation sequence
 
-Implementation status on 2026-07-13: Phases 0 through 6 are implemented and
-covered by offline contract/parser fixtures. Phase 1 was live-validated against
+Implementation status on 2026-07-15: the contract and collector foundation in
+Phases 0 through 5 is implemented and covered by offline contract/parser
+fixtures. Phase 1 was live-validated against
 representative SEC Forms 4/144 and 8-K archive metadata. Phase 2 was live-validated
 against the reviewed Apple and NVIDIA issuer feeds, including conditional state.
 Phase 3 has bounded success/empty/malformed/rate-limit/timeout/host/provenance
@@ -570,9 +574,27 @@ coverage could be established. The live Bluesky POC confirmed the current 403 on
 the cached public search host and successful unauthenticated direct-AppView fallback.
 Phase 5 records immutable fail-closed audits for five sentiment candidates and
 four options candidates. No candidate passes every required gate, so sentiment
-and options remain uncomposed; production makes no rejected-provider request.
-Phase 6 executes 28 dated, sanitized product cases. All expected-versus-produced
-direction, provenance, missingness, staleness, and readiness assertions pass.
+and options remain uncomposed; the local composition root makes no
+rejected-provider request. Phase 6 currently executes 28 dated, sanitized
+synthetic contract cases. All expected-versus-produced direction, provenance,
+missingness, staleness, and readiness assertions pass, but these fixtures do not
+satisfy the 20–30 real-catalyst product-validation gate from the free-data
+research.
+
+The remaining local-build work is:
+
+- enrich SEC event taxonomy and factual context, surface novelty, corrections,
+  contradictions, corroboration, and GDELT publisher/domain quality tiers;
+- replace generic summary templates with one event-specific synthesis describing
+  what changed, why it matters, agreeing/conflicting sources, invalidation, and
+  next checks;
+- automate local GDELT refresh/catch-up, expose freshness health, and make the
+  reviewed ticker/alias registries locally configurable;
+- evaluate 20–30 real catalyst cases for primary-link validity, event/transaction
+  classification, duplicate merge/split errors, freshness, and research value;
+- tune deterministic weights, confidence, and thresholds from those recorded
+  results, then run final local acceptance over the target cohort and a recent
+  real 8-K.
 
 0. Revise this design and contracts: source policy, provenance, typed statuses,
    quality constants, evidence-semantic readiness, neutral missingness, and
@@ -596,11 +618,14 @@ direction, provenance, missingness, staleness, and readiness assertions pass.
    rounding, and threshold gates. Audited FlowAlgo, CheddarFlow, a future OPRA
    vendor, and yfinance against transaction-plus-quote and entitlement gates.
    None passes; all remain disabled and uncomposed.
-6. Implemented: 28 dated sanitized cases cover directional strength, primary
+6. Contract validation implemented; product validation pending: 28 dated
+   sanitized synthetic cases cover directional strength, primary
    and discovery provenance, insider clusters, Form 144, missing/stale/provider
    failures, Bluesky historical warm-up/outage/sample regressions, contradictions, rejected
    sentiment, and options/technical entitlement boundaries. All assertions pass;
    package/runtime verification outcomes are recorded in the Phase 6 report.
+   Complete this phase only after the real-case evaluation and resulting scorer
+   tuning above are documented and pass.
 
 No phase is called complete while its mapped PRD tests in the traceability
 matrix fail or are absent.
@@ -698,7 +723,8 @@ Test identifiers below are mandatory names or markers in the test suite.
 | TR16 options integrity | §5–§6, §9 | `FX_OPTIONS_UNLICENSED_NEUTRAL`, `UT_OPTIONS_ENTITLEMENTS_*` |
 | TR17 attention/sentiment separation | §5, §8–§9 | `FX_SOCIAL_ATTENTION_NEUTRAL`, `FX_SENTIMENT_MODEL_DISABLED` |
 | TR18 free-source rate/host policy | §6 | `PT_GDELT_WEB_NGRAMS`, `PT_BLUESKY_HOST_FALLBACK` |
-| TR19 Phase 6 product validation | §13–§14 | `FX_PHASE6_HISTORICAL_PRODUCT_CASES` |
+| TR19 Phase 6 synthetic contract validation | §13–§14 | `FX_PHASE6_HISTORICAL_PRODUCT_CASES` |
+| TR20 real-case product validation | §13–§14 | Pending documented 20–30 case evaluation; not represented by synthetic fixtures |
 
 ### Acceptance criteria, fixtures, and Definition of Done
 
@@ -747,9 +773,9 @@ Test identifiers below are mandatory names or markers in the test suite.
   retention constraints. Issuer/GDELT/Bluesky/Mastodon use the reviewed policies
   in §6. FMP, Finnhub, Reddit, Stocktwits, OCC, OHLC vendors, and options vendors
   require an explicit permission/license decision; credentials are insufficient.
-- **Options:** zero-subscription production reports
+- **Options:** the zero-subscription local runtime reports
   `licensed_feed_required`; yfinance is private diagnostic only.
 - **Technical:** typed neutral missingness until a user-supplied/licensed OHLC
-  source is approved.
+  source is approved; this optional extension does not block local completion.
 - **Scorer:** deterministic v1 behind `CatalystScorer`; no trained scorer or
   performance claim in this implementation.

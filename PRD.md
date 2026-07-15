@@ -22,6 +22,28 @@ The implementation should copy or adapt only the code patterns that are needed f
 
 Retrofit the existing CCE endpoint concept from sibling repo `../analysis-api` into a standalone MCP tool that produces a source-linked catalyst edge dossier for a ticker. The goal is not to expose the current Flask endpoint through MCP as-is. The goal is to reuse the existing CCE skeleton where useful, replace the untrusted scoring path, and return an evidence-first output that an agent can use for investment research, alert triage, or thesis review.
 
+## Current Implementation Status — 2026-07-15
+
+The free-source research and subsequent implementation established a sufficient
+zero-subscription dependency set for the current local-only product: direct SEC
+filings and insider records, reviewed issuer feeds, GDELT Web NGrams discovery,
+and Bluesky partial attention. Local stdio/HTTP MCP transports, strict contracts,
+provenance, typed missingness, the canonical event graph, and deterministic
+scoring are implemented.
+
+The PRD is not yet fully delivered as a product. The remaining work is not paid
+provider access. It is evidence-specific synthesis, automated local refresh and
+configurable issuer/alias coverage, a 20–30 real-catalyst evaluation, and scoring
+tuning from those documented results. The existing 28 sanitized Phase 6 cases
+are synthetic contract fixtures and must not be counted as the real product
+validation gate.
+
+For the current owner-operated local build, paid options flow, licensed OHLC,
+sentiment, hosted deployment, packaging, CI, consumer distribution, and the
+sibling Flask migration are optional future extensions rather than completion
+blockers. Their absence must remain explicit typed missingness and must never be
+fabricated as evidence.
+
 ## Problem
 
 The sibling `../analysis-api` repo already has a CCE route that collects ticker signals, extracts features, combines them, predicts an edge score, stores the result, and returns catalyst details. The route shape is useful, but the current model is not product-grade: the CCE model manager initializes random weights and the score is therefore not commercially or analytically trustworthy.
