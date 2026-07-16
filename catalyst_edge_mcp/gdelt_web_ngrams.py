@@ -18,7 +18,7 @@ import httpx
 
 from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX, DiscoveryIssuer
-from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore
+from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore, normalize_title
 from catalyst_edge_mcp.models import PolicyDecision, SourceStatus
 
 GDELT_WEB_NGRAMS_BASE = (
@@ -282,6 +282,7 @@ class GdeltWebNgramsRefresher:
         parsed = urlsplit(url)
         if (
             not title
+            or not normalize_title(title)
             or published_at is None
             or parsed.scheme.lower() != "https"
             or not parsed.hostname
