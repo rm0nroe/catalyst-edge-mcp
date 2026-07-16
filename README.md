@@ -23,20 +23,36 @@ drive event-specific headlines, invalidation criteria, and next checks. The slic
 is covered by fixed real RKLB SEC metadata and was rechecked against live RKLB
 Form 144 and 8-K records.
 
-The build is not yet product-complete. The remaining local work is to:
+The automatic local GDELT lifecycle is now implemented: server startup schedules
+a bounded catch-up when persisted state is due, periodic refresh remains outside
+the MCP request path, shutdown cancels cleanly, and `catalyst-edge-health` reports
+last-success age plus fresh, stale, failed, never-refreshed, or unregistered state.
+Issuer feeds, discovery aliases, social aliases, and publisher-domain quality tiers
+now load from one strictly validated local JSON registry. The packaged reviewed
+defaults preserve the existing cohort; a custom path replaces that cohort rather
+than silently merging unreviewed aliases.
 
-1. complete the local collection lifecycle with automatic GDELT refresh/catch-up,
-   freshness health, and locally configurable reviewed ticker/alias registries;
-2. evaluate 20–30 real catalyst cases for link validity, classification,
-   duplicate merge/split behavior, freshness, and research value; and
-3. tune deterministic weights and thresholds from those documented real cases,
-   then run final local acceptance over the target cohort and a recent real 8-K.
+The zero-subscription runtime meets its current local acceptance corpus as of
+2026-07-16. A 25-case real SEC evaluation complements the 28 synthetic Phase 6
+contract scenarios. It exposed and closed event-priority, merger-delisting, and
+recorded Item 8.01 specificity defects; all recorded classification, provenance,
+freshness, distinct-event, research-value, and dossier-direction checks pass.
 
-The 28 Phase 6 fixtures are synthetic contract scenarios. They prove deterministic
-behavior and fail-closed semantics, but they do not replace the real-case product
-validation gate. Paid options flow, licensed OHLC, sentiment, packaging, CI,
-hosted deployment, and consumer distribution are optional future capabilities,
-not blockers for completing and testing the local zero-subscription MCP.
+Item 8.01 primary-document enrichment is intentionally bounded rather than a
+general SEC semantic parser. The versioned `sec-primary-document-v1` rules cover
+explicit completed debt offerings, entered or amended equity distribution
+agreements, actual share-repurchase activity, and filed prospectus supplements.
+They record the selected rule and version, reject proposed or negated near
+matches, preserve amendment semantics, and leave multiple specific events
+generic rather than choosing an arbitrary first match. Representative HTML,
+table, and inline-XBRL fixtures exercise those boundaries. Unsupported wording
+or filing structures remain `other_material_event` and require human review.
+
+No numeric scorer change was justified because the real corpus contains no
+forward-return labels. The scorer remains deterministic and explicitly
+unbacktested. Paid options flow, licensed OHLC, sentiment, packaging, CI, hosted
+deployment, consumer distribution, and broader SEC semantic extraction are
+future capabilities, not blockers for the documented local acceptance boundary.
 
 In older implementation notes and runtime messages, “production” means the
 real non-fixture composition path used by the local MCP. It does not imply a
@@ -69,7 +85,7 @@ The live Web NGrams replacement evidence is recorded in
 | --- | --- | --- |
 | Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required local live-data baseline; missing identity blocks live collection |
 | Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; `CATALYST_EDGE_ISSUER_FEEDS=enabled` | Enabled by default; unregistered tickers make no feed request and return typed no-observation status |
-| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Request-time reads are cache-only; the batch refresher scans official minute index/TOC files out of band; metadata/links remain neutral and never receive launch-readiness credit |
+| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Server lifespan runs bounded startup/periodic refresh out of band; request-time reads remain cache-only; metadata/links remain neutral and never receive launch-readiness credit |
 | Bluesky partial attention | Reviewed exact aliases; `CATALYST_EDGE_BLUESKY=enabled` | Two complete historical seven-day windows are fetched from official AppView hosts; attention remains neutral |
 | Mastodon attention | Reviewed-instance registry required | No instance is composed: measured representative coverage has not justified an allowlist |
 | FMP and Finnhub | Key plus recorded policy approval | Keys alone do not establish commercial rights and are not composed by default |
@@ -91,6 +107,7 @@ set -a
 source .env
 set +a
 uv run catalyst-edge-refresh-gdelt AAPL NVDA TSLA BRK.B RKLB --lookback-days 14
+uv run catalyst-edge-health AAPL NVDA TSLA BRK.B RKLB
 uv run catalyst-edge-smoke NVDA --lookback-days 14
 ```
 
@@ -107,14 +124,24 @@ Runtime settings:
 | `CATALYST_EDGE_HOST` | `127.0.0.1` | Loopback addresses only |
 | `CATALYST_EDGE_PORT` | `8000` | Streamable HTTP port |
 | `CATALYST_EDGE_ISSUER_FEEDS` | `enabled` | Set `disabled` to suppress issuer-feed requests |
-| `CATALYST_EDGE_GDELT` | `enabled` | Set `disabled` to suppress request-time cache reads; refresh network calls occur only through `catalyst-edge-refresh-gdelt` |
+| `CATALYST_EDGE_GDELT` | `enabled` | Enables cache-only request reads and automatic out-of-band startup/periodic refresh; set `disabled` for a fully disabled GDELT path |
+| `CATALYST_EDGE_GDELT_REFRESH_SECONDS` | `300` | Period between bounded background attempts; 60–86,400 seconds |
+| `CATALYST_EDGE_GDELT_LOOKBACK_DAYS` | `14` | Event-store reporting window used by each background refresh; 1–90 days |
+| `CATALYST_EDGE_GDELT_MAX_AGE_SECONDS` | `900` | Last-success age after which request-time cache health becomes stale; must be at least the refresh interval |
 | `CATALYST_EDGE_BLUESKY` | `enabled` | Set `disabled` to suppress AppView requests; disable all three public collectors for a fully offline runtime |
+| `CATALYST_EDGE_REGISTRY_PATH` | Packaged `reviewed_registries.json` | Optional local JSON replacing the complete reviewed issuer/feed/discovery/social/publisher registry; invalid or ambiguous entries fail startup |
 | `CATALYST_EDGE_EVIDENCE_STORE` | `~/.local/state/catalyst-edge-mcp/evidence.sqlite3` | Local SQLite/WAL collector state and canonical event graph |
 | `CATALYST_EDGE_SENTIMENT_MODEL` | `disabled` | Any other value fails configuration until a reviewed candidate passes every gate |
 
-The reviewed issuer registry currently contains Apple Newsroom and NVIDIA press
-release feeds on issuer-controlled hosts. Tesla and Rocket Lab remain unregistered
-because no official RSS/Atom endpoint was confirmed. The adapter retains titles,
+The packaged registry currently contains Apple Newsroom and NVIDIA press-release
+feeds on issuer-controlled hosts, plus the existing reviewed discovery/social cohort.
+Tesla and Rocket Lab remain unregistered for issuer feeds because no official
+RSS/Atom endpoint was confirmed. Copy
+`catalyst_edge_mcp/data/reviewed_registries.json`, edit the copy, and set
+`CATALYST_EDGE_REGISTRY_PATH` to use a local cohort. The loader rejects unknown
+fields, duplicate ticker ownership, case-insensitive cross-issuer alias collisions,
+noncanonical tickers, malformed CIKs, non-HTTPS feed URLs, and feed hosts absent
+from the exact official-host allowlist. The adapter retains titles,
 timestamps, identifiers, hashes, and links—not publisher bodies. Conditional ETag
 and Last-Modified state is refreshed at ten-minute intervals. Exact fingerprints
 run before same-issuer, 48-hour RapidFuzz matching at a token-set score of 92;
@@ -133,6 +160,21 @@ are retained; article bodies and ngram context are never stored. HTTP, timeout,
 malformed schema, and missing-file states remain typed and preserve cached evidence.
 Discovery observations merge into the same 48-hour canonical graph but remain below
 SEC and issuer-primary sources in global ranking.
+
+GDELT source quality is also registry-driven. Reviewed wire-service domains receive
+`0.70`, reviewed financial-press domains `0.68`, reviewed release-distribution
+domains `0.62`, and every unlisted domain the conservative `0.60` fallback. Matching
+uses an exact hostname or dot-delimited subdomain boundary, so lookalike suffixes do
+not inherit a tier. These remain discovery-quality heuristics to be checked during
+the real-case evaluation; none changes GDELT's neutral direction or readiness credit.
+
+When the MCP server starts, its lifespan coordinator reads persisted collector state.
+Never-refreshed or due issuers receive one immediate bounded catch-up; a recent prior
+attempt delays until the configured interval, preventing restart storms. Refreshes
+then run serially at the configured cadence. The coordinator never runs inside
+`catalyst_edge_score`, and shutdown cancels its task before closing the SQLite handle.
+`catalyst-edge-health` is read-only and exits nonzero unless every requested reviewed
+ticker is fresh.
 
 Bluesky searches reviewed exact cashtags and company aliases through
 `public.api.bsky.app`, falling back only to `api.bsky.app`. Both are documented,
@@ -160,9 +202,14 @@ weak bullish evidence, bearish material events, neutral issuer/discovery items,
 insider clusters, Form 144 intent, missing/stale/provider failures, Bluesky
 historical warm-up/outage/sample regressions, contradictions, rejected sentiment, and
 unlicensed options/technical missingness. All 28 expected-versus-produced
-assertions pass. This is contract validation, not the pending 20–30 real-case
-product evaluation. See
+assertions pass. A separate 25-case real SEC product evaluation now covers the
+primary-source gate. See
 [`docs/validation/phase6-historical-validation-2026-07-13.md`](docs/validation/phase6-historical-validation-2026-07-13.md).
+
+The real-case evaluation, semantic corrections, 370-test suite, live target
+cohort, fresh GDELT health, and final RKLB `launch_ready=true` smoke are recorded
+in [`docs/validation/real-catalyst-evaluation-2026-07-15.md`](docs/validation/real-catalyst-evaluation-2026-07-15.md)
+and [`docs/validation/local-product-completion-2026-07-15.md`](docs/validation/local-product-completion-2026-07-15.md).
 
 The live evidence-semantic launch gate passed for RKLB on 2026-07-14 from
 merged `main`; the other four acceptance tickers correctly remained

@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "issuers": [
+    {
+      "issuer_key": "CIK0000320193",
+      "issuer_name": "Apple Inc.",
+      "tickers": ["AAPL"],
+      "reviewed_on": "2026-07-13",
+      "discovery_aliases": ["Apple Inc", "Apple Incorporated"],
+      "social_aliases": ["Apple Inc"],
+      "issuer_feed": {
+        "feed_url": "https://www.apple.com/newsroom/rss-feed.rss",
+        "official_hosts": ["www.apple.com", "apple.com"],
+        "refresh_seconds": 600,
+        "review_note": "Issuer-controlled public feed; retain metadata and links only."
+      }
+    },
+    {
+      "issuer_key": "CIK0001045810",
+      "issuer_name": "NVIDIA Corporation",
+      "tickers": ["NVDA"],
+      "reviewed_on": "2026-07-13",
+      "discovery_aliases": ["NVIDIA", "NVIDIA Corporation"],
+      "social_aliases": ["NVIDIA"],
+      "issuer_feed": {
+        "feed_url": "https://nvidianews.nvidia.com/cats/press_release.xml",
+        "official_hosts": ["nvidianews.nvidia.com", "investor.nvidia.com"],
+        "refresh_seconds": 600,
+        "review_note": "Issuer-controlled public feed; retain metadata and links only."
+      }
+    },
+    {
+      "issuer_key": "CIK0001318605",
+      "issuer_name": "Tesla, Inc.",
+      "tickers": ["TSLA"],
+      "reviewed_on": "2026-07-13",
+      "discovery_aliases": ["Tesla Inc", "Tesla Motors"],
+      "social_aliases": ["Tesla Inc"],
+      "issuer_feed": null
+    },
+    {
+      "issuer_key": "CIK0001819994",
+      "issuer_name": "Rocket Lab USA, Inc.",
+      "tickers": ["RKLB"],
+      "reviewed_on": "2026-07-13",
+      "discovery_aliases": ["Rocket Lab", "Rocket Lab USA"],
+      "social_aliases": ["Rocket Lab"],
+      "issuer_feed": null
+    },
+    {
+      "issuer_key": "CIK0001067983",
+      "issuer_name": "Berkshire Hathaway Inc.",
+      "tickers": ["BRK-A", "BRK-B"],
+      "reviewed_on": "2026-07-13",
+      "discovery_aliases": ["Berkshire Hathaway"],
+      "social_aliases": ["Berkshire Hathaway"],
+      "issuer_feed": null
+    }
+  ],
+  "publisher_domains": [
+    {
+      "domain": "reuters.com",
+      "tier": "wire_service",
+      "quality": 0.7,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed wire-service publisher domain; discovery metadata only."
+    },
+    {
+      "domain": "apnews.com",
+      "tier": "wire_service",
+      "quality": 0.7,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed wire-service publisher domain; discovery metadata only."
+    },
+    {
+      "domain": "bloomberg.com",
+      "tier": "financial_press",
+      "quality": 0.68,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed financial-press domain; discovery metadata only."
+    },
+    {
+      "domain": "cnbc.com",
+      "tier": "financial_press",
+      "quality": 0.68,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed financial-press domain; discovery metadata only."
+    },
+    {
+      "domain": "ft.com",
+      "tier": "financial_press",
+      "quality": 0.68,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed financial-press domain; discovery metadata only."
+    },
+    {
+      "domain": "wsj.com",
+      "tier": "financial_press",
+      "quality": 0.68,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed financial-press domain; discovery metadata only."
+    },
+    {
+      "domain": "businesswire.com",
+      "tier": "release_distribution",
+      "quality": 0.62,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed release-distribution domain; verify the underlying issuer source."
+    },
+    {
+      "domain": "globenewswire.com",
+      "tier": "release_distribution",
+      "quality": 0.62,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed release-distribution domain; verify the underlying issuer source."
+    },
+    {
+      "domain": "prnewswire.com",
+      "tier": "release_distribution",
+      "quality": 0.62,
+      "reviewed_on": "2026-07-15",
+      "review_note": "Reviewed release-distribution domain; verify the underlying issuer source."
+    }
+  ]
+}

@@ -1,40 +1,12 @@
-"""Reviewed exact aliases for public social-attention collection."""
+"""Default reviewed social registry loaded from local configuration."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from catalyst_edge_mcp.registry_config import load_registry_bundle
+from catalyst_edge_mcp.registry_models import SocialIssuer
 
+__all__ = ["SOCIAL_ISSUERS", "SOCIAL_ISSUER_INDEX", "SocialIssuer"]
 
-@dataclass(frozen=True, slots=True)
-class SocialIssuer:
-    issuer_key: str
-    issuer_name: str
-    tickers: tuple[str, ...]
-    exact_aliases: tuple[str, ...]
-    reviewed_on: str = "2026-07-13"
-
-    @property
-    def bluesky_query(self) -> str:
-        terms = [
-            *(f'"${ticker}"' for ticker in self.tickers),
-            *(f'"{alias}"' for alias in self.exact_aliases),
-        ]
-        return f"({' OR '.join(terms)})"
-
-
-SOCIAL_ISSUERS = (
-    SocialIssuer("CIK0000320193", "Apple Inc.", ("AAPL",), ("Apple Inc",)),
-    SocialIssuer("CIK0001045810", "NVIDIA Corporation", ("NVDA",), ("NVIDIA",)),
-    SocialIssuer("CIK0001318605", "Tesla, Inc.", ("TSLA",), ("Tesla Inc",)),
-    SocialIssuer("CIK0001819994", "Rocket Lab USA, Inc.", ("RKLB",), ("Rocket Lab",)),
-    SocialIssuer(
-        "CIK0001067983",
-        "Berkshire Hathaway Inc.",
-        ("BRK-A", "BRK-B"),
-        ("Berkshire Hathaway",),
-    ),
-)
-
-SOCIAL_ISSUER_INDEX = {
-    ticker: issuer for issuer in SOCIAL_ISSUERS for ticker in issuer.tickers
-}
+_DEFAULTS = load_registry_bundle()
+SOCIAL_ISSUERS = _DEFAULTS.social_issuers
+SOCIAL_ISSUER_INDEX = _DEFAULTS.social_index
