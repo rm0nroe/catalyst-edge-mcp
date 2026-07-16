@@ -206,7 +206,7 @@ assertions pass. A separate 25-case real SEC product evaluation now covers the
 primary-source gate. See
 [`docs/validation/phase6-historical-validation-2026-07-13.md`](docs/validation/phase6-historical-validation-2026-07-13.md).
 
-The real-case evaluation, semantic corrections, 370-test suite, live target
+The real-case evaluation, semantic corrections, 372-test suite, live target
 cohort, fresh GDELT health, and final RKLB `launch_ready=true` smoke are recorded
 in [`docs/validation/real-catalyst-evaluation-2026-07-15.md`](docs/validation/real-catalyst-evaluation-2026-07-15.md)
 and [`docs/validation/local-product-completion-2026-07-15.md`](docs/validation/local-product-completion-2026-07-15.md).
