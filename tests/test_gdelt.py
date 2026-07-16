@@ -9,6 +9,8 @@ from catalyst_edge_mcp.adapters.gdelt import GDELT_ENDPOINT, GdeltAdapter
 from catalyst_edge_mcp.discovery_registry import DiscoveryIssuer
 from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore
 from catalyst_edge_mcp.models import Direction, PolicyDecision, SourceStatus
+from catalyst_edge_mcp.registry_config import publisher_quality_for_domain
+from catalyst_edge_mcp.registry_models import PublisherDomainQuality
 from tests.conftest import AS_OF
 
 FIXTURE = Path(__file__).parent / "fixtures" / "providers" / "gdelt.json"
@@ -56,7 +58,7 @@ async def test_PT_GDELT_NORMALIZATION_is_neutral_metadata_only(tmp_path):
     assert item.context.event_type == "publisher_coverage"
     assert item.context.materiality == "discovery_only"
     assert item.direction == Direction.NEUTRAL
-    assert item.source_quality == 0.65
+    assert item.source_quality == 0.60
     assert item.sources[0].source_id == "gdelt"
     assert item.sources[0].source_tier == "discovery"
     assert item.sources[0].policy_decision == PolicyDecision.APPROVED_DISCOVERY
@@ -68,6 +70,46 @@ async def test_PT_GDELT_NORMALIZATION_is_neutral_metadata_only(tmp_path):
     serialized = item.model_dump_json()
     assert "secret-publisher-body-marker" not in serialized
     assert "secret-publisher-content-marker" not in serialized
+
+
+@pytest.mark.asyncio
+async def test_gdelt_applies_reviewed_publisher_domain_quality_tier(tmp_path):
+    quality = PublisherDomainQuality(
+        domain="publisher.example",
+        tier="wire_service",
+        quality=0.70,
+        reviewed_on="2026-07-15",
+        review_note="Fixture-reviewed publisher.",
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, content=FIXTURE.read_bytes())
+        )
+    ) as client:
+        result = await _adapter(
+            tmp_path,
+            client,
+            publisher_quality_registry={"publisher.example": quality},
+        ).collect("NVDA", 14)
+
+    item = result.evidence[0]
+    assert item.source_quality == 0.70
+    assert item.raw_signal["publisher_domain"] == "publisher.example"
+    assert item.raw_signal["publisher_quality_tier"] == "wire_service"
+
+
+def test_publisher_domain_quality_uses_exact_or_subdomain_boundary_only():
+    quality = PublisherDomainQuality(
+        domain="reuters.com",
+        tier="wire_service",
+        quality=0.70,
+        reviewed_on="2026-07-15",
+        review_note="Fixture-reviewed publisher.",
+    )
+    registry = {"reuters.com": quality}
+
+    assert publisher_quality_for_domain("www.reuters.com", registry) is quality
+    assert publisher_quality_for_domain("notreuters.com", registry) is None
 
 
 @pytest.mark.asyncio
@@ -198,6 +240,68 @@ async def test_gdelt_request_path_reads_successful_background_cache(tmp_path):
 
     assert result.status == SourceStatus.FRESH
     assert len(result.evidence) == 1
+
+
+@pytest.mark.asyncio
+async def test_gdelt_request_path_exposes_stale_background_cache_age(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    store.update_collector_state(
+        source_id="gdelt",
+        issuer_key=ISSUER.issuer_key,
+        feed_url=GDELT_ENDPOINT,
+        status=SourceStatus.FRESH.value,
+        checked_at=AS_OF - timedelta(seconds=901),
+        succeeded=True,
+    )
+    adapter = GdeltAdapter(
+        str(tmp_path / "events.sqlite3"),
+        registry={"NVDA": ISSUER},
+        store=store,
+        clock=lambda: AS_OF,
+        live_refresh=False,
+        max_cache_age_seconds=900,
+    )
+
+    result = await adapter.collect("NVDA", 14)
+
+    assert result.status is SourceStatus.STALE
+    assert result.degraded is True
+    assert "901 seconds ago" in result.warnings[0]
+
+
+@pytest.mark.asyncio
+async def test_gdelt_request_path_exposes_failed_background_refresh(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    store.update_collector_state(
+        source_id="gdelt",
+        issuer_key=ISSUER.issuer_key,
+        feed_url=GDELT_ENDPOINT,
+        status=SourceStatus.FRESH.value,
+        checked_at=AS_OF - timedelta(seconds=60),
+        succeeded=True,
+    )
+    store.update_collector_state(
+        source_id="gdelt",
+        issuer_key=ISSUER.issuer_key,
+        feed_url=GDELT_ENDPOINT,
+        status=SourceStatus.TIMEOUT.value,
+        checked_at=AS_OF,
+        succeeded=False,
+        error_class="ReadTimeout",
+    )
+    adapter = GdeltAdapter(
+        str(tmp_path / "events.sqlite3"),
+        registry={"NVDA": ISSUER},
+        store=store,
+        clock=lambda: AS_OF,
+        live_refresh=False,
+    )
+
+    result = await adapter.collect("NVDA", 14)
+
+    assert result.status is SourceStatus.TIMEOUT
+    assert result.degraded is True
+    assert "ReadTimeout" in result.warnings[0]
 
 
 @pytest.mark.asyncio

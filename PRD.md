@@ -22,7 +22,7 @@ The implementation should copy or adapt only the code patterns that are needed f
 
 Retrofit the existing CCE endpoint concept from sibling repo `../analysis-api` into a standalone MCP tool that produces a source-linked catalyst edge dossier for a ticker. The goal is not to expose the current Flask endpoint through MCP as-is. The goal is to reuse the existing CCE skeleton where useful, replace the untrusted scoring path, and return an evidence-first output that an agent can use for investment research, alert triage, or thesis review.
 
-## Current Implementation Status — 2026-07-15
+## Current Implementation Status — 2026-07-16
 
 The free-source research and subsequent implementation established a sufficient
 zero-subscription dependency set for the current local-only product: direct SEC
@@ -31,18 +31,25 @@ and Bluesky partial attention. Local stdio/HTTP MCP transports, strict contracts
 provenance, typed missingness, the canonical event graph, and deterministic
 scoring are implemented.
 
-The PRD is not yet fully delivered as a product. The remaining work is not paid
-provider access. It is evidence-specific synthesis, automated local refresh and
-configurable issuer/alias coverage, a 20–30 real-catalyst evaluation, and scoring
-tuning from those documented results. The existing 28 sanitized Phase 6 cases
-are synthetic contract fixtures and must not be counted as the real product
-validation gate.
+The zero-subscription implementation meets the current bounded local PRD
+acceptance corpus as of 2026-07-16. Evidence-specific synthesis, the automatic
+local GDELT refresh/freshness lifecycle, strict local registry configuration,
+publisher-domain quality tiers, and a 25-case real SEC catalyst evaluation are
+implemented. The real evaluation complements the 28 sanitized Phase 6 contract
+fixtures and records primary-link, classification, freshness, distinct-event,
+research-value, and dossier-direction results. Item 8.01 document enrichment is
+a versioned allowlist of supported semantics, not general filing understanding.
+
+The evaluation did not justify changing numeric scorer weights because it has no
+forward-return labels. Preserving the deterministic, explicitly unbacktested
+weights is the recorded tuning decision rather than implying unsupported outcome
+calibration.
 
 For the current owner-operated local build, paid options flow, licensed OHLC,
-sentiment, hosted deployment, packaging, CI, consumer distribution, and the
-sibling Flask migration are optional future extensions rather than completion
-blockers. Their absence must remain explicit typed missingness and must never be
-fabricated as evidence.
+sentiment, hosted deployment, packaging, CI, consumer distribution, broader SEC
+semantic extraction, and the sibling Flask migration are optional future
+extensions rather than blockers for this acceptance boundary. Their absence
+must remain explicit typed missingness and must never be fabricated as evidence.
 
 ## Problem
 
@@ -335,4 +342,9 @@ Create small deterministic fixtures for:
 
 ## Definition Of Done
 
-The PR is complete when another agent can call the MCP tool locally, receive a compact source-linked catalyst dossier, and inspect tests proving that the score is deterministic, caveated, and not using the current random-weight CCE model.
+The PR meets this local acceptance boundary when another agent can call the MCP
+tool locally, receive a compact source-linked catalyst dossier, and inspect
+tests proving that the score is deterministic, caveated, and not using the
+current random-weight CCE model. Collector and semantic coverage must remain
+explicitly bounded: unsupported or ambiguous primary-document wording stays
+generic and does not receive a guessed event classification.

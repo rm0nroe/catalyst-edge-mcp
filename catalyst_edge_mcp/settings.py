@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from catalyst_edge_mcp.capability_gates import options_provider_ready
+from catalyst_edge_mcp.registry_config import DEFAULT_REGISTRY_PATH
 
 
 def _optional_env(name: str) -> str | None:
@@ -15,6 +16,17 @@ def _optional_env(name: str) -> str | None:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _bounded_int_env(name: str, default: int, minimum: int, maximum: int) -> int:
+    text = os.getenv(name, str(default)).strip()
+    try:
+        value = int(text)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,7 +43,11 @@ class Settings:
     port: int = 8000
     issuer_feeds_enabled: bool = True
     gdelt_enabled: bool = True
+    gdelt_refresh_interval_seconds: int = 300
+    gdelt_refresh_lookback_days: int = 14
+    gdelt_freshness_max_age_seconds: int = 900
     bluesky_enabled: bool = True
+    registry_path: str = str(DEFAULT_REGISTRY_PATH)
     evidence_store_path: str = str(
         Path.home() / ".local" / "state" / "catalyst-edge-mcp" / "evidence.sqlite3"
     )
@@ -106,6 +122,20 @@ class Settings:
         gdelt = os.getenv("CATALYST_EDGE_GDELT", "enabled").strip().lower()
         if gdelt not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_GDELT must be 'enabled' or 'disabled'")
+        gdelt_refresh_interval_seconds = _bounded_int_env(
+            "CATALYST_EDGE_GDELT_REFRESH_SECONDS", 300, 60, 86400
+        )
+        gdelt_refresh_lookback_days = _bounded_int_env(
+            "CATALYST_EDGE_GDELT_LOOKBACK_DAYS", 14, 1, 90
+        )
+        gdelt_freshness_max_age_seconds = _bounded_int_env(
+            "CATALYST_EDGE_GDELT_MAX_AGE_SECONDS", 900, 60, 604800
+        )
+        if gdelt_freshness_max_age_seconds < gdelt_refresh_interval_seconds:
+            raise ValueError(
+                "CATALYST_EDGE_GDELT_MAX_AGE_SECONDS must be greater than or equal to "
+                "CATALYST_EDGE_GDELT_REFRESH_SECONDS"
+            )
         bluesky = os.getenv("CATALYST_EDGE_BLUESKY", "enabled").strip().lower()
         if bluesky not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_BLUESKY must be 'enabled' or 'disabled'")
@@ -122,7 +152,14 @@ class Settings:
             port=port,
             issuer_feeds_enabled=issuer_feeds == "enabled",
             gdelt_enabled=gdelt == "enabled",
+            gdelt_refresh_interval_seconds=gdelt_refresh_interval_seconds,
+            gdelt_refresh_lookback_days=gdelt_refresh_lookback_days,
+            gdelt_freshness_max_age_seconds=gdelt_freshness_max_age_seconds,
             bluesky_enabled=bluesky == "enabled",
+            registry_path=(
+                _optional_env("CATALYST_EDGE_REGISTRY_PATH")
+                or str(DEFAULT_REGISTRY_PATH)
+            ),
             evidence_store_path=(
                 _optional_env("CATALYST_EDGE_EVIDENCE_STORE")
                 or str(
