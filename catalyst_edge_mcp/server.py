@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from contextlib import suppress
+from contextlib import asynccontextmanager, suppress
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -13,7 +13,9 @@ from pydantic import Field
 from catalyst_edge_mcp.adapters.bluesky import BlueskyAdapter
 from catalyst_edge_mcp.adapters.gdelt import GdeltAdapter
 from catalyst_edge_mcp.adapters.issuer_feeds import IssuerFeedAdapter
+from catalyst_edge_mcp.collection_lifecycle import build_collection_lifecycle
 from catalyst_edge_mcp.models import CatalystEdgeResponse, RiskMode, Ticker, ToolInput
+from catalyst_edge_mcp.registry_config import RegistryBundle, load_registry_bundle
 from catalyst_edge_mcp.sec_filings import SecFilingsAdapter
 from catalyst_edge_mcp.sec_ownership import SecInsiderAdapter
 from catalyst_edge_mcp.service import CatalystService
@@ -27,8 +29,12 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
-def build_service(settings: Settings) -> CatalystService:
+def build_service(
+    settings: Settings,
+    registry: RegistryBundle | None = None,
+) -> CatalystService:
     """The sole production composition root for provider adapters."""
+    registry = registry or load_registry_bundle(settings.registry_path)
     adapters = []
     if settings.sec_user_agent:
         adapters.extend(
@@ -38,13 +44,31 @@ def build_service(settings: Settings) -> CatalystService:
             ]
         )
     if settings.issuer_feeds_enabled:
-        adapters.append(IssuerFeedAdapter(settings.evidence_store_path))
+        adapters.append(
+            IssuerFeedAdapter(
+                settings.evidence_store_path,
+                registry=registry.issuer_feed_index,
+            )
+        )
     if settings.gdelt_enabled:
         # GDELT's legacy search API is not reliable within the request deadline.
         # Production requests read its cache; the bounded refresh CLI owns network I/O.
-        adapters.append(GdeltAdapter(settings.evidence_store_path, live_refresh=False))
+        adapters.append(
+            GdeltAdapter(
+                settings.evidence_store_path,
+                registry=registry.discovery_index,
+                live_refresh=False,
+                max_cache_age_seconds=settings.gdelt_freshness_max_age_seconds,
+                publisher_quality_registry=registry.publisher_quality_index,
+            )
+        )
     if settings.bluesky_enabled:
-        adapters.append(BlueskyAdapter(settings.evidence_store_path))
+        adapters.append(
+            BlueskyAdapter(
+                settings.evidence_store_path,
+                registry=registry.social_index,
+            )
+        )
     # Conditional vendor keys are intentionally not composed until a deployed
     # source-policy approval can be bound to the account/plan. Credentials alone
     # never establish commercial rights.
@@ -58,6 +82,21 @@ def build_service(settings: Settings) -> CatalystService:
 
 _initial_settings = Settings.from_env()
 _service = build_service(_initial_settings)
+
+
+@asynccontextmanager
+async def server_lifespan(_server):
+    """Own automatic collectors outside every MCP request path."""
+    lifecycle = build_collection_lifecycle(Settings.from_env())
+    if lifecycle is not None:
+        lifecycle.start()
+    try:
+        yield {"collection_lifecycle": lifecycle}
+    finally:
+        if lifecycle is not None:
+            await lifecycle.stop()
+
+
 mcp = FastMCP(
     "Catalyst Edge",
     instructions=(
@@ -68,6 +107,7 @@ mcp = FastMCP(
     port=_initial_settings.port,
     json_response=True,
     stateless_http=True,
+    lifespan=server_lifespan,
 )
 
 

@@ -16,6 +16,7 @@ from catalyst_edge_mcp.models import (
     Change,
     Direction,
     Evidence,
+    EvidenceContext,
     PolicyDecision,
     Source,
     SourceStatus,
@@ -405,6 +406,34 @@ class SecInsiderAdapter:
         )
         latest = max(record["timestamp"] for record in current)
         sources = list({str(record["source"].url): record["source"] for record in current}.values())
+        novelty = (
+            "new_activity"
+            if prior_net == 0
+            else "direction_reversal"
+            if (net > 0) != (prior_net > 0)
+            else "increased"
+            if abs(net) > abs(prior_net)
+            else "decreased"
+        )
+        cluster_label = (
+            f"{len(owners)}-insider open-market {kind} {cluster_kind.replace('_', ' ')}"
+            if owners
+            else f"Open-market insider {kind} activity"
+        )
+        why = (
+            "Multiple reporting owners disclosed same-direction open-market acquisitions, "
+            "providing stronger insider confirmation than one isolated transaction."
+            if direction == Direction.BULLISH and len(owners) >= 2
+            else "A disclosed open-market acquisition represents direct capital "
+            "allocation by a reporting owner."
+            if direction == Direction.BULLISH
+            else "Open-market dispositions can reflect liquidity, diversification, or "
+            "planned activity, so transaction context and 10b5-1 footnotes constrain "
+            "interpretation."
+            if direction == Direction.BEARISH
+            else "Mixed open-market activity does not establish a single directional "
+            "insider signal."
+        )
         output.insert(
             0,
             Evidence(
@@ -426,6 +455,16 @@ class SecInsiderAdapter:
                     delta=net - prior_net,
                     unit="USD reported value",
                     comparison_window="current half vs preceding equal window",
+                ),
+                context=EvidenceContext(
+                    event_type=f"open_market_{kind}_{cluster_kind}",
+                    event_label=cluster_label,
+                    novelty=novelty,
+                    materiality="material" if len(owners) >= 2 else "contextual",
+                    why_it_matters=why,
+                    source_record_count=len(sources),
+                    corroborating_source_count=max(0, len(owners) - 1),
+                    source_tiers=["primary_regulator"],
                 ),
                 sources=sources,
                 notes=(
@@ -465,6 +504,18 @@ class SecInsiderAdapter:
             timestamp=filed_at,
             source_quality=1.0,
             change=Change(description=description),
+            context=EvidenceContext(
+                event_type="proposed_insider_sale",
+                event_label="Proposed insider sale notice",
+                novelty="new_intent_notice",
+                materiality="contextual",
+                why_it_matters=(
+                    "Form 144 discloses proposed sale intent and approximate terms; it does "
+                    "not establish that a disposition was completed."
+                ),
+                source_record_count=1,
+                source_tiers=["primary_regulator"],
+            ),
             sources=[source],
             notes="Form 144 is proposed sale intent, not evidence of completed execution.",
             raw_signal={**facts, "accession": accession, "completed_execution": False},

@@ -14,6 +14,10 @@ from urllib.parse import urlsplit
 import httpx
 
 from catalyst_edge_mcp.adapters.base import ProviderGate
+from catalyst_edge_mcp.collection_lifecycle import (
+    FreshnessState,
+    collection_health_from_state,
+)
 from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX, DiscoveryIssuer
 from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore, StoredEvent
@@ -22,10 +26,13 @@ from catalyst_edge_mcp.models import (
     Change,
     Direction,
     Evidence,
+    EvidenceContext,
     PolicyDecision,
     Source,
     SourceStatus,
 )
+from catalyst_edge_mcp.registry_config import publisher_quality_for_domain
+from catalyst_edge_mcp.registry_models import PublisherDomainQuality
 
 GDELT_ENDPOINT = "https://api.gdeltproject.org/api/v2/doc/doc"
 PARSER_VERSION = "gdelt-doc-v1"
@@ -53,6 +60,8 @@ class GdeltAdapter:
         endpoint: str = GDELT_ENDPOINT,
         live_refresh: bool = True,
         request_timeout_seconds: float = 6.0,
+        max_cache_age_seconds: int = 900,
+        publisher_quality_registry: Mapping[str, PublisherDomainQuality] | None = None,
     ) -> None:
         self.store = store or EvidenceStore(str(Path(store_path).expanduser()))
         self.registry = registry
@@ -62,6 +71,8 @@ class GdeltAdapter:
         self.endpoint = endpoint
         self.live_refresh = live_refresh
         self.request_timeout_seconds = request_timeout_seconds
+        self.max_cache_age_seconds = max_cache_age_seconds
+        self.publisher_quality_registry = publisher_quality_registry or {}
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
         issuer = self.registry.get(ticker) or self.registry.get(ticker.replace(".", "-"))
@@ -180,16 +191,53 @@ class GdeltAdapter:
     ) -> AdapterResult:
         """Serve request-time discovery from cache while refresh runs out of band."""
         state = self.store.collector_state(self.provider, issuer.issuer_key)
-        if state and state.get("last_success_at"):
+        health = collection_health_from_state(
+            issuer.tickers[0],
+            issuer.issuer_key,
+            state,
+            now=now,
+            max_age_seconds=self.max_cache_age_seconds,
+        )
+        if health.freshness is FreshnessState.FRESH:
             return self._cached_result(issuer, lookback_days, now)
+        if health.freshness is FreshnessState.FAILED:
+            status = health.source_status or SourceStatus.STALE
+            age = (
+                f"; last success was {health.last_success_age_seconds} seconds ago"
+                if health.last_success_age_seconds is not None
+                else "; no successful refresh has completed"
+            )
+            return self._cached_result(
+                issuer,
+                lookback_days,
+                now,
+                status=status,
+                warning=(
+                    f"GDELT background refresh failed with "
+                    f"{health.error_class or 'unknown error'} ({status.value}){age}."
+                ),
+                degraded=True,
+            )
+        if health.freshness is FreshnessState.STALE:
+            return self._cached_result(
+                issuer,
+                lookback_days,
+                now,
+                status=SourceStatus.STALE,
+                warning=(
+                    "GDELT background cache is stale; last successful refresh was "
+                    f"{health.last_success_age_seconds} seconds ago."
+                ),
+                degraded=True,
+            )
         return self._cached_result(
             issuer,
             lookback_days,
             now,
             status=SourceStatus.STALE,
             warning=(
-                "GDELT background cache has not completed a successful refresh; "
-                "run catalyst-edge-refresh-gdelt."
+                "GDELT automatic background lifecycle has not completed a successful "
+                "refresh; catalyst-edge-refresh-gdelt remains available for manual recovery."
             ),
             degraded=True,
         )
@@ -285,9 +333,15 @@ class GdeltAdapter:
             degraded=True,
         )
 
-    @staticmethod
-    def _evidence(event: StoredEvent) -> Evidence:
+    def _evidence(self, event: StoredEvent) -> Evidence:
         source = event.primary_source
+        domain = (urlsplit(source.canonical_url).hostname or "").lower().rstrip(".")
+        publisher_quality = publisher_quality_for_domain(
+            domain,
+            self.publisher_quality_registry,
+        )
+        quality = publisher_quality.quality if publisher_quality else 0.60
+        quality_tier = publisher_quality.tier if publisher_quality else "unreviewed"
         return Evidence(
             family="filings_news",
             signal="publisher_link_discovery",
@@ -295,8 +349,22 @@ class GdeltAdapter:
             strength=0.35,
             confidence=0.60,
             timestamp=event.published_at,
-            source_quality=0.65,
+            source_quality=quality,
             change=Change(description=f"Publisher coverage discovered: {event.title}"[:240]),
+            context=EvidenceContext(
+                event_type="publisher_coverage",
+                event_label="Publisher coverage discovery",
+                novelty="correction" if event.version > 1 else "new_coverage",
+                materiality="discovery_only",
+                why_it_matters=(
+                    "Publisher metadata can corroborate awareness or lead to a primary "
+                    "source, but it does not establish the underlying event by itself."
+                ),
+                source_record_count=event.source_count,
+                corroborating_source_count=max(0, event.source_count - 1),
+                source_tiers=list(event.source_tiers),
+                correction_of_event_id=event.correction_of_event_id,
+            ),
             sources=[
                 Source(
                     name=source.source_name,
@@ -316,13 +384,18 @@ class GdeltAdapter:
             ],
             notes=(
                 "GDELT is neutral discovery metadata only; publisher bodies are neither "
-                "fetched nor retained and discovery cannot establish launch readiness."
+                "fetched nor retained and discovery cannot establish launch readiness. "
+                f"Publisher domain quality tier: {quality_tier}."
             ),
             raw_signal={
                 "canonical_event_id": event.event_id,
                 "version": event.version,
                 "title": event.title,
                 "record_id": source.record_id,
+                "source_count": event.source_count,
+                "source_tiers": list(event.source_tiers),
+                "publisher_domain": domain,
+                "publisher_quality_tier": quality_tier,
             },
         )
 

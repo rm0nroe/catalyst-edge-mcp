@@ -19,9 +19,7 @@ from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.models import PolicyDecision
 from catalyst_edge_mcp.source_policy import SOURCE_POLICIES
 
-TRACKING_QUERY_KEYS = frozenset(
-    {"fbclid", "gclid", "mc_cid", "mc_eid", "ref", "source"}
-)
+TRACKING_QUERY_KEYS = frozenset({"fbclid", "gclid", "mc_cid", "mc_eid", "ref", "source"})
 SOURCE_RANKS = {
     "primary_regulator": 100,
     "issuer_primary": 95,
@@ -54,7 +52,11 @@ def canonicalize_url(value: str) -> str:
 
 def normalize_title(value: str) -> str:
     text = value.casefold().replace("&", " and ")
-    return " ".join(re.sub(r"[^a-z0-9%]+", " ", text).split())
+    normalized = "".join(
+        character if character.isalnum() or character == "%" else " "
+        for character in text
+    )
+    return " ".join(normalized.split())
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +102,8 @@ class StoredEvent:
     correction_of_event_id: int | None
     primary_source: StoredSource
     related_urls: tuple[str, ...]
+    source_count: int
+    source_tiers: tuple[str, ...]
 
 
 class EvidenceStore:
@@ -228,17 +232,23 @@ class EvidenceStore:
 
     def table_names(self) -> set[str]:
         with self._lock:
-            rows = self._connect().execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
+            rows = (
+                self._connect()
+                .execute("SELECT name FROM sqlite_master WHERE type='table'")
+                .fetchall()
+            )
             return {str(row[0]) for row in rows}
 
     def collector_state(self, source_id: str, issuer_key: str) -> dict[str, Any] | None:
         with self._lock:
-            row = self._connect().execute(
-                "SELECT * FROM collector_state WHERE source_id=? AND issuer_key=?",
-                (source_id, issuer_key),
-            ).fetchone()
+            row = (
+                self._connect()
+                .execute(
+                    "SELECT * FROM collector_state WHERE source_id=? AND issuer_key=?",
+                    (source_id, issuer_key),
+                )
+                .fetchone()
+            )
             return dict(row) if row is not None else None
 
     def update_collector_state(
@@ -325,9 +335,7 @@ class EvidenceStore:
                     (observation_fingerprint,),
                 ).fetchone()[0]
             )
-            exact_fingerprint = self._hash(
-                observation.issuer_key, normalized, canonical_url
-            )
+            exact_fingerprint = self._hash(observation.issuer_key, normalized, canonical_url)
             event = connection.execute(
                 "SELECT * FROM canonical_event WHERE exact_fingerprint=?",
                 (exact_fingerprint,),
@@ -414,8 +422,7 @@ class EvidenceStore:
                 (issuer_key, source_id, self._iso(since)),
             ).fetchall()
             return [
-                self._stored_event(connection, int(row["id"]), source_id=source_id)
-                for row in rows
+                self._stored_event(connection, int(row["id"]), source_id=source_id) for row in rows
             ]
 
     def record_social_bucket(
@@ -447,14 +454,18 @@ class EvidenceStore:
         self, issuer_key: str, source_id: str, since: datetime
     ) -> list[dict[str, Any]]:
         with self._lock:
-            rows = self._connect().execute(
-                """
+            rows = (
+                self._connect()
+                .execute(
+                    """
                 SELECT bucket_at, metrics_json FROM social_bucket
                 WHERE issuer_key=? AND source_id=? AND bucket_at>=?
                 ORDER BY bucket_at ASC
                 """,
-                (issuer_key, source_id, self._iso(since)),
-            ).fetchall()
+                    (issuer_key, source_id, self._iso(since)),
+                )
+                .fetchall()
+            )
             return [
                 {
                     "bucket_at": self._datetime(row["bucket_at"]),
@@ -547,7 +558,7 @@ class EvidenceStore:
             ).fetchone()
         related = connection.execute(
             """
-            SELECT observation.canonical_url FROM event_source
+            SELECT observation.canonical_url, observation.source_tier FROM event_source
             JOIN source_observation AS observation ON observation.id=event_source.observation_id
             WHERE event_source.event_id=? AND observation.id!=?
             ORDER BY event_source.source_rank DESC, observation.id ASC LIMIT 20
@@ -583,6 +594,10 @@ class EvidenceStore:
             ),
             primary_source=primary,
             related_urls=tuple(str(row["canonical_url"]) for row in related),
+            source_count=len(related) + 1,
+            source_tiers=tuple(
+                sorted({primary.source_tier, *(str(row["source_tier"]) for row in related)})
+            ),
         )
 
     @staticmethod
