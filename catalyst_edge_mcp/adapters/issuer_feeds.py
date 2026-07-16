@@ -22,6 +22,7 @@ from catalyst_edge_mcp.models import (
     Change,
     Direction,
     Evidence,
+    EvidenceContext,
     PolicyDecision,
     Source,
     SourceStatus,
@@ -71,9 +72,7 @@ class IssuerFeedAdapter:
             "User-Agent": "CatalystEdgeMCP/0.1 issuer-feed-reader",
             "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml",
         }
-        async with httpx.AsyncClient(
-            headers=headers, timeout=6.0, follow_redirects=True
-        ) as client:
+        async with httpx.AsyncClient(headers=headers, timeout=6.0, follow_redirects=True) as client:
             return await self._collect(client, feed, lookback_days, now)
 
     async def _collect(
@@ -252,6 +251,23 @@ class IssuerFeedAdapter:
             timestamp=event.published_at,
             source_quality=0.95,
             change=Change(description=f"Issuer published: {event.title}"[:240]),
+            context=EvidenceContext(
+                event_type="issuer_release_correction" if event.version > 1 else "issuer_release",
+                event_label="Issuer release correction" if event.version > 1 else "Issuer release",
+                novelty="correction" if event.version > 1 else "new_event",
+                materiality="contextual",
+                why_it_matters=(
+                    "A correction changes a previously canonicalized issuer disclosure "
+                    "and should be compared with the prior version."
+                    if event.version > 1
+                    else "An issuer-primary release adds direct company context to the "
+                    "catalyst record."
+                ),
+                source_record_count=event.source_count,
+                corroborating_source_count=max(0, event.source_count - 1),
+                source_tiers=list(event.source_tiers),
+                correction_of_event_id=event.correction_of_event_id,
+            ),
             sources=[
                 Source(
                     name=source.source_name,
@@ -279,6 +295,8 @@ class IssuerFeedAdapter:
                 "correction_of_event_id": event.correction_of_event_id,
                 "title": event.title,
                 "record_id": source.record_id,
+                "source_count": event.source_count,
+                "source_tiers": list(event.source_tiers),
             },
         )
 
@@ -306,8 +324,7 @@ class IssuerFeedAdapter:
         parsed = urlsplit(url)
         host = (parsed.hostname or "").lower().rstrip(".")
         approved = any(
-            host == allowed or host.endswith("." + allowed)
-            for allowed in feed.official_hosts
+            host == allowed or host.endswith("." + allowed) for allowed in feed.official_hosts
         )
         if parsed.scheme.lower() != "https" or not approved:
             raise ValueError("Issuer feed URL is outside the reviewed official hosts")

@@ -120,6 +120,29 @@ def test_main_treats_operator_cancellation_as_clean_shutdown(monkeypatch):
     server.main()
 
 
+@pytest.mark.asyncio
+async def test_server_lifespan_starts_and_stops_collection_lifecycle(monkeypatch):
+    from catalyst_edge_mcp import server
+
+    calls = []
+
+    class RecordingLifecycle:
+        def start(self):
+            calls.append("start")
+
+        async def stop(self):
+            calls.append("stop")
+
+    lifecycle = RecordingLifecycle()
+    monkeypatch.setattr(server, "build_collection_lifecycle", lambda settings: lifecycle)
+
+    async with server.server_lifespan(None) as context:
+        assert calls == ["start"]
+        assert context["collection_lifecycle"] is lifecycle
+
+    assert calls == ["start", "stop"]
+
+
 @pytest.mark.parametrize("provider", ["flowalgo", "cheddarflow", "yfinance"])
 def test_build_service_never_composes_unentitled_options_provider(provider):
     from catalyst_edge_mcp.server import build_service

@@ -1,15 +1,16 @@
-# Catalyst Edge MCP — PRD-Complete Technical Design
+# Catalyst Edge MCP — Technical Design
 
-**Revision:** Phases 0–6 implementation and product validation, 2026-07-13
+**Revision:** Contract foundation implemented; product-validation correction, 2026-07-15
 
 ## 1. Scope, outcome, and fixed decisions
 
-This document is the implementation design for the complete `PRD.md`. The
+This document is the implementation design for the current `PRD.md` local
+acceptance boundary. The
 deliverable is a standalone, read-only MCP server in this repository exposing
 one tool, `catalyst_edge_score`. Completion means the tool can return a compact,
-source-linked catalyst dossier backed by legally usable evidence, with explicit
+source-linked catalyst dossier backed by usable free evidence, with explicit
 missingness for unavailable families. A schema-valid no-data result is required
-failure behavior, but is not sufficient for product acceptance. Product launch
+failure behavior, but is not sufficient for product acceptance. Local acceptance
 requires SEC provenance and at least one fresh directional observation whose
 semantics, not provider name, satisfy the readiness rule in §14.
 
@@ -25,21 +26,22 @@ Fixed decisions:
 - FastMCP with verified local stdio and local streamable HTTP transports.
 - Deterministic scoring only: `scoring_method=deterministic_v1` and
   `model_status=not_trained`.
-- The production baseline is direct SEC data, reviewed issuer feeds, GDELT
+- The zero-subscription local baseline is direct SEC data, reviewed issuer feeds, GDELT
   discovery metadata, Bluesky AppView, and reviewed Mastodon instances. Each
   non-SEC source remains constrained by the source-policy registry in §6.
 - FMP, Finnhub, Reddit, Stocktwits, OCC, and any options vendor are conditional:
   credentials alone never prove commercial authorization. Their adapters may
-  run in production only after an explicit policy decision records the needed
+  run only after an explicit policy decision records the needed
   permission or license.
 - True `options_flow` requires a licensed transaction-plus-quote source.
   yfinance is development/private diagnostic data only and never supplies
-  production evidence, canonical coverage, or launch-readiness credit.
+  local product evidence, canonical coverage, or readiness credit.
 - Five canonical families are always expected: `filings_news`,
   `insider_trading`, `options_flow`, `technical`, and `social`.
   `alternative` is optional.
 - `technical` requires a user-supplied/licensed OHLC source or typed neutral
-  missingness; this TDD does not claim a cleared zero-subscription OHLC source.
+  missingness. Licensed OHLC is an optional future extension and is not a
+  blocker for the current local product boundary.
 - MediaCrawler, ai-berkshire, trained/calibrated scoring, licensed options flow,
   and execution of the sibling Flask migration remain future/conditional items.
 
@@ -84,7 +86,9 @@ Installed commands:
 - `catalyst-edge-smoke TICKER`: opt-in live credential/provenance check; it
   prints provider status but never raw payloads or credentials.
 
-`build_service(settings)` is the only production composition root. Tests inject
+`build_service(settings)` is the only real, non-fixture composition root. Here,
+“production” in older code comments means this runtime path; it does not imply a
+hosted service, paid-provider requirement, or consumer deployment. Tests inject
 adapters, scorer, settings, clock, and HTTP transports without environment or
 network access.
 
@@ -305,8 +309,8 @@ Baseline contracts:
 - Issuer feeds: a reviewed registry defines canonical feeds and aliases.
   Collect with conditional `ETag`/`Last-Modified` requests every 5–15 minutes;
   broken feeds become `stale`, not “no news.”
-- GDELT: request-time evaluation is cache-only. The explicit background refresh
-  command downloads the newest bounded Web NGrams index/TOC pairs from the official
+- GDELT: request-time evaluation is cache-only. The server lifespan coordinator and
+  explicit recovery command download the newest bounded Web NGrams index/TOC pairs from the official
   `storage.googleapis.com/data.gdeltproject.org/gdeltv5/weblegacy/ngrams` path,
   matches all reviewed issuers in one pass, and stores publisher metadata/links
   rather than article bodies or ngram context. Exact host/path validation, byte
@@ -328,8 +332,10 @@ use a distinct `options_eod_activity` diagnostic family but never
 
 Request-time provider clients use a six-second request timeout and the service
 applies an eight-second outer timeout. GDELT is never refreshed on that path; its
-explicit background command has a 30-second per-file upstream budget. Broad collection
-runs outside request latency. There are no unbounded retries. `429`, permission,
+automatic lifecycle and explicit recovery command have a 30-second per-file upstream
+budget. Persisted last-check state prevents restart storms, while due or never-refreshed
+state receives one bounded startup catch-up. Broad collection runs outside request
+latency. There are no unbounded retries. `429`, permission,
 license, schema, network, and timeout failures map to typed statuses and cached
 partial results with freshness. Cancellation always propagates.
 
@@ -554,8 +560,9 @@ silent defaults in the local server.
 
 ## 13. Implementation sequence
 
-Implementation status on 2026-07-13: Phases 0 through 6 are implemented and
-covered by offline contract/parser fixtures. Phase 1 was live-validated against
+Implementation status on 2026-07-15: the contract and collector foundation in
+Phases 0 through 5 is implemented and covered by offline contract/parser
+fixtures. Phase 1 was live-validated against
 representative SEC Forms 4/144 and 8-K archive metadata. Phase 2 was live-validated
 against the reviewed Apple and NVIDIA issuer feeds, including conditional state.
 Phase 3 has bounded success/empty/malformed/rate-limit/timeout/host/provenance
@@ -570,9 +577,32 @@ coverage could be established. The live Bluesky POC confirmed the current 403 on
 the cached public search host and successful unauthenticated direct-AppView fallback.
 Phase 5 records immutable fail-closed audits for five sentiment candidates and
 four options candidates. No candidate passes every required gate, so sentiment
-and options remain uncomposed; production makes no rejected-provider request.
-Phase 6 executes 28 dated, sanitized product cases. All expected-versus-produced
-direction, provenance, missingness, staleness, and readiness assertions pass.
+and options remain uncomposed; the local composition root makes no
+rejected-provider request. Phase 6 executes 28 dated, sanitized synthetic
+contract cases plus a separate 25-case real SEC catalyst evaluation. The real
+corpus verifies primary links, classification, accepted-time freshness,
+distinct-event behavior, research value, and final dossier direction.
+
+Completed on 2026-07-15: the first event-intelligence slice adds a typed evidence
+context for event type, label, novelty, materiality, correction lineage, source
+record counts, source tiers, and factual why-it-matters text. SEC 8-K item
+taxonomy and insider semantics now produce evidence-specific summaries,
+invalidation criteria, and source-aware next checks. Fixed real RKLB accessions
+and live local runs verify the 8-K and Form 144 paths.
+
+Accepted for the bounded local corpus on 2026-07-16: the 25-case real evaluation
+exposed lexical multi-item priority, merger-related delisting direction, and
+recorded Item 8.01 specificity gaps. Explicit context priority,
+change-of-control delisting semantics, and `sec-primary-document-v1` rules cover
+completed debt offerings, entered or amended equity distribution agreements,
+filed prospectus supplements, and actual repurchase activity. The rule identity
+and version are recorded; proposed, negated, unsupported, and ambiguous cases
+fail closed to the generic event. Representative HTML, table, inline-XBRL,
+amendment, multi-event, and near-match fixtures enforce that boundary. No filing
+body is retained. The recorded corpus provides no forward-return labels, so
+preserving the deterministic unbacktested numeric weights is the evidence-based
+tuning decision. Final target-cohort, fresh GDELT, and recent RKLB acceptance
+passed.
 
 0. Revise this design and contracts: source policy, provenance, typed statuses,
    quality constants, evidence-semantic readiness, neutral missingness, and
@@ -585,7 +615,15 @@ direction, provenance, missingness, staleness, and readiness assertions pass.
 3. Implemented: request-time GDELT cache reads plus batch out-of-band discovery from
    official Web NGrams index/TOC files, reviewed issuer aliases, metadata-only
    retention, bounded file processing, cached typed degradation, and canonical-event
-   integration. The legacy DOC endpoint is no longer used by the refresh command.
+   integration. FastMCP lifespan now schedules due startup catch-up and periodic
+   refresh, cancels cleanly, and exposes last-success age and explicit freshness
+   states through `catalyst-edge-health` and request-time degradation warnings. The
+   legacy DOC endpoint is no longer used by the refresh command.
+   Issuer-feed, discovery, and social registries now compose from one strict local
+   JSON file with packaged reviewed defaults. Duplicate ticker ownership, ambiguous
+   aliases, unknown fields, malformed CIKs, and feed-host mismatches fail closed.
+   Reviewed publisher-domain tiers deterministically set GDELT quality from 0.62 to
+   0.70; unlisted domains receive 0.60 and never inherit through lookalike suffixes.
 4. Implemented: Bluesky exact-match partial attention with cached-to-direct official
    AppView fallback, two bounded historical windows, complete pagination, minimum
    samples, failure-aware coverage, and neutral semantics. Mastodon remains
@@ -596,11 +634,13 @@ direction, provenance, missingness, staleness, and readiness assertions pass.
    rounding, and threshold gates. Audited FlowAlgo, CheddarFlow, a future OPRA
    vendor, and yfinance against transaction-plus-quote and entitlement gates.
    None passes; all remain disabled and uncomposed.
-6. Implemented: 28 dated sanitized cases cover directional strength, primary
+6. Accepted for the current corpus: 28 dated sanitized synthetic cases cover
+   directional strength, primary
    and discovery provenance, insider clusters, Form 144, missing/stale/provider
    failures, Bluesky historical warm-up/outage/sample regressions, contradictions, rejected
    sentiment, and options/technical entitlement boundaries. All assertions pass;
-   package/runtime verification outcomes are recorded in the Phase 6 report.
+   the separate 25-case real SEC corpus and final live acceptance also pass. The
+   no-change numeric scorer decision is documented from the corpus limitations.
 
 No phase is called complete while its mapped PRD tests in the traceability
 matrix fail or are absent.
@@ -630,7 +670,8 @@ Required deterministic dossier scenarios:
 - technical without licensed OHLC stays neutrally missing;
 - incomplete social windows, sample insufficiency, and collector outage stay neutral;
 - GDELT request-path cache isolation, one-download-per-file batch matching, bounded
-  Web NGrams processing, exact official-host enforcement, and publisher-body exclusion;
+  Web NGrams processing, exact official-host enforcement, publisher-body exclusion,
+  startup/periodic lifecycle, restart throttling, clean shutdown, and freshness health;
 - Bluesky documented official-host fallback without proxying;
 - sentiment/model-disabled behavior;
 - missing baseline and valid current-vs-prior change calculations;
@@ -698,7 +739,10 @@ Test identifiers below are mandatory names or markers in the test suite.
 | TR16 options integrity | §5–§6, §9 | `FX_OPTIONS_UNLICENSED_NEUTRAL`, `UT_OPTIONS_ENTITLEMENTS_*` |
 | TR17 attention/sentiment separation | §5, §8–§9 | `FX_SOCIAL_ATTENTION_NEUTRAL`, `FX_SENTIMENT_MODEL_DISABLED` |
 | TR18 free-source rate/host policy | §6 | `PT_GDELT_WEB_NGRAMS`, `PT_BLUESKY_HOST_FALLBACK` |
-| TR19 Phase 6 product validation | §13–§14 | `FX_PHASE6_HISTORICAL_PRODUCT_CASES` |
+| TR19 Phase 6 synthetic contract validation | §13–§14 | `FX_PHASE6_HISTORICAL_PRODUCT_CASES` |
+| TR20 real-case product validation | §13–§14 | `test_real_catalyst_evaluation.py`, 25 recorded official-SEC cases, completion report |
+| TR21 local collection lifecycle | §6, §8, §14 | `test_collection_lifecycle.py`, cache-only GDELT adapter tests, server lifespan test |
+| TR22 validated local registries and domain tiers | §6, §8, §14 | `test_registry_config.py`, GDELT publisher-quality tests, composition-root tests |
 
 ### Acceptance criteria, fixtures, and Definition of Done
 
@@ -747,9 +791,9 @@ Test identifiers below are mandatory names or markers in the test suite.
   retention constraints. Issuer/GDELT/Bluesky/Mastodon use the reviewed policies
   in §6. FMP, Finnhub, Reddit, Stocktwits, OCC, OHLC vendors, and options vendors
   require an explicit permission/license decision; credentials are insufficient.
-- **Options:** zero-subscription production reports
+- **Options:** the zero-subscription local runtime reports
   `licensed_feed_required`; yfinance is private diagnostic only.
 - **Technical:** typed neutral missingness until a user-supplied/licensed OHLC
-  source is approved.
+  source is approved; this optional extension does not block local completion.
 - **Scorer:** deterministic v1 behind `CatalystScorer`; no trained scorer or
   performance claim in this implementation.
