@@ -79,6 +79,13 @@ def test_evidence_store_path_is_environment_overridable(monkeypatch, tmp_path):
     assert Settings.from_env().evidence_store_path == str(store_path)
 
 
+def test_registry_path_is_environment_overridable(monkeypatch, tmp_path):
+    registry_path = tmp_path / "reviewed.json"
+    monkeypatch.setenv("CATALYST_EDGE_REGISTRY_PATH", str(registry_path))
+
+    assert Settings.from_env().registry_path == str(registry_path)
+
+
 @pytest.mark.parametrize(
     ("name", "value", "message"),
     [
@@ -111,6 +118,41 @@ def test_gdelt_toggle_is_explicit(monkeypatch):
 
     monkeypatch.setenv("CATALYST_EDGE_GDELT", "sometimes")
     with pytest.raises(ValueError, match="CATALYST_EDGE_GDELT"):
+        Settings.from_env()
+
+
+def test_gdelt_lifecycle_settings_are_bounded(monkeypatch):
+    monkeypatch.setenv("CATALYST_EDGE_GDELT_REFRESH_SECONDS", "600")
+    monkeypatch.setenv("CATALYST_EDGE_GDELT_LOOKBACK_DAYS", "30")
+    monkeypatch.setenv("CATALYST_EDGE_GDELT_MAX_AGE_SECONDS", "1800")
+
+    settings = Settings.from_env()
+
+    assert settings.gdelt_refresh_interval_seconds == 600
+    assert settings.gdelt_refresh_lookback_days == 30
+    assert settings.gdelt_freshness_max_age_seconds == 1800
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("CATALYST_EDGE_GDELT_REFRESH_SECONDS", "59"),
+        ("CATALYST_EDGE_GDELT_LOOKBACK_DAYS", "91"),
+        ("CATALYST_EDGE_GDELT_MAX_AGE_SECONDS", "not-an-integer"),
+    ],
+)
+def test_gdelt_lifecycle_settings_reject_invalid_values(monkeypatch, name, value):
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValueError, match=name):
+        Settings.from_env()
+
+
+def test_gdelt_max_age_cannot_be_shorter_than_refresh_interval(monkeypatch):
+    monkeypatch.setenv("CATALYST_EDGE_GDELT_REFRESH_SECONDS", "600")
+    monkeypatch.setenv("CATALYST_EDGE_GDELT_MAX_AGE_SECONDS", "300")
+
+    with pytest.raises(ValueError, match="CATALYST_EDGE_GDELT_MAX_AGE_SECONDS"):
         Settings.from_env()
 
 

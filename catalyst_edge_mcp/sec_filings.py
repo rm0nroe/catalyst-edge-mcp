@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 import httpx
+from lxml import html
 from pydantic import HttpUrl, TypeAdapter
 
 from catalyst_edge_mcp.adapters.base import ProviderGate
@@ -19,6 +22,10 @@ from catalyst_edge_mcp.models import (
     PolicyDecision,
     Source,
     SourceStatus,
+)
+from catalyst_edge_mcp.sec_document_rules import (
+    RULESET_VERSION,
+    classify_sec_primary_document,
 )
 
 TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
@@ -40,6 +47,29 @@ BEARISH_ITEM_SIGNALS = {
     "3.01": "delisting",
     "4.02": "restatement",
 }
+ITEM_PRIORITY = (
+    "1.03",
+    "2.04",
+    "4.02",
+    "3.01",
+    "2.01",
+    "2.02",
+    "2.03",
+    "2.05",
+    "2.06",
+    "1.01",
+    "1.02",
+    "3.02",
+    "3.03",
+    "4.01",
+    "5.02",
+    "5.03",
+    "5.07",
+    "7.01",
+    "8.01",
+    "9.01",
+)
+MAX_PRIMARY_DOCUMENT_BYTES = 2_000_000
 SEC_GATE = ProviderGate(concurrency=2, requests_per_second=2)
 PARSER_VERSION = "sec-events-v1"
 HTTP_URL_LIST = TypeAdapter(list[HttpUrl])
@@ -273,6 +303,13 @@ class SecFilingsAdapter:
             form = str((item.raw_signal or {}).get("form") or "")
             if not accession or form.removesuffix("/A") not in {"8-K", "6-K"}:
                 continue
+            if item.context and item.context.event_type == "other_material_event":
+                try:
+                    await self._enrich_primary_document(client, item)
+                except (httpx.HTTPError, ValueError):
+                    warnings.append(
+                        f"SEC {accession} primary document was unavailable or malformed."
+                    )
             try:
                 source.related_sources = await self._exhibit_links(client, cik, accession)
             except (httpx.HTTPError, ValueError):
@@ -313,6 +350,99 @@ class SecFilingsAdapter:
             if document_type.startswith("EX-99") or "ex99" in normalized_name:
                 links.append(index_url.rsplit("/", 1)[0] + "/" + name)
         return HTTP_URL_LIST.validate_python(links[:20])
+
+    async def _enrich_primary_document(
+        self,
+        client: httpx.AsyncClient,
+        evidence: Evidence,
+    ) -> None:
+        source = evidence.sources[0]
+        url = str(source.canonical_url or source.url or "")
+        self._require_archive_url(url)
+        async with SEC_GATE.request():
+            response = await client.get(url)
+        response.raise_for_status()
+        self._require_archive_url(str(response.url))
+        content = response.content
+        if len(content) > MAX_PRIMARY_DOCUMENT_BYTES:
+            raise ValueError("SEC primary document exceeded the bounded response size")
+        self._apply_primary_document_context(evidence, content)
+        source.raw_sha256 = hashlib.sha256(content).hexdigest()
+
+    @classmethod
+    def _apply_primary_document_context(cls, evidence: Evidence, content: bytes) -> None:
+        try:
+            tree = html.fromstring(content)
+        except (ValueError, TypeError) as exc:
+            raise ValueError("SEC primary document HTML was malformed") from exc
+        for element in tree.xpath("//script|//style|//noscript"):
+            element.drop_tree()
+        text = " ".join(" ".join(tree.xpath("//body//text()")).split())
+        decision = classify_sec_primary_document(text)
+        if isinstance(evidence.raw_signal, dict):
+            evidence.raw_signal["document_enrichment"] = {
+                "ruleset_version": decision.ruleset_version,
+                "status": decision.status,
+                "rule_id": (
+                    decision.selected_rule.rule_id if decision.selected_rule else None
+                ),
+                "rule_version": (
+                    decision.selected_rule.version if decision.selected_rule else None
+                ),
+                "candidate_rule_ids": list(decision.candidate_rule_ids),
+            }
+        rule = decision.selected_rule
+        if rule is None:
+            return
+
+        evidence.context = EvidenceContext(
+            event_type=rule.event_type,
+            event_label=rule.label,
+            novelty=(evidence.context.novelty if evidence.context else "new_event"),
+            materiality=rule.materiality,
+            why_it_matters=rule.why_it_matters,
+            source_record_count=(
+                evidence.context.source_record_count if evidence.context else 1
+            ),
+            corroborating_source_count=(
+                evidence.context.corroborating_source_count if evidence.context else 0
+            ),
+            source_tiers=(
+                list(evidence.context.source_tiers)
+                if evidence.context
+                else ["primary_regulator"]
+            ),
+            correction_of_event_id=(
+                evidence.context.correction_of_event_id if evidence.context else None
+            ),
+        )
+        evidence.change = Change(description=f"SEC 8-K reported {rule.label.lower()}.")
+        if isinstance(evidence.raw_signal, dict):
+            evidence.raw_signal["document_event_type"] = rule.event_type
+        if evidence.sources:
+            evidence.sources[0].parser_version = f"{PARSER_VERSION}+{RULESET_VERSION}"
+        evidence.notes = (
+            f"{evidence.notes or 'SEC filing metadata.'} {rule.label} identified "
+            f"by {rule.rule_id}@{rule.version}."
+        )
+
+    @staticmethod
+    def _require_archive_url(url: str) -> None:
+        parsed = urlsplit(url)
+        decoded_path = unquote(parsed.path)
+        if (
+            parsed.scheme != "https"
+            or (parsed.hostname or "").lower().rstrip(".") != "www.sec.gov"
+            or not parsed.path.startswith("/Archives/edgar/data/")
+            or decoded_path != parsed.path
+            or "\\" in decoded_path
+            or any(segment in {".", ".."} for segment in decoded_path.split("/"))
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("SEC primary document URL is outside the official archive")
 
     async def _resolve_cik(self, client: httpx.AsyncClient, ticker: str) -> str | None:
         if self._ticker_to_cik is None:
@@ -367,6 +497,10 @@ class SecFilingsAdapter:
             item_codes = str(cls._at(recent, "items", index) or "").strip()
             normalized_items = set(item_codes.replace(" ", "").split(","))
             adverse_items = normalized_items & BEARISH_8K_ITEMS
+            if {"2.01", "3.01", "5.01"} <= normalized_items:
+                # A listing termination following a completed change of control is not
+                # an exchange-compliance delisting signal.
+                adverse_items.discard("3.01")
             adverse_event = bool(adverse_items)
             direction = (
                 Direction.BEARISH if base_form == "8-K" and adverse_event else Direction.NEUTRAL
@@ -429,10 +563,10 @@ class SecFilingsAdapter:
     @staticmethod
     def _event_context(form: str, item_codes: set[str]) -> EvidenceContext:
         base_form = form.removesuffix("/A")
-        primary_code = next(
-            (code for code in sorted(item_codes) if code in ITEM_CONTEXT and code != "9.01"),
-            next((code for code in sorted(item_codes) if code in ITEM_CONTEXT), None),
-        )
+        eligible = set(item_codes)
+        if {"2.01", "3.01", "5.01"} <= eligible:
+            eligible.discard("3.01")
+        primary_code = next((code for code in ITEM_PRIORITY if code in eligible), None)
         if primary_code is not None:
             event_type, label, why, materiality = ITEM_CONTEXT[primary_code]
         else:
