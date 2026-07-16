@@ -6,19 +6,22 @@ import argparse
 import asyncio
 import json
 
-from catalyst_edge_mcp.discovery_registry import reviewed_discovery_issuer
 from catalyst_edge_mcp.gdelt_web_ngrams import GdeltWebNgramsRefresher
 from catalyst_edge_mcp.models import SourceStatus, ToolInput
+from catalyst_edge_mcp.registry_config import load_registry_bundle
 from catalyst_edge_mcp.settings import Settings
 
 
 async def _run(tickers: list[str], lookback_days: int) -> int:
     settings = Settings.from_env()
+    registry = load_registry_bundle(settings.registry_path)
     reports: list[dict[str, object]] = []
     reviewed: list[str] = []
     for raw_ticker in tickers:
         ticker = ToolInput(ticker=raw_ticker, lookback_days=lookback_days).ticker
-        issuer = reviewed_discovery_issuer(ticker)
+        issuer = registry.discovery_index.get(ticker) or registry.discovery_index.get(
+            ticker.replace(".", "-")
+        )
         if issuer is None:
             reports.append(
                 {
@@ -31,7 +34,10 @@ async def _run(tickers: list[str], lookback_days: int) -> int:
             continue
         reviewed.append(ticker)
 
-    refresher = GdeltWebNgramsRefresher(settings.evidence_store_path)
+    refresher = GdeltWebNgramsRefresher(
+        settings.evidence_store_path,
+        registry=registry.discovery_index,
+    )
     results = await refresher.refresh(reviewed, lookback_days)
     failed = False
     for ticker in reviewed:

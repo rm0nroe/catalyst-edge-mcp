@@ -8,6 +8,56 @@ model.
 
 The public surface is one tool: `catalyst_edge_score`.
 
+## Current status and completion boundary
+
+As of 2026-07-15, the zero-subscription local runtime has the free dependencies
+needed to deliver the revised product: direct SEC filings and insider records,
+reviewed issuer feeds, GDELT Web NGrams discovery, and Bluesky partial attention.
+The MCP transports, schemas, provenance, typed missingness, event graph, and
+deterministic scorer are implemented and tested.
+
+The first product-completion slice landed on 2026-07-15: evidence now carries
+event type, materiality, novelty, correction lineage, source-record support, and
+factual why-it-matters context. SEC 8-K item codes and insider transaction facts
+drive event-specific headlines, invalidation criteria, and next checks. The slice
+is covered by fixed real RKLB SEC metadata and was rechecked against live RKLB
+Form 144 and 8-K records.
+
+The automatic local GDELT lifecycle is now implemented: server startup schedules
+a bounded catch-up when persisted state is due, periodic refresh remains outside
+the MCP request path, shutdown cancels cleanly, and `catalyst-edge-health` reports
+last-success age plus fresh, stale, failed, never-refreshed, or unregistered state.
+Issuer feeds, discovery aliases, social aliases, and publisher-domain quality tiers
+now load from one strictly validated local JSON registry. The packaged reviewed
+defaults preserve the existing cohort; a custom path replaces that cohort rather
+than silently merging unreviewed aliases.
+
+The zero-subscription runtime meets its current local acceptance corpus as of
+2026-07-16. A 25-case real SEC evaluation complements the 28 synthetic Phase 6
+contract scenarios. It exposed and closed event-priority, merger-delisting, and
+recorded Item 8.01 specificity defects; all recorded classification, provenance,
+freshness, distinct-event, research-value, and dossier-direction checks pass.
+
+Item 8.01 primary-document enrichment is intentionally bounded rather than a
+general SEC semantic parser. The versioned `sec-primary-document-v1` rules cover
+explicit completed debt offerings, entered or amended equity distribution
+agreements, actual share-repurchase activity, and filed prospectus supplements.
+They record the selected rule and version, reject proposed or negated near
+matches, preserve amendment semantics, and leave multiple specific events
+generic rather than choosing an arbitrary first match. Representative HTML,
+table, and inline-XBRL fixtures exercise those boundaries. Unsupported wording
+or filing structures remain `other_material_event` and require human review.
+
+No numeric scorer change was justified because the real corpus contains no
+forward-return labels. The scorer remains deterministic and explicitly
+unbacktested. Paid options flow, licensed OHLC, sentiment, packaging, CI, hosted
+deployment, consumer distribution, and broader SEC semantic extraction are
+future capabilities, not blockers for the documented local acceptance boundary.
+
+In older implementation notes and runtime messages, “production” means the
+real non-fixture composition path used by the local MCP. It does not imply a
+hosted service, third-party provider role, paid account, or consumer rollout.
+
 ## Install and verify
 
 Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required.
@@ -23,7 +73,7 @@ All default tests are offline. Provider tests use sanitized fixtures and
 ownership, and Form 144 parsing plus issuer RSS/Atom collection and event-graph
 behavior and GDELT Web NGrams discovery are implemented with fixed fixtures.
 Official-host Bluesky partial-attention collection is also fixture-covered.
-Phase 5 sentiment/options gates and 28 dated Phase 6 product cases are also
+Phase 5 sentiment/options gates and 28 dated Phase 6 synthetic contract cases are also
 executable offline.
 
 The live Web NGrams replacement evidence is recorded in
@@ -33,15 +83,15 @@ The live Web NGrams replacement evidence is recorded in
 
 | Evidence | Configuration | Behavior when absent |
 | --- | --- | --- |
-| Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required production baseline; missing identity blocks live collection |
+| Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required local live-data baseline; missing identity blocks live collection |
 | Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; `CATALYST_EDGE_ISSUER_FEEDS=enabled` | Enabled by default; unregistered tickers make no feed request and return typed no-observation status |
-| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Request-time reads are cache-only; the batch refresher scans official minute index/TOC files out of band; metadata/links remain neutral and never receive launch-readiness credit |
+| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Server lifespan runs bounded startup/periodic refresh out of band; request-time reads remain cache-only; metadata/links remain neutral and never receive launch-readiness credit |
 | Bluesky partial attention | Reviewed exact aliases; `CATALYST_EDGE_BLUESKY=enabled` | Two complete historical seven-day windows are fetched from official AppView hosts; attention remains neutral |
 | Mastodon attention | Reviewed-instance registry required | No instance is composed: measured representative coverage has not justified an allowlist |
 | FMP and Finnhub | Key plus recorded policy approval | Keys alone do not establish commercial rights and are not composed by default |
 | FlowAlgo/CheddarFlow/future OPRA vendor | Key plus recorded transaction-and-quote license | Otherwise `options_flow` is `licensed_feed_required` |
 | User-supplied OHLC | Recorded provider/license approval | Otherwise `technical` is `licensed_feed_required` |
-| Options selection | `CATALYST_EDGE_OPTIONS_PROVIDER=none\|auto\|flowalgo\|cheddarflow\|yfinance` | Defaults to `none`; yfinance is private diagnostic only and receives no production credit |
+| Options selection | `CATALYST_EDGE_OPTIONS_PROVIDER=none\|auto\|flowalgo\|cheddarflow\|yfinance` | Defaults to `none`; yfinance is private diagnostic only and receives no scored evidence or coverage credit |
 | Sentiment model | `CATALYST_EDGE_SENTIMENT_MODEL=disabled` | Must remain disabled: no audited candidate passes rights, Python, preprocessing, labeled-quality, rounding, and threshold gates |
 
 Provider credentials are read only from this process environment. They are never
@@ -57,6 +107,7 @@ set -a
 source .env
 set +a
 uv run catalyst-edge-refresh-gdelt AAPL NVDA TSLA BRK.B RKLB --lookback-days 14
+uv run catalyst-edge-health AAPL NVDA TSLA BRK.B RKLB
 uv run catalyst-edge-smoke NVDA --lookback-days 14
 ```
 
@@ -73,14 +124,24 @@ Runtime settings:
 | `CATALYST_EDGE_HOST` | `127.0.0.1` | Loopback addresses only |
 | `CATALYST_EDGE_PORT` | `8000` | Streamable HTTP port |
 | `CATALYST_EDGE_ISSUER_FEEDS` | `enabled` | Set `disabled` to suppress issuer-feed requests |
-| `CATALYST_EDGE_GDELT` | `enabled` | Set `disabled` to suppress request-time cache reads; refresh network calls occur only through `catalyst-edge-refresh-gdelt` |
+| `CATALYST_EDGE_GDELT` | `enabled` | Enables cache-only request reads and automatic out-of-band startup/periodic refresh; set `disabled` for a fully disabled GDELT path |
+| `CATALYST_EDGE_GDELT_REFRESH_SECONDS` | `300` | Period between bounded background attempts; 60–86,400 seconds |
+| `CATALYST_EDGE_GDELT_LOOKBACK_DAYS` | `14` | Event-store reporting window used by each background refresh; 1–90 days |
+| `CATALYST_EDGE_GDELT_MAX_AGE_SECONDS` | `900` | Last-success age after which request-time cache health becomes stale; must be at least the refresh interval |
 | `CATALYST_EDGE_BLUESKY` | `enabled` | Set `disabled` to suppress AppView requests; disable all three public collectors for a fully offline runtime |
+| `CATALYST_EDGE_REGISTRY_PATH` | Packaged `reviewed_registries.json` | Optional local JSON replacing the complete reviewed issuer/feed/discovery/social/publisher registry; invalid or ambiguous entries fail startup |
 | `CATALYST_EDGE_EVIDENCE_STORE` | `~/.local/state/catalyst-edge-mcp/evidence.sqlite3` | Local SQLite/WAL collector state and canonical event graph |
 | `CATALYST_EDGE_SENTIMENT_MODEL` | `disabled` | Any other value fails configuration until a reviewed candidate passes every gate |
 
-The reviewed issuer registry currently contains Apple Newsroom and NVIDIA press
-release feeds on issuer-controlled hosts. Tesla and Rocket Lab remain unregistered
-because no official RSS/Atom endpoint was confirmed. The adapter retains titles,
+The packaged registry currently contains Apple Newsroom and NVIDIA press-release
+feeds on issuer-controlled hosts, plus the existing reviewed discovery/social cohort.
+Tesla and Rocket Lab remain unregistered for issuer feeds because no official
+RSS/Atom endpoint was confirmed. Copy
+`catalyst_edge_mcp/data/reviewed_registries.json`, edit the copy, and set
+`CATALYST_EDGE_REGISTRY_PATH` to use a local cohort. The loader rejects unknown
+fields, duplicate ticker ownership, case-insensitive cross-issuer alias collisions,
+noncanonical tickers, malformed CIKs, non-HTTPS feed URLs, and feed hosts absent
+from the exact official-host allowlist. The adapter retains titles,
 timestamps, identifiers, hashes, and links—not publisher bodies. Conditional ETag
 and Last-Modified state is refreshed at ten-minute intervals. Exact fingerprints
 run before same-issuer, 48-hour RapidFuzz matching at a token-set score of 92;
@@ -89,7 +150,7 @@ store also snapshots the reviewed source-policy decisions used by collectors.
 
 GDELT uses reviewed company aliases and the official downloadable Web NGrams feed at
 `storage.googleapis.com/data.gdeltproject.org/gdeltv5/weblegacy/ngrams`. The legacy
-DOC 2.0 endpoint now directs high-traffic callers to these files, so production
+DOC 2.0 endpoint now directs high-traffic callers to these files, so local MCP
 requests remain cache-only while `catalyst-edge-refresh-gdelt` scans the newest
 bounded minute index/TOC pairs out of band. Each pair is downloaded once and matched
 against all requested issuers. Exact HTTPS host/path validation, compressed and
@@ -99,6 +160,21 @@ are retained; article bodies and ngram context are never stored. HTTP, timeout,
 malformed schema, and missing-file states remain typed and preserve cached evidence.
 Discovery observations merge into the same 48-hour canonical graph but remain below
 SEC and issuer-primary sources in global ranking.
+
+GDELT source quality is also registry-driven. Reviewed wire-service domains receive
+`0.70`, reviewed financial-press domains `0.68`, reviewed release-distribution
+domains `0.62`, and every unlisted domain the conservative `0.60` fallback. Matching
+uses an exact hostname or dot-delimited subdomain boundary, so lookalike suffixes do
+not inherit a tier. These remain discovery-quality heuristics to be checked during
+the real-case evaluation; none changes GDELT's neutral direction or readiness credit.
+
+When the MCP server starts, its lifespan coordinator reads persisted collector state.
+Never-refreshed or due issuers receive one immediate bounded catch-up; a recent prior
+attempt delays until the configured interval, preventing restart storms. Refreshes
+then run serially at the configured cadence. The coordinator never runs inside
+`catalyst_edge_score`, and shutdown cancels its task before closing the SQLite handle.
+`catalyst-edge-health` is read-only and exits nonzero unless every requested reviewed
+ticker is fresh.
 
 Bluesky searches reviewed exact cashtags and company aliases through
 `public.api.bsky.app`, falling back only to `api.bsky.app`. Both are documented,
@@ -117,17 +193,23 @@ ProsusAI FinBERT. None passes every rights, input-data, compatibility,
 preprocessing, labeled-quality, rounding, and threshold gate, so no sentiment
 adapter is composed. FlowAlgo and CheddarFlow also remain uncomposed: public
 terms do not grant the required automated extraction, storage, redistribution,
-and derived-output rights. The production server therefore never calls an
+and derived-output rights. The local composition root therefore never calls an
 options provider before policy evaluation. See
 [`docs/audits/phase5-capability-gates-2026-07-13.md`](docs/audits/phase5-capability-gates-2026-07-13.md).
 
-Phase 6 validates 28 dated, sanitized product-contract cases covering strong and
+Phase 6 validates 28 dated, sanitized synthetic product-contract cases covering strong and
 weak bullish evidence, bearish material events, neutral issuer/discovery items,
 insider clusters, Form 144 intent, missing/stale/provider failures, Bluesky
 historical warm-up/outage/sample regressions, contradictions, rejected sentiment, and
 unlicensed options/technical missingness. All 28 expected-versus-produced
-assertions pass. See
+assertions pass. A separate 25-case real SEC product evaluation now covers the
+primary-source gate. See
 [`docs/validation/phase6-historical-validation-2026-07-13.md`](docs/validation/phase6-historical-validation-2026-07-13.md).
+
+The real-case evaluation, semantic corrections, 372-test suite, live target
+cohort, fresh GDELT health, and final RKLB `launch_ready=true` smoke are recorded
+in [`docs/validation/real-catalyst-evaluation-2026-07-15.md`](docs/validation/real-catalyst-evaluation-2026-07-15.md)
+and [`docs/validation/local-product-completion-2026-07-15.md`](docs/validation/local-product-completion-2026-07-15.md).
 
 The live evidence-semantic launch gate passed for RKLB on 2026-07-14 from
 merged `main`; the other four acceptance tickers correctly remained
@@ -150,7 +232,7 @@ CATALYST_EDGE_PORT=8000 \
 uv run catalyst-edge-mcp
 ```
 
-Direct invocation uses the same production composition root:
+Direct invocation uses the same real, non-fixture composition root:
 
 ```bash
 uv run catalyst-edge-score NVDA --lookback-days 14 --risk-mode research
@@ -357,13 +439,13 @@ to three items per family and 15 total.
 ## Private diagnostic and no-data behavior
 
 yfinance may be selected explicitly for development/private diagnostics, but its
-upstream data rights are not commercially cleared by the library. The production
+upstream data rights are not commercially cleared by the library. The default local
 composition root does not call it. Isolated diagnostic code and fixtures grant no
 evidence, canonical coverage, or readiness credit. It is never described as
 smart-money or trade flow. Install diagnostic dependencies explicitly with
 `uv sync --extra diagnostic`.
 
-Private-yfinance production response example:
+Private-yfinance diagnostic response example:
 
 ```json
 {

@@ -135,6 +135,81 @@ async def test_web_ngrams_stores_metadata_only_with_provenance(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_web_ngrams_preserves_multilingual_titles_and_skips_symbol_only_titles(
+    tmp_path,
+):
+    toc_url = f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.toc.json.gz"
+    ngrams_url = f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.ngrams.txt.gz"
+
+    def transport(request):
+        target = str(request.url)
+        if request.method == "HEAD":
+            return httpx.Response(
+                200 if target == toc_url else 404,
+                headers={"Content-Length": "512"},
+            )
+        if target == ngrams_url:
+            return httpx.Response(
+                200,
+                content=_gzip_lines(
+                    "1\tNVIDIA Corporation launches new\t1",
+                    "2\tNVIDIA Corporation market update\t1",
+                ),
+            )
+        if target == toc_url:
+            return httpx.Response(
+                200,
+                content=_gzip_lines(
+                    json.dumps(
+                        {
+                            "ID": 1,
+                            "date": "2026-07-14T23:01:00.000Z",
+                            "lang": "ru",
+                            "title": "Уход спонсоров Гейтса: последние новости",
+                            "url": "https://publisher.example/multilingual-title",
+                        },
+                        ensure_ascii=False,
+                    ),
+                    json.dumps(
+                        {
+                            "ID": 2,
+                            "date": "2026-07-14T23:01:00.000Z",
+                            "lang": "en",
+                            "title": "🔥 !!!",
+                            "url": "https://publisher.example/symbol-only-title",
+                        }
+                    ),
+                ),
+            )
+        raise AssertionError(f"unexpected request: {request.method} {target}")
+
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        refresher = GdeltWebNgramsRefresher(
+            str(tmp_path / "events.sqlite3"),
+            registry=DISCOVERY_ISSUER_INDEX,
+            store=store,
+            client=client,
+            clock=lambda: NOW,
+            candidate_minutes=5,
+            max_files=1,
+        )
+        result = (await refresher.refresh(["NVDA"], 14))["NVDA"]
+
+    events = store.list_events_for_source(
+        DISCOVERY_ISSUER_INDEX["NVDA"].issuer_key,
+        "gdelt",
+        NOW - timedelta(days=1),
+    )
+    assert result.status == SourceStatus.FRESH
+    assert result.degraded is False
+    assert result.matched_documents == 1
+    assert [event.title for event in events] == [
+        "Уход спонсоров Гейтса: последние новости"
+    ]
+
+
+@pytest.mark.asyncio
 async def test_web_ngrams_no_recent_file_is_typed_stale(tmp_path):
     def transport(request):
         return httpx.Response(404)
