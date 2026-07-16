@@ -52,7 +52,11 @@ def canonicalize_url(value: str) -> str:
 
 def normalize_title(value: str) -> str:
     text = value.casefold().replace("&", " and ")
-    return " ".join(re.sub(r"[^a-z0-9%]+", " ", text).split())
+    normalized = "".join(
+        character if character.isalnum() or character == "%" else " "
+        for character in text
+    )
+    return " ".join(normalized.split())
 
 
 @dataclass(frozen=True, slots=True)
