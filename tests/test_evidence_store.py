@@ -4,6 +4,7 @@ from catalyst_edge_mcp.evidence_store import (
     EventObservation,
     EvidenceStore,
     canonicalize_url,
+    normalize_title,
 )
 from catalyst_edge_mcp.models import PolicyDecision
 from tests.conftest import AS_OF
@@ -51,6 +52,13 @@ def test_event_store_creates_required_wal_schema(tmp_path):
         "collector_state",
         "source_policy",
     } <= store.table_names()
+
+
+def test_title_normalization_preserves_unicode_alphanumeric_text():
+    assert normalize_title("Уход спонсоров Гейтса: последние новости") == (
+        "уход спонсоров гейтса последние новости"
+    )
+    assert normalize_title("NVIDIA & Partners: Q2 +10%") == "nvidia and partners q2 10%"
 
 
 def test_event_graph_exact_fuzzy_dedupe_and_primary_source_ranking(tmp_path):
