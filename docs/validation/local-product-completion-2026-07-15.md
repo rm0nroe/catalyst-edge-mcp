@@ -12,7 +12,7 @@ bounded local release.
 
 - `uv lock --check`: passed.
 - `uv run ruff check .`: passed.
-- `uv run pytest -q`: 370 tests passed.
+- `uv run pytest -q`: 372 tests passed.
 - `uv build`: source distribution and wheel built successfully.
 - Wheel inspection confirmed the automatic lifecycle, strict registry loader,
   and packaged reviewed JSON registry are included.
