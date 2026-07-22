@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from catalyst_edge_mcp.models import CatalystEdgeResponse, RiskMode, SourceStatus, ToolInput
+from catalyst_edge_mcp.models import (
+    CatalystEdgeResponse,
+    ReasonCode,
+    RiskMode,
+    SourceStatus,
+    ToolInput,
+)
 
 
 def test_input_defaults_and_ticker_normalization():
@@ -36,3 +42,7 @@ def test_CT_FAMILY_STATUS_is_present_in_public_response_schema():
         status.value for status in SourceStatus
     }
     assert set(family_status["required"]) >= {"family", "available", "status", "reason"}
+    assert set(schema["$defs"]["ReasonCode"]["enum"]) == {
+        reason.value for reason in ReasonCode
+    }
+    assert "reason_records" in data_quality["properties"]
