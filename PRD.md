@@ -22,7 +22,7 @@ The implementation should copy or adapt only the code patterns that are needed f
 
 Retrofit the existing CCE endpoint concept from sibling repo `../analysis-api` into a standalone MCP tool that produces a source-linked catalyst edge dossier for a ticker. The goal is not to expose the current Flask endpoint through MCP as-is. The goal is to reuse the existing CCE skeleton where useful, replace the untrusted scoring path, and return an evidence-first output that an agent can use for investment research, alert triage, or thesis review.
 
-## Current Implementation Status — 2026-07-16
+## Current Implementation Status — 2026-07-21
 
 The free-source research and subsequent implementation established a sufficient
 zero-subscription dependency set for the current local-only product: direct SEC
@@ -39,6 +39,21 @@ implemented. The real evaluation complements the 28 sanitized Phase 6 contract
 fixtures and records primary-link, classification, freshness, distinct-event,
 research-value, and dossier-direction results. Item 8.01 document enrichment is
 a versioned allowlist of supported semantics, not general filing understanding.
+
+GDELT entity-resolution registry v2 is also implemented. Reviewed per-alias context,
+exclusion, validity, CIK, and provenance rules now produce a deterministic decision
+before ingestion, and accepted/rejected candidate metadata is retained in an
+append-only, retry-idempotent audit table without publisher bodies or raw NGram text.
+This improves discovery precision and creates a future replay input; it does not make
+the operational event graph a point-in-time backtest dataset.
+
+Grouped-source recovery and scoped disposition diagnostics are implemented. Each
+grouped operational event has an immutable claim ID and exact supporting-source
+count; the bounded `catalyst_edge_claim_sources` query recovers every source ID and
+accession/record through cursor pages. Dossiers also expose the complete ordered
+set of scoped `observed_none`, `source_unavailable`, `source_unsupported`,
+`entity_rejected`, `discovery_only`, and `evaluated_not_material` records. These
+diagnostics do not create a RESEARCH NOW/MONITOR/IGNORE product classification.
 
 The evaluation did not justify changing numeric scorer weights because it has no
 forward-return labels. Preserving the deterministic, explicitly unbacktested
@@ -99,9 +114,17 @@ The first implementation should be useful even before a trained model exists by 
 
 ## MCP Tool Contract
 
-### Tool Name
+### Primary Tool Name
 
 `catalyst_edge_score`
+
+### Supporting provenance query
+
+`catalyst_edge_claim_sources` accepts an immutable `claim_id`, nonnegative cursor,
+and page limit from 1–20. It returns every source ID, accession/record ID, canonical
+URL, publication/observation/retrieval time, hash, parser version, and policy
+decision counted by that grouped claim. It does not recollect providers or alter
+scoring.
 
 ### Input
 

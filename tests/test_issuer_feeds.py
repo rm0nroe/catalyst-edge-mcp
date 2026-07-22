@@ -60,6 +60,9 @@ async def test_PT_ISSUER_FEED_NORMALIZATION_and_conditional_cache(tmp_path):
     assert item.context.event_type == "issuer_release"
     assert item.context.novelty == "new_event"
     assert item.context.source_record_count == 1
+    assert item.context.claim_id.startswith("clm_")
+    assert len(item.context.supporting_source_ids) == 1
+    assert item.context.supporting_sources_truncated is False
     assert item.direction == Direction.NEUTRAL
     assert item.source_quality == 0.95
     assert item.sources[0].source_id == "issuer_feed"

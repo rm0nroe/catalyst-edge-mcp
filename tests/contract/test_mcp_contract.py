@@ -16,8 +16,10 @@ from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 from pydantic import ValidationError
 
-from catalyst_edge_mcp.models import CatalystEdgeResponse, ToolInput
-from catalyst_edge_mcp.server import catalyst_edge_score, mcp
+from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore
+from catalyst_edge_mcp.models import CatalystEdgeResponse, PolicyDecision, ToolInput
+from catalyst_edge_mcp.server import catalyst_edge_claim_sources, catalyst_edge_score, mcp
+from tests.conftest import AS_OF
 
 TRANSPORTS = ("stdio", "streamable-http")
 INVALID_ARGUMENTS = (
@@ -193,6 +195,7 @@ async def test_CT_DISCOVERY():
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     tool = tools["catalyst_edge_score"]
     assert tool.name == "catalyst_edge_score"
+    assert tools["catalyst_edge_claim_sources"].name == "catalyst_edge_claim_sources"
 
 
 @pytest.mark.asyncio
@@ -226,6 +229,41 @@ async def test_CT_RESPONSE_SCHEMA():
         "next_checks",
     ]
     assert "source_count" in tool.outputSchema["$defs"]["Evidence"]["required"]
+    assert "reason_records" in tool.outputSchema["$defs"]["DataQuality"]["properties"]
+
+
+@pytest.mark.asyncio
+async def test_CT_CLAIM_SOURCE_SCHEMA_AND_DIRECT_INVOCATION(tmp_path, monkeypatch):
+    path = tmp_path / "claims.sqlite3"
+    store = EvidenceStore(str(path))
+    event = store.ingest_event(
+        EventObservation(
+            source_id="sec",
+            source_name="SEC EDGAR",
+            source_tier="primary_regulator",
+            issuer_key="CIK0001045810",
+            record_id="0001045810-26-000001",
+            canonical_url="https://www.sec.gov/Archives/edgar/data/1045810/filing.htm",
+            title="NVIDIA files a material current report",
+            published_at=AS_OF,
+            observed_at=AS_OF,
+            retrieved_at=AS_OF,
+            raw_sha256="a" * 64,
+            parser_version="fixture-v1",
+            policy_decision=PolicyDecision.APPROVED,
+        )
+    )
+    store.close()
+    monkeypatch.setenv("CATALYST_EDGE_EVIDENCE_STORE", str(path))
+
+    tools = {tool.name: tool for tool in await mcp.list_tools()}
+    schema = tools["catalyst_edge_claim_sources"].inputSchema
+    assert schema["properties"]["limit"]["maximum"] == 20
+    assert schema["additionalProperties"] is False
+
+    page = await catalyst_edge_claim_sources(event.claim_id, limit=1)
+    assert page.total_sources == 1
+    assert page.sources[0].accession_or_record_id == "0001045810-26-000001"
 
 
 def test_CT_INPUT_SCHEMA_REJECTS_UNKNOWN():
@@ -281,7 +319,10 @@ async def test_UT_INPUT_VALIDATION_PRECEDES_COMPOSITION(monkeypatch):
 async def test_CT_STDIO_DISCOVERY():
     async with _transport_session("stdio") as session:
         tools = await session.list_tools()
-    assert [tool.name for tool in tools.tools] == ["catalyst_edge_score"]
+    assert [tool.name for tool in tools.tools] == [
+        "catalyst_edge_score",
+        "catalyst_edge_claim_sources",
+    ]
 
 
 @pytest.mark.asyncio
@@ -295,7 +336,10 @@ async def test_CT_STDIO_INVOCATION():
 async def test_CT_HTTP_DISCOVERY():
     async with _transport_session("streamable-http") as session:
         tools = await session.list_tools()
-    assert [tool.name for tool in tools.tools] == ["catalyst_edge_score"]
+    assert [tool.name for tool in tools.tools] == [
+        "catalyst_edge_score",
+        "catalyst_edge_claim_sources",
+    ]
 
 
 @pytest.mark.asyncio
@@ -319,4 +363,7 @@ async def test_large_stderr_does_not_block_http_transport():
     async with _transport_session("streamable-http", server_command=command) as session:
         tools = await session.list_tools()
 
-    assert [tool.name for tool in tools.tools] == ["catalyst_edge_score"]
+    assert [tool.name for tool in tools.tools] == [
+        "catalyst_edge_score",
+        "catalyst_edge_claim_sources",
+    ]

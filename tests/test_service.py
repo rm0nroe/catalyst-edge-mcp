@@ -6,7 +6,17 @@ import httpx
 import pytest
 
 from catalyst_edge_mcp.adapters import StaticAdapter
-from catalyst_edge_mcp.models import AdapterResult, Direction, RiskMode, SourceStatus, ToolInput
+from catalyst_edge_mcp.models import (
+    AdapterResult,
+    Direction,
+    EvidenceContext,
+    ReasonCode,
+    ReasonScope,
+    RiskMode,
+    SourceStatus,
+    ToolInput,
+)
+from catalyst_edge_mcp.reason_records import scoped_reason
 from catalyst_edge_mcp.service import CatalystService
 from tests.conftest import AS_OF, make_evidence, make_result
 
@@ -198,6 +208,80 @@ async def test_custom_expected_family_uses_generic_provider_description(fixed_cl
         "alternative is unconfigured; expected a configured provider" in warning
         for warning in response.data_quality.warnings
     )
+
+
+@pytest.mark.asyncio
+async def test_scoped_reasons_retain_all_codes_in_deterministic_display_order(fixed_clock):
+    discovery = make_evidence("filings_news", "publisher_link")
+    discovery.context = EvidenceContext(
+        event_type="publisher_coverage",
+        event_label="Publisher coverage discovery",
+        novelty="new_coverage",
+        materiality="discovery_only",
+        why_it_matters="Discovery metadata requires primary-source verification.",
+    )
+    supplied = [
+        scoped_reason(
+            ReasonCode.ENTITY_REJECTED,
+            ReasonScope.CANDIDATE,
+            "candidate_rejected",
+            source_id="gdelt",
+            family="filings_news",
+            observed_at=AS_OF,
+        ),
+        scoped_reason(
+            ReasonCode.EVALUATED_NOT_MATERIAL,
+            ReasonScope.CANDIDATE,
+            "candidate_reviewed",
+            source_id="issuer_feed",
+            family="filings_news",
+            observed_at=AS_OF,
+        ),
+    ]
+    adapters = [
+        StaticAdapter(
+            "filings_news",
+            AdapterResult(
+                family="filings_news",
+                provider="gdelt",
+                evidence=[discovery],
+                reason_records=supplied,
+                collected_at=AS_OF,
+            ),
+            provider="gdelt",
+        ),
+        StaticAdapter(
+            "social",
+            AdapterResult(
+                family="social",
+                provider="bluesky",
+                status=SourceStatus.NO_OBSERVATIONS,
+                collected_at=AS_OF,
+            ),
+            provider="bluesky",
+        ),
+        ExceptionAdapter("insider_trading", RuntimeError("unavailable"), provider="sec"),
+    ]
+
+    response = await CatalystService(
+        adapters,
+        clock=fixed_clock,
+        expected_families=frozenset(
+            {"filings_news", "social", "technical", "insider_trading"}
+        ),
+    ).evaluate(ToolInput(ticker="NVDA"))
+
+    assert [item.code for item in response.data_quality.reason_records] == [
+        ReasonCode.SOURCE_UNAVAILABLE,
+        ReasonCode.SOURCE_UNSUPPORTED,
+        ReasonCode.ENTITY_REJECTED,
+        ReasonCode.OBSERVED_NONE,
+        ReasonCode.DISCOVERY_ONLY,
+        ReasonCode.EVALUATED_NOT_MATERIAL,
+    ]
+    assert len({item.reason_id for item in response.data_quality.reason_records}) == 6
+    assert response.data_quality.reason_record_count == 6
+    assert response.data_quality.reason_records_truncated is False
 
 
 @pytest.mark.asyncio

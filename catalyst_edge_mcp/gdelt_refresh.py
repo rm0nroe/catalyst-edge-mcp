@@ -56,6 +56,12 @@ async def _run(tickers: list[str], lookback_days: int) -> int:
                 "evidence_count": result.evidence_count,
                 "files_processed": result.files_processed,
                 "matched_documents": result.matched_documents,
+                "candidate_documents": result.candidate_documents,
+                "accepted_documents": result.accepted_documents,
+                "ingested_documents": result.ingested_documents,
+                "accepted_overflow_documents": result.accepted_overflow_documents,
+                "rejected_documents": result.rejected_documents,
+                "rejection_reasons": dict(result.rejection_reasons),
                 "degraded": result.degraded,
                 "warnings": list(result.warnings),
             }

@@ -37,6 +37,34 @@ def _write_registry(tmp_path, issuers):
     return path
 
 
+def _rule(**overrides):
+    rule = {
+        "rule_id": "microsoft_legal_name",
+        "version": "1",
+        "alias": "Microsoft Corporation",
+        "alias_kind": "legal_name",
+        "match_mode": "phrase",
+        "required_context": [],
+        "negative_context": [],
+        "valid_from": None,
+        "valid_to": None,
+        "canonical_cik": "CIK0000789019",
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed fixture rule.",
+    }
+    rule.update(overrides)
+    return rule
+
+
+def _write_v2_registry(tmp_path, rules):
+    issuer = _issuer()
+    issuer.pop("discovery_aliases")
+    issuer["discovery_rules"] = rules
+    path = tmp_path / "registries-v2.json"
+    path.write_text(json.dumps({"version": 2, "issuers": [issuer]}))
+    return path
+
+
 def test_packaged_reviewed_registry_preserves_existing_defaults():
     bundle = load_registry_bundle(DEFAULT_REGISTRY_PATH)
 
@@ -46,6 +74,20 @@ def test_packaged_reviewed_registry_preserves_existing_defaults():
     assert bundle.discovery_index["NVDA"].query_aliases == (
         "NVIDIA",
         "NVIDIA Corporation",
+    )
+    assert bundle.discovery_index["TSLA"].query_aliases == (
+        "Tesla Inc",
+        "Tesla Motors",
+        "Tesla Energy",
+        "Tesla",
+    )
+    assert bundle.discovery_index["TSLA"].entity_rules[2].required_context == (
+        "battery",
+        "storage",
+        "Megapack",
+        "Powerwall",
+        "solar",
+        "deployment",
     )
     assert bundle.publisher_quality_index["reuters.com"].quality == 0.70
     assert bundle.publisher_quality_index["businesswire.com"].tier == (
@@ -148,3 +190,49 @@ def test_registry_rejects_noncanonical_ticker_aliases(tmp_path):
 
     with pytest.raises(ValueError, match="canonical uppercase dash tickers"):
         load_registry_bundle(path)
+
+
+def test_registry_v1_aliases_translate_to_compatibility_rules(tmp_path):
+    bundle = load_registry_bundle(_write_registry(tmp_path, [_issuer()]))
+
+    issuer = bundle.discovery_index["MSFT"]
+    assert issuer.query_aliases == ("Microsoft Corporation",)
+    assert issuer.entity_rules == ()
+    assert issuer.effective_entity_rules[0].rule_id == "legacy_alias_1"
+
+
+def test_registry_v2_loads_per_alias_entity_rules(tmp_path):
+    bundle = load_registry_bundle(_write_v2_registry(tmp_path, [_rule()]))
+
+    rule = bundle.discovery_index["MSFT"].entity_rules[0]
+    assert rule.rule_id == "microsoft_legal_name"
+    assert rule.canonical_cik == "CIK0000789019"
+    assert rule.match_mode == "phrase"
+
+
+@pytest.mark.parametrize(
+    ("rules", "message"),
+    [
+        (
+            [_rule(), _rule(alias="Microsoft Corp")],
+            "duplicate rule_id",
+        ),
+        ([_rule(alias_kind="executive")], "alias_kind is not supported"),
+        ([_rule(match_mode="substring")], "match_mode is not supported"),
+        (
+            [_rule(valid_from="2026-07-22", valid_to="2026-07-21")],
+            "validity window is reversed",
+        ),
+        (
+            [_rule(required_context=["cloud"], negative_context=["CLOUD"])],
+            "required and negative context overlap",
+        ),
+        (
+            [_rule(canonical_cik="CIK0001652044")],
+            "canonical_cik must match",
+        ),
+    ],
+)
+def test_registry_v2_rejects_invalid_entity_rules(tmp_path, rules, message):
+    with pytest.raises(ValueError, match=message):
+        load_registry_bundle(_write_v2_registry(tmp_path, rules))
