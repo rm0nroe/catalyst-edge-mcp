@@ -75,6 +75,7 @@ def test_build_service_enables_sec_only_when_declared(monkeypatch):
     assert [adapter.provider for adapter in configured.adapters] == [
         "sec",
         "sec",
+        "sec_funds",
         "issuer_feed",
         "gdelt",
         "bluesky",
@@ -92,6 +93,7 @@ def test_build_service_enables_sec_only_when_declared(monkeypatch):
     assert [adapter.provider for adapter in disabled.adapters] == [
         "sec",
         "sec",
+        "sec_funds",
         "gdelt",
         "bluesky",
     ]
@@ -101,12 +103,17 @@ def test_build_service_enables_sec_only_when_declared(monkeypatch):
     assert [adapter.provider for adapter in fully_disabled.adapters] == [
         "sec",
         "sec",
+        "sec_funds",
         "bluesky",
     ]
 
     monkeypatch.setenv("CATALYST_EDGE_BLUESKY", "disabled")
     no_network_extensions = build_service(Settings.from_env())
-    assert [adapter.provider for adapter in no_network_extensions.adapters] == ["sec", "sec"]
+    assert [adapter.provider for adapter in no_network_extensions.adapters] == [
+        "sec",
+        "sec",
+        "sec_funds",
+    ]
 
 
 def test_main_treats_operator_cancellation_as_clean_shutdown(monkeypatch):
