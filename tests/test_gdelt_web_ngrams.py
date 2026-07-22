@@ -170,7 +170,7 @@ async def test_web_ngrams_preserves_multilingual_titles_and_skips_symbol_only_ti
                             "ID": 1,
                             "date": "2026-07-14T23:01:00.000Z",
                             "lang": "ru",
-                            "title": "Уход спонсоров Гейтса: последние новости",
+                            "title": "NVIDIA: последние новости",
                             "url": "https://publisher.example/multilingual-title",
                         },
                         ensure_ascii=False,
@@ -210,7 +210,7 @@ async def test_web_ngrams_preserves_multilingual_titles_and_skips_symbol_only_ti
     assert result.degraded is False
     assert result.matched_documents == 1
     assert [event.title for event in events] == [
-        "Уход спонсоров Гейтса: последние новости"
+        "NVIDIA: последние новости"
     ]
 
 
@@ -301,11 +301,16 @@ async def test_tsla_entity_rules_reject_noise_and_accept_company_context(tmp_pat
                                 "ID": document_id,
                                 "date": "2026-07-14T23:01:00.000Z",
                                 "lang": "en",
-                                "title": f"Candidate article {document_id}",
+                                "title": title,
                                 "url": f"https://publisher.example/tesla-{document_id}",
                             }
                         )
-                        for document_id in range(1, 5)
+                        for document_id, title in (
+                            (1, "Nikola Tesla coil museum"),
+                            (2, "Tesla appears in documentary"),
+                            (3, "Tesla vehicle deliveries rise"),
+                            (4, "Tesla Energy battery deployment"),
+                        )
                     )
                 ),
             )
@@ -348,6 +353,96 @@ async def test_tsla_entity_rules_reject_noise_and_accept_company_context(tmp_pat
     assert accepted_rules == {"tesla_brand_contextual", "tesla_energy_brand"}
     assert all(len(item["context_sha256"]) == 64 for item in audits)
     assert all("quadgram" not in item for item in audits)
+
+
+@pytest.mark.asyncio
+async def test_tsla_rejects_body_context_when_publisher_title_is_unaligned(tmp_path):
+    """Tangential body mentions must not surface as Tesla publisher headlines."""
+    toc_url = f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.toc.json.gz"
+    ngrams_url = f"{GDELT_WEB_NGRAMS_BASE}/{STAMP}.ngrams.txt.gz"
+
+    def transport(request):
+        target = str(request.url)
+        if request.method == "HEAD":
+            return httpx.Response(
+                200 if target == toc_url else 404,
+                headers={"Content-Length": "512"},
+            )
+        if target == ngrams_url:
+            return httpx.Response(
+                200,
+                content=_gzip_lines(
+                    "1\tTesla Model mentioned in court report\t1",
+                    "2\tTesla Model compared with electric GT\t1",
+                    "3\tTesla stock shares ahead of earnings\t1",
+                ),
+            )
+        if target == toc_url:
+            return httpx.Response(
+                200,
+                content=_gzip_lines(
+                    json.dumps(
+                        {
+                            "ID": 1,
+                            "date": "2026-07-22T15:01:00.000Z",
+                            "lang": "en",
+                            "title": (
+                                "Hearing to Continue into Day Two for Singer D4vd "
+                                "in Teen's Killing"
+                            ),
+                            "url": "https://publisher.example/d4vd-hearing",
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "ID": 2,
+                            "date": "2026-07-22T15:01:00.000Z",
+                            "lang": "uk",
+                            "title": "Range Rover представив електричний гран-турер GT",
+                            "url": "https://publisher.example/range-rover-gt",
+                        },
+                        ensure_ascii=False,
+                    ),
+                    json.dumps(
+                        {
+                            "ID": 3,
+                            "date": "2026-07-22T15:01:00.000Z",
+                            "lang": "en",
+                            "title": "Tesla Q2 earnings put TSLA stock in focus",
+                            "url": "https://publisher.example/tesla-q2-earnings",
+                        }
+                    ),
+                ),
+            )
+        raise AssertionError(f"unexpected request: {request.method} {target}")
+
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(transport)) as client:
+        result = (
+            await GdeltWebNgramsRefresher(
+                str(tmp_path / "events.sqlite3"),
+                registry=DISCOVERY_ISSUER_INDEX,
+                store=store,
+                client=client,
+                clock=lambda: NOW,
+                candidate_minutes=5,
+                max_files=1,
+            ).refresh(["TSLA"], 14)
+        )["TSLA"]
+
+    issuer = DISCOVERY_ISSUER_INDEX["TSLA"]
+    events = store.list_events_for_source(issuer.issuer_key, "gdelt", NOW - timedelta(days=1))
+    audits = store.entity_match_audits(issuer.issuer_key)
+    assert result.candidate_documents == 3
+    assert result.accepted_documents == 1
+    assert result.rejected_documents == 2
+    assert dict(result.rejection_reasons) == {"title_not_aligned": 2}
+    assert [event.title for event in events] == [
+        "Tesla Q2 earnings put TSLA stock in focus"
+    ]
+    assert {
+        item["reason_code"] for item in audits if not item["accepted"]
+    } == {"title_not_aligned"}
 
 
 @pytest.mark.asyncio
@@ -435,7 +530,11 @@ async def test_rejected_candidates_do_not_starve_later_accepted_match(tmp_path):
                                 "ID": document_id,
                                 "date": "2026-07-14T23:01:00.000Z",
                                 "lang": "en",
-                                "title": f"Candidate {document_id}",
+                                "title": (
+                                    "Tesla vehicle deliveries rise"
+                                    if document_id == 61
+                                    else f"Candidate {document_id}"
+                                ),
                                 "url": f"https://publisher.example/candidate-{document_id}",
                             }
                         )

@@ -330,7 +330,11 @@ Baseline contracts:
   matches all reviewed issuers in one pass, and stores publisher metadata/links
   rather than article bodies or ngram context. Registry-v2 rules resolve each valid
   TOC candidate before ingestion using reviewed alias kind, match mode, context,
-  validity, CIK, and rule provenance. Exact host/path validation, byte ceilings, a
+  validity, CIK, and rule provenance. A candidate that passes body-context rules must
+  also name a reviewed issuer alias or non-single-letter ticker in its surfaced title;
+  `title_not_aligned` candidates remain audited but are not ingested. Cache reads apply
+  the same alignment check to suppress legacy tangential events without deleting them.
+  Exact host/path validation, byte ceilings, a
   five-file run limit, a 200-candidate audit cap, and a separate 50-accepted-document
   ingestion cap per issuer bound the collector.
 - Bluesky: search exact cashtags/reviewed aliases through the documented
@@ -670,7 +674,8 @@ explicit unsupported reasons from corporate filing and insider collectors.
    Reviewed publisher-domain tiers deterministically set GDELT quality from 0.62 to
    0.70; unlisted domains receive 0.60 and never inherit through lookalike suffixes.
    Registry v2 now applies ruleset-versioned per-alias context, exclusion, validity,
-   CIK, and provenance rules before ingestion. Every valid TOC candidate receives an
+   CIK, provenance, and surfaced-title alignment rules before ingestion. Every valid
+   TOC candidate receives an
    append-only accepted/rejected audit record; reject-only runs remain fresh successful
    no-observation collections. Legacy registry v1 files remain load-compatible, and
    legacy cached observations age out normally rather than being destructively purged.
