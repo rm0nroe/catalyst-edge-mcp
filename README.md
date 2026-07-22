@@ -184,7 +184,11 @@ DOC 2.0 endpoint now directs high-traffic callers to these files, so local MCP
 requests remain cache-only while `catalyst-edge-refresh-gdelt` scans the newest
 bounded minute index/TOC pairs out of band. Each pair is downloaded once and matched
 against all requested issuers. A deterministic ruleset-versioned decision accepts or
-rejects each valid TOC candidate before ingestion. Exact HTTPS host/path validation,
+rejects each valid TOC candidate before ingestion. Accepted body-context matches must
+also name a reviewed issuer alias or non-single-letter ticker in the surfaced publisher
+title; otherwise they are audited as `title_not_aligned`. The cache-read path applies
+the same check so legacy tangential titles stop surfacing without deleting audit history.
+Exact HTTPS host/path validation,
 compressed and decompressed byte ceilings, a five-file run limit, a 200-candidate
 per-issuer audit cap, and a separate 50-accepted-document ingestion cap bound the
 work without allowing false positives to starve later valid matches. Only publisher

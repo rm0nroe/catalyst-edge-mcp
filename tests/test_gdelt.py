@@ -294,6 +294,49 @@ async def test_gdelt_request_diagnostics_include_retained_entity_rejections(tmp_
 
 
 @pytest.mark.asyncio
+async def test_gdelt_request_path_filters_legacy_unaligned_cached_titles(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    store.ingest_event(
+        EventObservation(
+            source_id="gdelt",
+            source_name="GDELT discovery (publisher.example)",
+            source_tier="discovery",
+            issuer_key=ISSUER.issuer_key,
+            record_id="https://publisher.example/unrelated",
+            canonical_url="https://publisher.example/unrelated",
+            title="Unrelated court hearing continues",
+            published_at=AS_OF,
+            observed_at=AS_OF,
+            retrieved_at=AS_OF,
+            raw_sha256="a" * 64,
+            parser_version="gdelt-web-ngrams-v2+legacy",
+            policy_decision=PolicyDecision.APPROVED_DISCOVERY,
+        )
+    )
+    store.update_collector_state(
+        source_id="gdelt",
+        issuer_key=ISSUER.issuer_key,
+        feed_url=GDELT_ENDPOINT,
+        status=SourceStatus.FRESH.value,
+        checked_at=AS_OF,
+        succeeded=True,
+    )
+
+    result = await GdeltAdapter(
+        str(tmp_path / "events.sqlite3"),
+        registry={"NVDA": ISSUER},
+        store=store,
+        clock=lambda: AS_OF,
+        live_refresh=False,
+    ).collect("NVDA", 14)
+
+    assert result.status is SourceStatus.NO_OBSERVATIONS
+    assert result.evidence == []
+    assert [reason.code for reason in result.reason_records] == [ReasonCode.ENTITY_REJECTED]
+    assert result.reason_records[0].detail == "cached_title_not_aligned=1"
+
+
+@pytest.mark.asyncio
 async def test_gdelt_request_path_exposes_stale_background_cache_age(tmp_path):
     store = EvidenceStore(str(tmp_path / "events.sqlite3"))
     store.update_collector_state(

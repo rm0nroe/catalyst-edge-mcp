@@ -11,11 +11,12 @@ from catalyst_edge_mcp.entity_resolution import (
 TSLA = DISCOVERY_ISSUER_INDEX["TSLA"]
 
 
-def _decision(text: str, year: int = 2026):
+def _decision(text: str, year: int = 2026, *, title: str | None = None):
     return decide_entity_candidate(
         TSLA,
         match_entity_rules(text, TSLA),
         datetime(year, 7, 21, tzinfo=UTC),
+        title=title or text,
     )
 
 
@@ -47,3 +48,18 @@ def test_negative_context_overrides_positive_issuer_terms():
     assert decision.accepted is False
     assert decision.reason_code == "negative_context"
     assert set(decision.negative_context_matches) == {"Nikola", "museum"}
+
+
+def test_entity_context_requires_publisher_title_alignment():
+    unaligned = _decision(
+        "Tesla Model mentioned in court report",
+        title="Hearing continues in unrelated criminal case",
+    )
+    ticker_aligned = _decision(
+        "Tesla stock shares ahead of earnings",
+        title="TSLA earnings preview",
+    )
+
+    assert unaligned.accepted is False
+    assert unaligned.reason_code == "title_not_aligned"
+    assert ticker_aligned.accepted is True
