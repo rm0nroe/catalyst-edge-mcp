@@ -95,3 +95,37 @@ class PublisherDomainQuality:
     quality: float
     reviewed_on: str
     review_note: str
+
+
+@dataclass(frozen=True, slots=True)
+class FundTickerVersion:
+    ticker: str
+    valid_from: str | None
+    valid_to: str | None
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
+class FundSponsorSource:
+    sponsor_name: str
+    notice_url: str
+    official_hosts: tuple[str, ...]
+    reviewed_on: str
+    review_note: str
+
+
+@dataclass(frozen=True, slots=True)
+class FundIdentity:
+    fund_name: str
+    registrant_cik: str
+    series_id: str | None
+    class_id: str | None
+    identity_status: str
+    ticker_versions: tuple[FundTickerVersion, ...]
+    sponsor_source: FundSponsorSource
+    reviewed_on: str
+    review_note: str
+
+    @property
+    def tickers(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(version.ticker for version in self.ticker_versions))

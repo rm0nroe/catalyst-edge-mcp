@@ -216,6 +216,160 @@
       "issuer_feed": null
     }
   ],
+  "funds": [
+    {
+      "fund_name": "SPDR S&P 500 ETF Trust",
+      "registrant_cik": "CIK0000884394",
+      "series_id": null,
+      "class_id": null,
+      "identity_status": "unsupported_no_series_class",
+      "ticker_versions": [
+        {"ticker": "SPY", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/spdr-sp-500-etf-trust-spy",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "SEC exchange mapping resolves the CIK, but the official mutual-fund ticker map supplies no series/class IDs."
+    },
+    {
+      "fund_name": "Invesco QQQ Trust, Series 1",
+      "registrant_cik": "CIK0001067839",
+      "series_id": "S000101292",
+      "class_id": "C000271435",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "QQQ", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "Invesco",
+        "notice_url": "https://www.invesco.com/qqq-etf/en/home.html",
+        "official_hosts": ["www.invesco.com", "invesco.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "SPDR Dow Jones Industrial Average ETF Trust",
+      "registrant_cik": "CIK0001041130",
+      "series_id": null,
+      "class_id": null,
+      "identity_status": "unsupported_no_series_class",
+      "ticker_versions": [
+        {"ticker": "DIA", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/spdr-dow-jones-industrial-average-etf-trust-dia",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "SEC exchange mapping resolves the CIK, but the official mutual-fund ticker map supplies no series/class IDs."
+    },
+    {
+      "fund_name": "iShares Russell 2000 ETF",
+      "registrant_cik": "CIK0001100663",
+      "series_id": "S000004344",
+      "class_id": "C000012074",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "IWM", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "iShares",
+        "notice_url": "https://www.ishares.com/us/products/239710/ishares-russell-2000-etf",
+        "official_hosts": ["www.ishares.com", "ishares.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "The Energy Select Sector SPDR Fund",
+      "registrant_cik": "CIK0001064641",
+      "series_id": "S000006410",
+      "class_id": "C000017596",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "XLE", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/the-energy-select-sector-spdr-fund-xle",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "The Technology Select Sector SPDR Fund",
+      "registrant_cik": "CIK0001064641",
+      "series_id": "S000006415",
+      "class_id": "C000017601",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "XLK", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/the-technology-select-sector-spdr-fund-xlk",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "SPDR Gold Trust",
+      "registrant_cik": "CIK0001222333",
+      "series_id": null,
+      "class_id": null,
+      "identity_status": "unsupported_non_investment_company",
+      "ticker_versions": [
+        {"ticker": "GLD", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "World Gold Trust Services",
+        "notice_url": "https://www.spdrgoldshares.com/usa/",
+        "official_hosts": ["www.spdrgoldshares.com", "spdrgoldshares.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "The official SEC exchange map resolves the CIK, but GLD is not in the N-CEN/NPORT series/class lane."
+    },
+    {
+      "fund_name": "VanEck Gold Miners ETF",
+      "registrant_cik": "CIK0001137360",
+      "series_id": "S000009191",
+      "class_id": "C000024980",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "GDX", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "VanEck",
+        "notice_url": "https://www.vaneck.com/us/en/investments/gold-miners-etf-gdx/",
+        "official_hosts": ["www.vaneck.com", "vaneck.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    }
+  ],
   "publisher_domains": [
     {
       "domain": "reuters.com",

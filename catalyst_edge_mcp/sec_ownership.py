@@ -18,9 +18,12 @@ from catalyst_edge_mcp.models import (
     Evidence,
     EvidenceContext,
     PolicyDecision,
+    ReasonCode,
+    ReasonScope,
     Source,
     SourceStatus,
 )
+from catalyst_edge_mcp.reason_records import scoped_reason
 from catalyst_edge_mcp.sec_filings import (
     SEC_GATE,
     SUBMISSIONS_URL,
@@ -231,6 +234,7 @@ class SecInsiderAdapter:
         *,
         client: httpx.AsyncClient | None = None,
         clock=None,
+        fund_tickers: frozenset[str] = frozenset(),
     ) -> None:
         if "@" not in user_agent:
             raise ValueError("SEC User-Agent must include a contact email address")
@@ -238,6 +242,7 @@ class SecInsiderAdapter:
         self._client = client
         self._clock = clock or (lambda: datetime.now(UTC))
         self._ticker_to_cik: dict[str, str] | None = None
+        self._fund_tickers = fund_tickers
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
         if self._client is not None:
@@ -254,6 +259,28 @@ class SecInsiderAdapter:
         self, client: httpx.AsyncClient, ticker: str, lookback_days: int
     ) -> AdapterResult:
         now = self._as_utc(self._clock())
+        if ticker in self._fund_tickers:
+            return AdapterResult(
+                family=self.family,
+                provider=self.provider,
+                warnings=[
+                    f"{ticker} is a reviewed fund; corporate-insider semantics were skipped."
+                ],
+                status=SourceStatus.UNSUPPORTED,
+                policy_decision=PolicyDecision.APPROVED,
+                collected_at=now,
+                reason_records=[
+                    scoped_reason(
+                        ReasonCode.SOURCE_UNSUPPORTED,
+                        ReasonScope.FAMILY,
+                        self.family,
+                        source_id=self.provider,
+                        family=self.family,
+                        observed_at=now,
+                        detail="fund_has_no_corporate_insider_semantics",
+                    )
+                ],
+            )
         cik = await self._resolve_cik(client, ticker)
         if cik is None:
             return self._result([], [f"SEC submissions mapping has no CIK for {ticker}."], now)

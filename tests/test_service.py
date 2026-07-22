@@ -48,6 +48,20 @@ class ExceptionAdapter:
         raise self.exception
 
 
+@dataclass
+class TickerScopedAdapter:
+    family: str = "filings_news"
+    provider: str = "fund_fixture"
+    called: bool = False
+
+    def supports(self, ticker):
+        return ticker == "QQQ"
+
+    async def collect(self, ticker, lookback_days):
+        self.called = True
+        return AdapterResult(family=self.family, provider=self.provider)
+
+
 @pytest.mark.asyncio
 async def test_all_success_fixture_has_complete_coverage(fixed_clock):
     adapters = [
@@ -300,6 +314,44 @@ async def test_sources_and_raw_signals_are_optional(fixed_clock):
     assert default.evidence[0].source_count == 0
     assert default.evidence[0].raw_signal is None
     assert included.evidence[0].raw_signal == {"mentions": 125, "account": "redacted"}
+
+
+@pytest.mark.asyncio
+async def test_unsupported_status_retains_source_unsupported_reason(fixed_clock):
+    adapter = StaticAdapter(
+        "filings_news",
+        AdapterResult(
+            family="filings_news",
+            provider="sec_funds",
+            status=SourceStatus.UNSUPPORTED,
+            collected_at=AS_OF,
+        ),
+        provider="sec_funds",
+    )
+
+    response = await CatalystService(
+        [adapter],
+        clock=fixed_clock,
+        expected_families=frozenset({"filings_news"}),
+    ).evaluate(ToolInput(ticker="SPY"))
+
+    assert response.data_quality.family_statuses[0].status == SourceStatus.UNSUPPORTED
+    assert [reason.code for reason in response.data_quality.reason_records] == [
+        ReasonCode.SOURCE_UNSUPPORTED
+    ]
+
+
+@pytest.mark.asyncio
+async def test_ticker_scoped_adapter_is_not_called_outside_its_registry(fixed_clock):
+    adapter = TickerScopedAdapter()
+
+    await CatalystService(
+        [adapter],
+        clock=fixed_clock,
+        expected_families=frozenset({"filings_news"}),
+    ).evaluate(ToolInput(ticker="NVDA"))
+
+    assert adapter.called is False
 
 
 @pytest.mark.asyncio

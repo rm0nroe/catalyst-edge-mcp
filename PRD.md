@@ -55,6 +55,14 @@ set of scoped `observed_none`, `source_unavailable`, `source_unsupported`,
 `entity_rejected`, `discovery_only`, and `evaluated_not_material` records. These
 diagnostics do not create a RESEARCH NOW/MONITOR/IGNORE product classification.
 
+The distinct SEC-backed ETF/fund lane is implemented for SPY, QQQ, DIA, IWM,
+XLE, XLK, GLD, and GDX. Five funds resolve official CIK plus series/class IDs
+and parse N-CEN/NPORT filings into neutral, research-only evidence with as-filed
+chronology. SPY and DIA resolve CIKs but have no official series/class mapping;
+GLD is outside the N-CEN/NPORT investment-company lane. These return typed
+unsupported reasons, and reviewed fund tickers never enter the corporate filing
+or insider-transaction semantics.
+
 The evaluation did not justify changing numeric scorer weights because it has no
 forward-return labels. Preserving the deterministic, explicitly unbacktested
 weights is the recorded tuning decision rather than implying unsupported outcome

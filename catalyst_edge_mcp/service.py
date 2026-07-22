@@ -57,6 +57,7 @@ STATUS_PRIORITY = {
     SourceStatus.SCHEMA_ERROR: 5,
     SourceStatus.STALE: 4,
     SourceStatus.NO_OBSERVATIONS: 3,
+    SourceStatus.UNSUPPORTED: 3,
     SourceStatus.UNAVAILABLE: 2,
     SourceStatus.FRESH: 1,
 }
@@ -83,8 +84,14 @@ class CatalystService:
     async def evaluate(self, request: ToolInput) -> CatalystEdgeResponse:
         as_of = self._as_utc(self.clock())
         cutoff = as_of - timedelta(days=request.lookback_days)
+        active_adapters = tuple(
+            adapter
+            for adapter in self.adapters
+            if not callable(supports := getattr(adapter, "supports", None))
+            or supports(request.ticker)
+        )
         results = await asyncio.gather(
-            *(self._collect(adapter, request) for adapter in self.adapters)
+            *(self._collect(adapter, request) for adapter in active_adapters)
         )
 
         evidence: list[Evidence] = []
@@ -179,13 +186,16 @@ class CatalystService:
             )
             statuses_by_family[family].append(inferred_status)
             if not result.evidence:
+                no_evidence_reason = (
+                    ReasonCode.OBSERVED_NONE
+                    if inferred_status == SourceStatus.NO_OBSERVATIONS
+                    else ReasonCode.SOURCE_UNSUPPORTED
+                    if inferred_status == SourceStatus.UNSUPPORTED
+                    else ReasonCode.SOURCE_UNAVAILABLE
+                )
                 reason_records.append(
                     scoped_reason(
-                        (
-                            ReasonCode.OBSERVED_NONE
-                            if inferred_status == SourceStatus.NO_OBSERVATIONS
-                            else ReasonCode.SOURCE_UNAVAILABLE
-                        ),
+                        no_evidence_reason,
                         ReasonScope.SOURCE,
                         result.provider,
                         source_id=result.provider,

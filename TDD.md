@@ -640,6 +640,15 @@ preserving the deterministic unbacktested numeric weights is the evidence-based
 tuning decision. Final target-cohort, fresh GDELT, and recent RKLB acceptance
 passed.
 
+Completed on 2026-07-21: the separate SEC fund lane adds strict reviewed CIK,
+series/class, historical ticker/status, and sponsor-primary metadata for SPY,
+QQQ, DIA, IWM, XLE, XLK, GLD, and GDX. QQQ, IWM, XLE, XLK, and GDX parse
+N-CEN/NPORT XML with report, period-end, filing, acceptance, accession, hash,
+and parser provenance into neutral research-only evidence. SPY and DIA fail
+closed because the official mutual-fund ticker map supplies no series/class IDs;
+GLD is typed outside this investment-company form lane. Fund tickers return
+explicit unsupported reasons from corporate filing and insider collectors.
+
 0. Revise this design and contracts: source policy, provenance, typed statuses,
    quality constants, evidence-semantic readiness, neutral missingness, and
    red tests/fixtures. Do not claim collector implementation from this phase.
@@ -793,6 +802,7 @@ Test identifiers below are mandatory names or markers in the test suite.
 | TR22 validated local registries and domain tiers | §6, §8, §14 | `test_registry_config.py`, GDELT publisher-quality tests, composition-root tests |
 | TR23 deterministic entity decisions and rejection audit | §6, §8, §14, §17 | `test_entity_resolution.py`, `test_gdelt_web_ngrams.py`, `test_evidence_store.py` |
 | TR24 grouped-source recovery and scoped reasons | §3, §5–§6, §8, §14, §17 | `test_evidence_store.py`, `test_service.py`, `CT_CLAIM_SOURCE_SCHEMA_AND_DIRECT_INVOCATION` |
+| TR25 SEC fund identity and as-filed evidence | §5–§6, §8, §14, §17 | `test_sec_funds.py`, fixed SPY/QQQ/DIA/IWM/XLE/XLK/GLD/GDX registry assertions, composition-root tests |
 
 ### Acceptance criteria, fixtures, and Definition of Done
 
@@ -858,9 +868,9 @@ predictive claim. The current MCP remains `deterministic_v1`, `not_trained`, and
 `unbacktested` until the Stage B acceptance contract below passes.
 
 As of 2026-07-21, entity-resolution v2, append-only rejected-match auditing,
-scoped reason semantics, and immutable grouped-source recovery are implemented in
-the operational collector. The fund lane, replay dataset, and every vendor-gated
-identity/price/terminal-outcome component remain future work.
+scoped reason semantics, immutable grouped-source recovery, and the SEC-backed
+fund lane are implemented in the operational collector. The replay dataset and
+every vendor-gated identity/price/terminal-outcome component remain future work.
 
 The chosen design separates two systems:
 

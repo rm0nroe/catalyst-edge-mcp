@@ -20,9 +20,12 @@ from catalyst_edge_mcp.models import (
     Evidence,
     EvidenceContext,
     PolicyDecision,
+    ReasonCode,
+    ReasonScope,
     Source,
     SourceStatus,
 )
+from catalyst_edge_mcp.reason_records import scoped_reason
 from catalyst_edge_mcp.sec_document_rules import (
     RULESET_VERSION,
     classify_sec_primary_document,
@@ -261,6 +264,7 @@ class SecFilingsAdapter:
         *,
         client: httpx.AsyncClient | None = None,
         clock=None,
+        fund_tickers: frozenset[str] = frozenset(),
     ) -> None:
         if "@" not in user_agent:
             raise ValueError("SEC User-Agent must include a contact email address")
@@ -268,6 +272,7 @@ class SecFilingsAdapter:
         self._client = client
         self._clock = clock or (lambda: datetime.now(UTC))
         self._ticker_to_cik: dict[str, str] | None = None
+        self._fund_tickers = fund_tickers
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
         if self._client is not None:
@@ -283,6 +288,29 @@ class SecFilingsAdapter:
     async def _collect(
         self, client: httpx.AsyncClient, ticker: str, lookback_days: int
     ) -> AdapterResult:
+        if ticker in self._fund_tickers:
+            now = self._as_utc(self._clock())
+            return AdapterResult(
+                family=self.family,
+                provider=self.provider,
+                warnings=[
+                    f"{ticker} uses the SEC fund lane; corporate filing semantics were skipped."
+                ],
+                status=SourceStatus.UNSUPPORTED,
+                policy_decision=PolicyDecision.APPROVED,
+                collected_at=now,
+                reason_records=[
+                    scoped_reason(
+                        ReasonCode.SOURCE_UNSUPPORTED,
+                        ReasonScope.EVALUATION,
+                        ticker,
+                        source_id=self.provider,
+                        family=self.family,
+                        observed_at=now,
+                        detail="fund_uses_distinct_sec_lane",
+                    )
+                ],
+            )
         cik = await self._resolve_cik(client, ticker)
         if cik is None:
             return AdapterResult(

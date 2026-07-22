@@ -24,6 +24,7 @@ from catalyst_edge_mcp.models import (
 )
 from catalyst_edge_mcp.registry_config import RegistryBundle, load_registry_bundle
 from catalyst_edge_mcp.sec_filings import SecFilingsAdapter
+from catalyst_edge_mcp.sec_funds import SecFundAdapter
 from catalyst_edge_mcp.sec_ownership import SecInsiderAdapter
 from catalyst_edge_mcp.service import CatalystService
 from catalyst_edge_mcp.settings import Settings
@@ -44,10 +45,21 @@ def build_service(
     registry = registry or load_registry_bundle(settings.registry_path)
     adapters = []
     if settings.sec_user_agent:
+        fund_tickers = frozenset(registry.fund_identity_index)
         adapters.extend(
             [
-                SecFilingsAdapter(settings.sec_user_agent),
-                SecInsiderAdapter(settings.sec_user_agent),
+                SecFilingsAdapter(
+                    settings.sec_user_agent,
+                    fund_tickers=fund_tickers,
+                ),
+                SecInsiderAdapter(
+                    settings.sec_user_agent,
+                    fund_tickers=fund_tickers,
+                ),
+                SecFundAdapter(
+                    settings.sec_user_agent,
+                    registry=registry.fund_identity_index,
+                ),
             ]
         )
     if settings.issuer_feeds_enabled:
