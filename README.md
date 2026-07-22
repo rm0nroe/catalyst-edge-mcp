@@ -6,11 +6,13 @@ independent evidence families concurrently and applies a documented deterministi
 score. It does not import the sibling `prior service` application or its random-weight
 model.
 
-The public surface is one tool: `catalyst_edge_score`.
+The public surface has two read-only tools: `catalyst_edge_score` returns the
+compact dossier, and `catalyst_edge_claim_sources` pages through every immutable
+source record counted by a grouped claim.
 
 ## Current status and completion boundary
 
-As of 2026-07-15, the zero-subscription local runtime has the free dependencies
+As of 2026-07-21, the zero-subscription local runtime has the free dependencies
 needed to deliver the revised product: direct SEC filings and insider records,
 reviewed issuer feeds, GDELT Web NGrams discovery, and Bluesky partial attention.
 The MCP transports, schemas, provenance, typed missingness, event graph, and
@@ -27,10 +29,27 @@ The automatic local GDELT lifecycle is now implemented: server startup schedules
 a bounded catch-up when persisted state is due, periodic refresh remains outside
 the MCP request path, shutdown cancels cleanly, and `catalyst-edge-health` reports
 last-success age plus fresh, stale, failed, never-refreshed, or unregistered state.
-Issuer feeds, discovery aliases, social aliases, and publisher-domain quality tiers
-now load from one strictly validated local JSON registry. The packaged reviewed
-defaults preserve the existing cohort; a custom path replaces that cohort rather
-than silently merging unreviewed aliases.
+Issuer feeds, discovery rules, social aliases, and publisher-domain quality tiers
+now load from one strictly validated local JSON registry. Registry v2 applies
+reviewed per-alias kind, match mode, required/negative context, validity interval,
+canonical CIK, rule version, and review provenance before a GDELT candidate enters
+the event graph. Custom registry v1 files remain compatible through deterministic
+legacy-rule translation. The packaged reviewed defaults preserve the existing
+cohort; a custom path replaces that cohort rather than silently merging unreviewed
+aliases.
+
+Grouped issuer-feed and GDELT evidence now carries an immutable `claim_id`, exact
+`source_record_count`, and up to 20 `supporting_source_ids`. Call
+`catalyst_edge_claim_sources` with the claim ID and its integer cursor to recover
+every source ID, accession/record ID, canonical URL, timestamp, hash, parser, and
+policy decision in pages of at most 20. `data_quality.reason_records` separately
+retains ordered scoped reasons for unsupported or unavailable sources, no
+observations, rejected entities, discovery-only evidence, and evaluated
+non-material candidates. Display precedence does not discard coexisting reasons,
+and truncation is explicit through `reason_record_count` and
+`reason_records_truncated`. GDELT rejection disposition is source-scoped and
+aggregate in the dossier; individual candidate decisions remain in the bounded
+append-only entity audit.
 
 The zero-subscription runtime meets its current local acceptance corpus as of
 2026-07-16. A 25-case real SEC evaluation complements the 28 synthetic Phase 6
@@ -130,7 +149,7 @@ Runtime settings:
 | `CATALYST_EDGE_GDELT_MAX_AGE_SECONDS` | `900` | Last-success age after which request-time cache health becomes stale; must be at least the refresh interval |
 | `CATALYST_EDGE_BLUESKY` | `enabled` | Set `disabled` to suppress AppView requests; disable all three public collectors for a fully offline runtime |
 | `CATALYST_EDGE_REGISTRY_PATH` | Packaged `reviewed_registries.json` | Optional local JSON replacing the complete reviewed issuer/feed/discovery/social/publisher registry; invalid or ambiguous entries fail startup |
-| `CATALYST_EDGE_EVIDENCE_STORE` | `~/.local/state/catalyst-edge-mcp/evidence.sqlite3` | Local SQLite/WAL collector state and canonical event graph |
+| `CATALYST_EDGE_EVIDENCE_STORE` | `~/.local/state/catalyst-edge-mcp/evidence.sqlite3` | Local SQLite/WAL collector state, canonical event graph, immutable claim/source relations, and entity-decision audit |
 | `CATALYST_EDGE_SENTIMENT_MODEL` | `disabled` | Any other value fails configuration until a reviewed candidate passes every gate |
 
 The packaged registry currently contains Apple Newsroom and NVIDIA press-release
@@ -148,18 +167,25 @@ run before same-issuer, 48-hour RapidFuzz matching at a token-set score of 92;
 corrections and materially changed numbers become linked event versions. The local
 store also snapshots the reviewed source-policy decisions used by collectors.
 
-GDELT uses reviewed company aliases and the official downloadable Web NGrams feed at
+GDELT uses reviewed company entity rules and the official downloadable Web NGrams feed at
 `storage.googleapis.com/data.gdeltproject.org/gdeltv5/weblegacy/ngrams`. The legacy
 DOC 2.0 endpoint now directs high-traffic callers to these files, so local MCP
 requests remain cache-only while `catalyst-edge-refresh-gdelt` scans the newest
 bounded minute index/TOC pairs out of band. Each pair is downloaded once and matched
-against all requested issuers. Exact HTTPS host/path validation, compressed and
-decompressed byte ceilings, a five-file run limit, and a 50-document per-issuer cap
-bound the work. Only publisher titles, timestamps, domains, hashes, and HTTPS links
-are retained; article bodies and ngram context are never stored. HTTP, timeout,
+against all requested issuers. A deterministic ruleset-versioned decision accepts or
+rejects each valid TOC candidate before ingestion. Exact HTTPS host/path validation,
+compressed and decompressed byte ceilings, a five-file run limit, a 200-candidate
+per-issuer audit cap, and a separate 50-accepted-document ingestion cap bound the
+work without allowing false positives to starve later valid matches. Only publisher
+titles, timestamps, domains, hashes, HTTPS links, and derived entity-decision metadata
+are retained; article bodies and ngram context are never stored. Accepted and rejected
+decisions are appended idempotently to `entity_match_audit`; a ruleset or context
+change creates a new audit record rather than overwriting history. HTTP, timeout,
 malformed schema, and missing-file states remain typed and preserve cached evidence.
-Discovery observations merge into the same 48-hour canonical graph but remain below
-SEC and issuer-primary sources in global ranking.
+A reject-only refresh is a fresh successful collection with no observations, not a
+provider failure. Discovery observations merge into the same 48-hour canonical graph
+but remain below SEC and issuer-primary sources in global ranking. Previously cached
+v1 observations are not destructively purged and age out under the configured lookback.
 
 GDELT source quality is also registry-driven. Reviewed wire-service domains receive
 `0.70`, reviewed financial-press domains `0.68`, reviewed release-distribution

@@ -1,12 +1,41 @@
 {
-  "version": 1,
+  "version": 2,
   "issuers": [
     {
       "issuer_key": "CIK0000320193",
       "issuer_name": "Apple Inc.",
       "tickers": ["AAPL"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Apple Inc", "Apple Incorporated"],
+      "discovery_rules": [
+        {
+          "rule_id": "apple_inc_legal_name",
+          "version": "1",
+          "alias": "Apple Inc",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["fruit", "orchard", "growers"],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0000320193",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias with common-noun exclusions."
+        },
+        {
+          "rule_id": "apple_incorporated_legal_name",
+          "version": "1",
+          "alias": "Apple Incorporated",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["fruit", "orchard", "growers"],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0000320193",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed expanded issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["Apple Inc"],
       "issuer_feed": {
         "feed_url": "https://www.apple.com/newsroom/rss-feed.rss",
@@ -20,7 +49,36 @@
       "issuer_name": "NVIDIA Corporation",
       "tickers": ["NVDA"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["NVIDIA", "NVIDIA Corporation"],
+      "discovery_rules": [
+        {
+          "rule_id": "nvidia_brand",
+          "version": "1",
+          "alias": "NVIDIA",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001045810",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed distinctive issuer brand alias."
+        },
+        {
+          "rule_id": "nvidia_corporation_legal_name",
+          "version": "1",
+          "alias": "NVIDIA Corporation",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001045810",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["NVIDIA"],
       "issuer_feed": {
         "feed_url": "https://nvidianews.nvidia.com/cats/press_release.xml",
@@ -34,7 +92,64 @@
       "issuer_name": "Tesla, Inc.",
       "tickers": ["TSLA"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Tesla Inc", "Tesla Motors"],
+      "discovery_rules": [
+        {
+          "rule_id": "tesla_inc_legal_name",
+          "version": "1",
+          "alias": "Tesla Inc",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": "2017-02-01",
+          "valid_to": null,
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Current legal name with Nikola Tesla exclusions."
+        },
+        {
+          "rule_id": "tesla_motors_former_name",
+          "version": "1",
+          "alias": "Tesla Motors",
+          "alias_kind": "former_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": null,
+          "valid_to": "2017-01-31",
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Former legal name bounded to the corporate rename."
+        },
+        {
+          "rule_id": "tesla_energy_brand",
+          "version": "1",
+          "alias": "Tesla Energy",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": ["battery", "storage", "Megapack", "Powerwall", "solar", "deployment"],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": "2015-04-30",
+          "valid_to": null,
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Energy brand requires reviewed product or deployment context."
+        },
+        {
+          "rule_id": "tesla_brand_contextual",
+          "version": "1",
+          "alias": "Tesla",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": ["Inc", "vehicle", "vehicles", "electric", "EV", "Cybertruck", "Model", "deliveries", "factory", "shares", "stock"],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Bare brand requires issuer context and rejects historical-person references."
+        }
+      ],
       "social_aliases": ["Tesla Inc"],
       "issuer_feed": null
     },
@@ -43,7 +158,36 @@
       "issuer_name": "Rocket Lab USA, Inc.",
       "tickers": ["RKLB"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Rocket Lab", "Rocket Lab USA"],
+      "discovery_rules": [
+        {
+          "rule_id": "rocket_lab_brand",
+          "version": "1",
+          "alias": "Rocket Lab",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001819994",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed distinctive issuer brand alias."
+        },
+        {
+          "rule_id": "rocket_lab_usa_legal_name",
+          "version": "1",
+          "alias": "Rocket Lab USA",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001819994",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["Rocket Lab"],
       "issuer_feed": null
     },
@@ -52,7 +196,22 @@
       "issuer_name": "Berkshire Hathaway Inc.",
       "tickers": ["BRK-A", "BRK-B"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Berkshire Hathaway"],
+      "discovery_rules": [
+        {
+          "rule_id": "berkshire_hathaway_legal_name",
+          "version": "1",
+          "alias": "Berkshire Hathaway",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001067983",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["Berkshire Hathaway"],
       "issuer_feed": null
     }

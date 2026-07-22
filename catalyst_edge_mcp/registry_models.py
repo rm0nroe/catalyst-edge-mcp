@@ -6,6 +6,22 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
+class DiscoveryAliasRule:
+    rule_id: str
+    version: str
+    alias: str
+    alias_kind: str
+    match_mode: str
+    required_context: tuple[str, ...]
+    negative_context: tuple[str, ...]
+    valid_from: str | None
+    valid_to: str | None
+    canonical_cik: str
+    reviewed_on: str
+    review_note: str
+
+
+@dataclass(frozen=True, slots=True)
 class IssuerFeed:
     issuer_key: str
     issuer_name: str
@@ -25,6 +41,29 @@ class DiscoveryIssuer:
     query_aliases: tuple[str, ...]
     refresh_seconds: int = 300
     reviewed_on: str = "2026-07-13"
+    entity_rules: tuple[DiscoveryAliasRule, ...] = ()
+
+    @property
+    def effective_entity_rules(self) -> tuple[DiscoveryAliasRule, ...]:
+        if self.entity_rules:
+            return self.entity_rules
+        return tuple(
+            DiscoveryAliasRule(
+                rule_id=f"legacy_alias_{index}",
+                version="1",
+                alias=alias,
+                alias_kind="legal_name",
+                match_mode="phrase",
+                required_context=(),
+                negative_context=(),
+                valid_from=None,
+                valid_to=None,
+                canonical_cik=self.issuer_key,
+                reviewed_on=self.reviewed_on,
+                review_note="Registry v1 compatibility rule.",
+            )
+            for index, alias in enumerate(self.query_aliases, start=1)
+        )
 
     @property
     def gdelt_query(self) -> str:

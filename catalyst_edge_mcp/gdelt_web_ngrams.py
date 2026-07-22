@@ -6,9 +6,9 @@ import hashlib
 import json
 import re
 import zlib
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -18,18 +18,30 @@ import httpx
 
 from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX, DiscoveryIssuer
-from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore, normalize_title
+from catalyst_edge_mcp.entity_resolution import (
+    EntityRuleMatch,
+    decide_entity_candidate,
+    match_entity_rules,
+    normalize_entity_text,
+)
+from catalyst_edge_mcp.evidence_store import (
+    EntityMatchAudit,
+    EventObservation,
+    EvidenceStore,
+    normalize_title,
+)
 from catalyst_edge_mcp.models import PolicyDecision, SourceStatus
 
 GDELT_WEB_NGRAMS_BASE = (
     "https://storage.googleapis.com/data.gdeltproject.org/"
     "gdeltv5/weblegacy/ngrams"
 )
-PARSER_VERSION = "gdelt-web-ngrams-v1"
+PARSER_VERSION = "gdelt-web-ngrams-v2"
 DISCOVERY_DELAY_MINUTES = 5
 DISCOVERY_LOOKBACK_MINUTES = 20
 MAX_FILES_PER_RUN = 5
 MAX_ARTICLES_PER_ISSUER = 50
+MAX_CANDIDATES_PER_ISSUER = 200
 MAX_NGRAM_COMPRESSED_BYTES = 20_000_000
 MAX_TOC_COMPRESSED_BYTES = 5_000_000
 MAX_NGRAM_DECOMPRESSED_BYTES = 200_000_000
@@ -50,8 +62,32 @@ class GdeltWebNgramsResult:
     evidence_count: int
     files_processed: int
     matched_documents: int
+    candidate_documents: int = 0
+    accepted_documents: int = 0
+    ingested_documents: int = 0
+    accepted_overflow_documents: int = 0
+    rejected_documents: int = 0
+    rejection_reasons: tuple[tuple[str, int], ...] = ()
     degraded: bool = False
     warnings: tuple[str, ...] = ()
+
+
+@dataclass(slots=True)
+class EntityIngestStats:
+    candidate_documents: int = 0
+    accepted_documents: int = 0
+    ingested_documents: int = 0
+    accepted_overflow_documents: int = 0
+    rejected_documents: int = 0
+    rejection_reasons: Counter[str] = field(default_factory=Counter)
+
+    def add(self, other: EntityIngestStats) -> None:
+        self.candidate_documents += other.candidate_documents
+        self.accepted_documents += other.accepted_documents
+        self.ingested_documents += other.ingested_documents
+        self.accepted_overflow_documents += other.accepted_overflow_documents
+        self.rejected_documents += other.rejected_documents
+        self.rejection_reasons.update(other.rejection_reasons)
 
 
 class NoRecentWebNgramsFile(RuntimeError):
@@ -119,7 +155,7 @@ class GdeltWebNgramsRefresher:
                 raise NoRecentWebNgramsFile(
                     "No GDELT Web NGrams file was published in the bounded discovery window"
                 )
-            matched_counts: dict[str, int] = defaultdict(int)
+            aggregate_stats: dict[str, EntityIngestStats] = defaultdict(EntityIngestStats)
             for file_stamp in reversed(file_stamps):
                 ngrams_url = self._file_url(file_stamp, "ngrams.txt")
                 toc_url = self._file_url(file_stamp, "toc.json")
@@ -128,9 +164,9 @@ class GdeltWebNgramsRefresher:
                 )
                 toc = await self._download(client, toc_url, MAX_TOC_COMPRESSED_BYTES)
                 matched_ids = self._match_document_ids(ngrams, issuers)
-                ingested = self._ingest_toc(toc, matched_ids, issuers, now)
-                for issuer_key, count in ingested.items():
-                    matched_counts[issuer_key] += count
+                file_stats = self._ingest_toc(toc, matched_ids, issuers, now)
+                for issuer_key, stats in file_stats.items():
+                    aggregate_stats[issuer_key].add(stats)
 
             latest_url = self._file_url(file_stamps[0], "ngrams.txt")
             for issuer in issuers.values():
@@ -147,7 +183,7 @@ class GdeltWebNgramsRefresher:
                 lookback_days,
                 now,
                 files_processed=len(file_stamps),
-                matched_counts=matched_counts,
+                ingest_stats=aggregate_stats,
             )
         except Exception as exc:
             status = self._failure_status(exc)
@@ -209,16 +245,8 @@ class GdeltWebNgramsRefresher:
 
     def _match_document_ids(
         self, content: bytes, issuers: Mapping[str, DiscoveryIssuer]
-    ) -> dict[str, set[str]]:
-        aliases = {
-            issuer_key: tuple(
-                phrase
-                for alias in issuer.query_aliases
-                if (phrase := self._normalize_phrase(alias))
-            )
-            for issuer_key, issuer in issuers.items()
-        }
-        matched: dict[str, set[str]] = {}
+    ) -> dict[str, dict[str, list[EntityRuleMatch]]]:
+        matched: dict[str, dict[str, list[EntityRuleMatch]]] = {}
         counts: dict[str, int] = defaultdict(int)
         for line in self._iter_gzip_lines(content, MAX_NGRAM_DECOMPRESSED_BYTES):
             try:
@@ -227,28 +255,36 @@ class GdeltWebNgramsRefresher:
                 continue
             if not doc_id.isdigit():
                 continue
-            normalized = f" {self._normalize_phrase(quadgram)} "
-            for issuer_key, issuer_aliases in aliases.items():
-                if counts[issuer_key] >= MAX_ARTICLES_PER_ISSUER:
+            for issuer_key, issuer in issuers.items():
+                existing = matched.get(doc_id, {}).get(issuer_key)
+                if existing is None and counts[issuer_key] >= MAX_CANDIDATES_PER_ISSUER:
                     continue
-                if not any(f" {alias} " in normalized for alias in issuer_aliases):
+                rule_matches = match_entity_rules(quadgram, issuer)
+                if not rule_matches:
                     continue
-                issuer_matches = matched.setdefault(doc_id, set())
-                if issuer_key not in issuer_matches:
-                    issuer_matches.add(issuer_key)
+                issuer_matches = matched.setdefault(doc_id, {}).setdefault(issuer_key, [])
+                if not issuer_matches:
                     counts[issuer_key] += 1
+                seen = {
+                    (item.rule.rule_id, item.context_sha256) for item in issuer_matches
+                }
+                issuer_matches.extend(
+                    item
+                    for item in rule_matches
+                    if (item.rule.rule_id, item.context_sha256) not in seen
+                )
         return matched
 
     def _ingest_toc(
         self,
         content: bytes,
-        matched_ids: Mapping[str, set[str]],
+        matched_ids: Mapping[str, Mapping[str, list[EntityRuleMatch]]],
         issuers: Mapping[str, DiscoveryIssuer],
         now: datetime,
-    ) -> dict[str, int]:
-        ingested: dict[str, int] = defaultdict(int)
+    ) -> dict[str, EntityIngestStats]:
+        stats: dict[str, EntityIngestStats] = defaultdict(EntityIngestStats)
         if not matched_ids:
-            return ingested
+            return stats
         for line in self._iter_gzip_lines(content, MAX_TOC_DECOMPRESSED_BYTES):
             try:
                 article = json.loads(line)
@@ -256,25 +292,73 @@ class GdeltWebNgramsRefresher:
                 continue
             if not isinstance(article, Mapping):
                 continue
-            issuer_keys = matched_ids.get(str(article.get("ID") or ""))
-            if not issuer_keys:
+            document_id = str(article.get("ID") or "")
+            issuer_matches = matched_ids.get(document_id)
+            if not issuer_matches:
                 continue
-            for issuer_key in issuer_keys:
+            for issuer_key, rule_matches in issuer_matches.items():
                 issuer = issuers.get(issuer_key)
                 if issuer is None:
                     continue
                 observation = self._article_observation(
-                    article, issuer.issuer_key, now, line
+                    article, issuer.issuer_key, now, line, PARSER_VERSION
                 )
                 if observation is None:
                     continue
+                decision = decide_entity_candidate(
+                    issuer,
+                    tuple(rule_matches),
+                    observation.published_at,
+                )
+                self.store.record_entity_match_audit(
+                    EntityMatchAudit(
+                        source_id="gdelt",
+                        issuer_key=issuer.issuer_key,
+                        document_id=document_id,
+                        canonical_url=observation.canonical_url,
+                        published_at=observation.published_at,
+                        observed_at=now,
+                        retrieved_at=now,
+                        toc_sha256=observation.raw_sha256 or hashlib.sha256(line).hexdigest(),
+                        context_sha256=decision.matched_context_sha256,
+                        ruleset_version=decision.ruleset_version,
+                        accepted=decision.accepted,
+                        reason_code=decision.reason_code,
+                        selected_rule_id=decision.selected_rule_id,
+                        selected_rule_version=decision.selected_rule_version,
+                        candidate_rule_ids=decision.candidate_rule_ids,
+                        matched_aliases=decision.matched_aliases,
+                        required_context_matches=decision.required_context_matches,
+                        negative_context_matches=decision.negative_context_matches,
+                    )
+                )
+                current = stats[issuer_key]
+                current.candidate_documents += 1
+                if not decision.accepted:
+                    current.rejected_documents += 1
+                    current.rejection_reasons[decision.reason_code] += 1
+                    continue
+                current.accepted_documents += 1
+                if current.ingested_documents >= MAX_ARTICLES_PER_ISSUER:
+                    current.accepted_overflow_documents += 1
+                    continue
+                observation = replace(
+                    observation,
+                    parser_version=(
+                        f"{PARSER_VERSION}+{decision.ruleset_version.split(':', 1)[1][:12]}"
+                    ),
+                )
                 self.store.ingest_event(observation)
-                ingested[issuer_key] += 1
-        return ingested
+                current.ingested_documents += 1
+        return stats
 
     @staticmethod
     def _article_observation(
-        article: Mapping[str, Any], issuer_key: str, now: datetime, raw_line: bytes
+        article: Mapping[str, Any],
+        issuer_key: str,
+        now: datetime,
+        raw_line: bytes,
+        parser_version: str,
     ) -> EventObservation | None:
         title = " ".join(str(article.get("title") or "").split())[:240]
         url = str(article.get("url") or "").strip()
@@ -301,7 +385,7 @@ class GdeltWebNgramsRefresher:
             observed_at=now,
             retrieved_at=now,
             raw_sha256=hashlib.sha256(raw_line).hexdigest(),
-            parser_version=PARSER_VERSION,
+            parser_version=parser_version,
             policy_decision=PolicyDecision.APPROVED_DISCOVERY,
         )
 
@@ -312,12 +396,12 @@ class GdeltWebNgramsRefresher:
         now: datetime,
         *,
         files_processed: int = 0,
-        matched_counts: Mapping[str, int] | None = None,
+        ingest_stats: Mapping[str, EntityIngestStats] | None = None,
         status: SourceStatus | None = None,
         degraded: bool = False,
         warning: str | None = None,
     ) -> dict[str, GdeltWebNgramsResult]:
-        counts = matched_counts or {}
+        stats_by_issuer = ingest_stats or {}
         results: dict[str, GdeltWebNgramsResult] = {}
         for ticker, issuer in requested.items():
             evidence_count = len(
@@ -335,12 +419,19 @@ class GdeltWebNgramsRefresher:
                 warnings = (
                     f"No GDELT publisher links found for {ticker} in processed minute files.",
                 )
+            stats = stats_by_issuer.get(issuer.issuer_key, EntityIngestStats())
             results[ticker] = GdeltWebNgramsResult(
                 ticker=ticker,
                 status=effective_status,
                 evidence_count=evidence_count,
                 files_processed=files_processed,
-                matched_documents=counts.get(issuer.issuer_key, 0),
+                matched_documents=stats.ingested_documents,
+                candidate_documents=stats.candidate_documents,
+                accepted_documents=stats.accepted_documents,
+                ingested_documents=stats.ingested_documents,
+                accepted_overflow_documents=stats.accepted_overflow_documents,
+                rejected_documents=stats.rejected_documents,
+                rejection_reasons=tuple(sorted(stats.rejection_reasons.items())),
                 degraded=degraded,
                 warnings=warnings,
             )
@@ -389,7 +480,7 @@ class GdeltWebNgramsRefresher:
 
     @staticmethod
     def _normalize_phrase(value: str) -> str:
-        return " ".join(re.sub(r"[^\w]+", " ", value.casefold()).split())
+        return normalize_entity_text(value)
 
     @staticmethod
     def _article_datetime(value: object) -> datetime | None:

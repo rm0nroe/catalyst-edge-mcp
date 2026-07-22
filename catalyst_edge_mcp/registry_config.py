@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from catalyst_edge_mcp.registry_models import (
+    DiscoveryAliasRule,
     DiscoveryIssuer,
     IssuerFeed,
     PublisherDomainQuality,
@@ -24,6 +25,12 @@ DEFAULT_REGISTRY_PATH = Path(__file__).with_name("data") / "reviewed_registries.
 MAX_REGISTRY_BYTES = 256_000
 CIK_PATTERN = re.compile(r"^CIK\d{10}$")
 HOST_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
+RULE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+RULE_VERSION_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
+DISCOVERY_ALIAS_KINDS = frozenset(
+    {"legal_name", "former_name", "brand", "subsidiary", "product", "ticker"}
+)
+DISCOVERY_MATCH_MODES = frozenset({"phrase", "ticker_token"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,8 +63,9 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
         required={"version", "issuers"},
         optional={"publisher_domains"},
     )
-    if type(root["version"]) is not int or root["version"] != 1:
-        raise ValueError("Collector registry version must be 1")
+    version = root["version"]
+    if type(version) is not int or version not in {1, 2}:
+        raise ValueError("Collector registry version must be 1 or 2")
     issuers = root["issuers"]
     if not isinstance(issuers, list) or not 1 <= len(issuers) <= 200:
         raise ValueError("Collector registry issuers must contain 1 to 200 entries")
@@ -71,6 +79,7 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
     issuer_keys: set[str] = set()
     for index, raw_issuer in enumerate(issuers):
         label = f"issuers[{index}]"
+        discovery_field = "discovery_aliases" if version == 1 else "discovery_rules"
         item = _object(
             raw_issuer,
             label,
@@ -79,7 +88,7 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
                 "issuer_name",
                 "tickers",
                 "reviewed_on",
-                "discovery_aliases",
+                discovery_field,
                 "social_aliases",
                 "issuer_feed",
             },
@@ -98,9 +107,19 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
             if owner != issuer_key:
                 raise ValueError(f"Ticker {ticker} is assigned to multiple issuers")
 
-        discovery_aliases = _aliases(
-            item["discovery_aliases"], f"{label}.discovery_aliases"
-        )
+        if version == 1:
+            discovery_aliases = _aliases(
+                item["discovery_aliases"], f"{label}.discovery_aliases"
+            )
+            discovery_rules: tuple[DiscoveryAliasRule, ...] = ()
+        else:
+            discovery_rules = _discovery_rules(
+                item["discovery_rules"],
+                label=f"{label}.discovery_rules",
+                issuer_key=issuer_key,
+                tickers=tickers,
+            )
+            discovery_aliases = tuple(dict.fromkeys(rule.alias for rule in discovery_rules))
         social_aliases = _aliases(item["social_aliases"], f"{label}.social_aliases")
         _claim_aliases(discovery_aliases, issuer_key, discovery_alias_owners, "discovery")
         _claim_aliases(social_aliases, issuer_key, social_alias_owners, "social")
@@ -112,6 +131,7 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
                     tickers=tickers,
                     query_aliases=discovery_aliases,
                     reviewed_on=reviewed_on,
+                    entity_rules=discovery_rules,
                 )
             )
         if social_aliases:
@@ -329,6 +349,123 @@ def _aliases(value: object, label: str) -> tuple[str, ...]:
         seen.add(folded)
         aliases.append(alias)
     return tuple(aliases)
+
+
+def _discovery_rules(
+    value: object,
+    *,
+    label: str,
+    issuer_key: str,
+    tickers: tuple[str, ...],
+) -> tuple[DiscoveryAliasRule, ...]:
+    if not isinstance(value, list) or len(value) > 40:
+        raise ValueError(f"{label} must contain at most 40 rules")
+    rules: list[DiscoveryAliasRule] = []
+    rule_ids: set[str] = set()
+    for index, raw_rule in enumerate(value):
+        rule_label = f"{label}[{index}]"
+        item = _object(
+            raw_rule,
+            rule_label,
+            required={
+                "rule_id",
+                "version",
+                "alias",
+                "alias_kind",
+                "match_mode",
+                "required_context",
+                "negative_context",
+                "valid_from",
+                "valid_to",
+                "canonical_cik",
+                "reviewed_on",
+                "review_note",
+            },
+        )
+        rule_id = _text(item["rule_id"], f"{rule_label}.rule_id", 64)
+        if not RULE_ID_PATTERN.fullmatch(rule_id):
+            raise ValueError(f"{rule_label}.rule_id must use lowercase snake case")
+        if rule_id in rule_ids:
+            raise ValueError(f"{label} contains duplicate rule_id {rule_id}")
+        rule_ids.add(rule_id)
+        rule_version = _text(item["version"], f"{rule_label}.version", 32)
+        if not RULE_VERSION_PATTERN.fullmatch(rule_version):
+            raise ValueError(f"{rule_label}.version contains unsupported characters")
+        alias = _text(item["alias"], f"{rule_label}.alias", 80)
+        if len(alias) < 2 or not any(character.isalnum() for character in alias):
+            raise ValueError(f"{rule_label}.alias must contain at least two characters")
+        alias_kind = _text(item["alias_kind"], f"{rule_label}.alias_kind", 20)
+        if alias_kind not in DISCOVERY_ALIAS_KINDS:
+            raise ValueError(f"{rule_label}.alias_kind is not supported")
+        match_mode = _text(item["match_mode"], f"{rule_label}.match_mode", 20)
+        if match_mode not in DISCOVERY_MATCH_MODES:
+            raise ValueError(f"{rule_label}.match_mode is not supported")
+        if match_mode == "ticker_token" and alias not in tickers:
+            raise ValueError(f"{rule_label}.ticker_token alias must be a canonical ticker")
+        required = _context_terms(
+            item["required_context"], f"{rule_label}.required_context"
+        )
+        negative = _context_terms(
+            item["negative_context"], f"{rule_label}.negative_context"
+        )
+        overlap = {term.casefold() for term in required} & {
+            term.casefold() for term in negative
+        }
+        if overlap:
+            raise ValueError(f"{rule_label} required and negative context overlap")
+        valid_from = _nullable_review_date(
+            item["valid_from"], f"{rule_label}.valid_from"
+        )
+        valid_to = _nullable_review_date(item["valid_to"], f"{rule_label}.valid_to")
+        if valid_from and valid_to and valid_from > valid_to:
+            raise ValueError(f"{rule_label} validity window is reversed")
+        canonical_cik = _text(
+            item["canonical_cik"], f"{rule_label}.canonical_cik", 13
+        )
+        if canonical_cik != issuer_key:
+            raise ValueError(f"{rule_label}.canonical_cik must match the parent issuer_key")
+        rules.append(
+            DiscoveryAliasRule(
+                rule_id=rule_id,
+                version=rule_version,
+                alias=alias,
+                alias_kind=alias_kind,
+                match_mode=match_mode,
+                required_context=required,
+                negative_context=negative,
+                valid_from=valid_from,
+                valid_to=valid_to,
+                canonical_cik=canonical_cik,
+                reviewed_on=_review_date(
+                    item["reviewed_on"], f"{rule_label}.reviewed_on"
+                ),
+                review_note=_text(item["review_note"], f"{rule_label}.review_note", 240),
+            )
+        )
+    return tuple(rules)
+
+
+def _context_terms(value: object, label: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or len(value) > 20:
+        raise ValueError(f"{label} must contain at most 20 terms")
+    terms: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        term = _text(item, label, 80)
+        if len(term) < 2 or not any(character.isalnum() for character in term):
+            raise ValueError(f"{label} terms must contain at least two characters")
+        folded = term.casefold()
+        if folded in seen:
+            raise ValueError(f"{label} contains a duplicate case-insensitive term")
+        seen.add(folded)
+        terms.append(term)
+    return tuple(terms)
+
+
+def _nullable_review_date(value: object, label: str) -> str | None:
+    if value is None:
+        return None
+    return _review_date(value, label)
 
 
 def _claim_aliases(
