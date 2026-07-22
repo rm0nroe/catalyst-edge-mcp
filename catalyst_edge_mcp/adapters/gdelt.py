@@ -288,13 +288,24 @@ class GdeltAdapter:
         warning: str | None = None,
         degraded: bool = False,
     ) -> AdapterResult:
-        cached_events = self.store.list_events_for_source(
-            issuer.issuer_key, self.provider, now - timedelta(days=lookback_days)
+        since = now - timedelta(days=lookback_days)
+
+        def title_predicate(title: str, published_at: datetime) -> bool:
+            return title_matches_issuer(title, issuer, published_at=published_at)
+
+        cached_title_records = self.store.source_observation_title_records(
+            issuer.issuer_key, self.provider, since
         )
-        events = [
-            event for event in cached_events if title_matches_issuer(event.title, issuer)
-        ]
-        cached_title_rejections = len(cached_events) - len(events)
+        cached_title_rejections = sum(
+            not title_predicate(title, published_at)
+            for title, published_at in cached_title_records
+        )
+        events = self.store.list_events_for_source(
+            issuer.issuer_key,
+            self.provider,
+            since,
+            title_predicate=title_predicate,
+        )
         evidence = [self._evidence(event) for event in events]
         effective_status = status or (
             SourceStatus.FRESH if evidence else SourceStatus.NO_OBSERVATIONS
