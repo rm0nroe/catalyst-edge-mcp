@@ -32,6 +32,7 @@ class RiskMode(str, Enum):
 class SourceStatus(str, Enum):
     FRESH = "fresh"
     NO_OBSERVATIONS = "no_observations"
+    UNSUPPORTED = "unsupported"
     STALE = "stale"
     RATE_LIMITED = "rate_limited"
     PERMISSION_REQUIRED = "permission_required"
@@ -39,6 +40,22 @@ class SourceStatus(str, Enum):
     TIMEOUT = "timeout"
     SCHEMA_ERROR = "schema_error"
     UNAVAILABLE = "unavailable"
+
+
+class ReasonCode(str, Enum):
+    OBSERVED_NONE = "observed_none"
+    SOURCE_UNAVAILABLE = "source_unavailable"
+    SOURCE_UNSUPPORTED = "source_unsupported"
+    ENTITY_REJECTED = "entity_rejected"
+    DISCOVERY_ONLY = "discovery_only"
+    EVALUATED_NOT_MATERIAL = "evaluated_not_material"
+
+
+class ReasonScope(str, Enum):
+    SOURCE = "source"
+    CANDIDATE = "candidate"
+    FAMILY = "family"
+    EVALUATION = "evaluation"
 
 
 class PolicyDecision(str, Enum):
@@ -105,6 +122,9 @@ class EvidenceContext(BaseModel):
     corroborating_source_count: int = Field(default=0, ge=0, le=100)
     source_tiers: list[str] = Field(default_factory=list, max_length=10)
     correction_of_event_id: int | None = Field(default=None, ge=1)
+    claim_id: str | None = Field(default=None, pattern=r"^clm_[0-9a-f]{64}$")
+    supporting_source_ids: list[str] = Field(default_factory=list, max_length=20)
+    supporting_sources_truncated: bool = False
 
 
 class Evidence(BaseModel):
@@ -130,6 +150,22 @@ class Evidence(BaseModel):
         return len(self.sources)
 
 
+class ScopedReason(BaseModel):
+    """One retained missingness or disposition reason at an explicit scope."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason_id: str = Field(pattern=r"^rsn_[0-9a-f]{64}$")
+    code: ReasonCode
+    scope: ReasonScope
+    scope_id: str = Field(min_length=1, max_length=160)
+    display_precedence: int = Field(ge=0, le=100)
+    source_id: str | None = Field(default=None, min_length=1, max_length=80)
+    family: str | None = Field(default=None, min_length=1, max_length=64)
+    observed_at: datetime | None = None
+    detail: str | None = Field(default=None, min_length=1, max_length=240)
+
+
 class AdapterResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -141,6 +177,7 @@ class AdapterResult(BaseModel):
     policy_decision: PolicyDecision | None = None
     degraded: bool = False
     collected_at: datetime | None = None
+    reason_records: list[ScopedReason] = Field(default_factory=list, max_length=100)
 
 
 class Edge(BaseModel):
@@ -182,6 +219,40 @@ class DataQuality(BaseModel):
     stale_families: list[str]
     warnings: list[str]
     family_statuses: list[FamilyStatus] = Field(default_factory=list)
+    reason_records: list[ScopedReason] = Field(default_factory=list, max_length=600)
+    reason_record_count: int = Field(default=0, ge=0)
+    reason_records_truncated: bool = False
+
+
+class ClaimSourceReference(BaseModel):
+    """One immutable supporting source reference for a grouped claim."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_reference_id: str = Field(pattern=r"^src_[0-9a-f]{64}$")
+    source_id: str = Field(min_length=1, max_length=80)
+    source_name: str = Field(min_length=1, max_length=120)
+    source_tier: str = Field(min_length=1, max_length=40)
+    accession_or_record_id: str = Field(min_length=1, max_length=500)
+    canonical_url: HttpUrl
+    published_at: datetime
+    observed_at: datetime
+    retrieved_at: datetime
+    raw_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    parser_version: str = Field(min_length=1, max_length=80)
+    policy_decision: PolicyDecision
+
+
+class ClaimSourcePage(BaseModel):
+    """Bounded cursor page that can recover every source counted by a claim."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    claim_id: str = Field(pattern=r"^clm_[0-9a-f]{64}$")
+    sources: list[ClaimSourceReference] = Field(default_factory=list, max_length=20)
+    total_sources: int = Field(ge=0)
+    cursor: int = Field(ge=0)
+    next_cursor: int | None = Field(default=None, ge=0)
 
 
 class CatalystEdgeResponse(BaseModel):

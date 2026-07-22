@@ -7,8 +7,8 @@ import pytest
 from catalyst_edge_mcp.adapters.base import ProviderGate
 from catalyst_edge_mcp.adapters.gdelt import GDELT_ENDPOINT, GdeltAdapter
 from catalyst_edge_mcp.discovery_registry import DiscoveryIssuer
-from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore
-from catalyst_edge_mcp.models import Direction, PolicyDecision, SourceStatus
+from catalyst_edge_mcp.evidence_store import EntityMatchAudit, EventObservation, EvidenceStore
+from catalyst_edge_mcp.models import Direction, PolicyDecision, ReasonCode, SourceStatus
 from catalyst_edge_mcp.registry_config import publisher_quality_for_domain
 from catalyst_edge_mcp.registry_models import PublisherDomainQuality
 from tests.conftest import AS_OF
@@ -57,6 +57,9 @@ async def test_PT_GDELT_NORMALIZATION_is_neutral_metadata_only(tmp_path):
     assert item.signal == "publisher_link_discovery"
     assert item.context.event_type == "publisher_coverage"
     assert item.context.materiality == "discovery_only"
+    assert item.context.claim_id.startswith("clm_")
+    assert len(item.context.supporting_source_ids) == 1
+    assert item.context.supporting_sources_truncated is False
     assert item.direction == Direction.NEUTRAL
     assert item.source_quality == 0.60
     assert item.sources[0].source_id == "gdelt"
@@ -240,6 +243,54 @@ async def test_gdelt_request_path_reads_successful_background_cache(tmp_path):
 
     assert result.status == SourceStatus.FRESH
     assert len(result.evidence) == 1
+
+
+@pytest.mark.asyncio
+async def test_gdelt_request_diagnostics_include_retained_entity_rejections(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    store.record_entity_match_audit(
+        EntityMatchAudit(
+            source_id="gdelt",
+            issuer_key=ISSUER.issuer_key,
+            document_id="42",
+            canonical_url="https://publisher.example/rejected",
+            published_at=AS_OF,
+            observed_at=AS_OF,
+            retrieved_at=AS_OF,
+            toc_sha256="a" * 64,
+            context_sha256="b" * 64,
+            ruleset_version="entity-rules-v2:fixture",
+            accepted=False,
+            reason_code="negative_context",
+            selected_rule_id=None,
+            selected_rule_version=None,
+            candidate_rule_ids=("nvidia_legal_name",),
+            matched_aliases=("NVIDIA",),
+            required_context_matches=(),
+            negative_context_matches=("competitor",),
+        )
+    )
+    store.update_collector_state(
+        source_id="gdelt",
+        issuer_key=ISSUER.issuer_key,
+        feed_url=GDELT_ENDPOINT,
+        status=SourceStatus.FRESH.value,
+        checked_at=AS_OF,
+        succeeded=True,
+    )
+
+    result = await GdeltAdapter(
+        str(tmp_path / "events.sqlite3"),
+        registry={"NVDA": ISSUER},
+        store=store,
+        clock=lambda: AS_OF,
+        live_refresh=False,
+    ).collect("NVDA", 14)
+
+    assert [reason.code for reason in result.reason_records] == [ReasonCode.ENTITY_REJECTED]
+    assert result.reason_records[0].detail == (
+        "rejected_candidates=1;reasons=negative_context:1"
+    )
 
 
 @pytest.mark.asyncio

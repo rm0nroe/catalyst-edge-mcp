@@ -267,6 +267,11 @@ class IssuerFeedAdapter:
                 corroborating_source_count=max(0, event.source_count - 1),
                 source_tiers=list(event.source_tiers),
                 correction_of_event_id=event.correction_of_event_id,
+                claim_id=event.claim_id,
+                supporting_source_ids=list(event.supporting_source_ids),
+                supporting_sources_truncated=(
+                    event.source_count > len(event.supporting_source_ids)
+                ),
             ),
             sources=[
                 Source(

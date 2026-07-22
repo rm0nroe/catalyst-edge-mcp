@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edgarSubmission xmlns="http://www.sec.gov/edgar/nport">
+  <headerData>
+    <submissionType>NPORT-P</submissionType>
+    <filerInfo>
+      <filer>
+        <issuerCredentials><cik>0001067839</cik></issuerCredentials>
+      </filer>
+      <seriesClassInfo>
+        <seriesId>S000101292</seriesId>
+        <classId>C000271435</classId>
+      </seriesClassInfo>
+    </filerInfo>
+  </headerData>
+  <formData>
+    <genInfo>
+      <regCik>0001067839</regCik>
+      <seriesName>Invesco QQQ Trust, Series 1</seriesName>
+      <seriesId>S000101292</seriesId>
+      <repPdEnd>2026-09-30</repPdEnd>
+      <repPdDate>2026-03-31</repPdDate>
+      <isFinalFiling>N</isFinalFiling>
+    </genInfo>
+    <fundInfo>
+      <monthlyTotReturn classId="C000271435" rtn1="1.0"/>
+      <invstOrSecs>
+        <invstOrSec><name>Fixture Holding One</name></invstOrSec>
+        <invstOrSec><name>Fixture Holding Two</name></invstOrSec>
+      </invstOrSecs>
+    </fundInfo>
+  </formData>
+</edgarSubmission>

@@ -14,9 +14,17 @@ from catalyst_edge_mcp.adapters.bluesky import BlueskyAdapter
 from catalyst_edge_mcp.adapters.gdelt import GdeltAdapter
 from catalyst_edge_mcp.adapters.issuer_feeds import IssuerFeedAdapter
 from catalyst_edge_mcp.collection_lifecycle import build_collection_lifecycle
-from catalyst_edge_mcp.models import CatalystEdgeResponse, RiskMode, Ticker, ToolInput
+from catalyst_edge_mcp.evidence_store import EvidenceStore
+from catalyst_edge_mcp.models import (
+    CatalystEdgeResponse,
+    ClaimSourcePage,
+    RiskMode,
+    Ticker,
+    ToolInput,
+)
 from catalyst_edge_mcp.registry_config import RegistryBundle, load_registry_bundle
 from catalyst_edge_mcp.sec_filings import SecFilingsAdapter
+from catalyst_edge_mcp.sec_funds import SecFundAdapter
 from catalyst_edge_mcp.sec_ownership import SecInsiderAdapter
 from catalyst_edge_mcp.service import CatalystService
 from catalyst_edge_mcp.settings import Settings
@@ -37,10 +45,21 @@ def build_service(
     registry = registry or load_registry_bundle(settings.registry_path)
     adapters = []
     if settings.sec_user_agent:
+        fund_tickers = frozenset(registry.fund_identity_index)
         adapters.extend(
             [
-                SecFilingsAdapter(settings.sec_user_agent),
-                SecInsiderAdapter(settings.sec_user_agent),
+                SecFilingsAdapter(
+                    settings.sec_user_agent,
+                    fund_tickers=fund_tickers,
+                ),
+                SecInsiderAdapter(
+                    settings.sec_user_agent,
+                    fund_tickers=fund_tickers,
+                ),
+                SecFundAdapter(
+                    settings.sec_user_agent,
+                    registry=registry.fund_identity_index,
+                ),
             ]
         )
     if settings.issuer_feeds_enabled:
@@ -130,19 +149,37 @@ async def catalyst_edge_score(
     return await _service.evaluate(request)
 
 
+@mcp.tool()
+async def catalyst_edge_claim_sources(
+    claim_id: Annotated[str, Field(pattern=r"^clm_[0-9a-f]{64}$")],
+    cursor: Annotated[int, Field(ge=0, strict=True)] = 0,
+    limit: Annotated[int, Field(ge=1, le=20, strict=True)] = 20,
+) -> ClaimSourcePage:
+    """Return one bounded page of immutable source records supporting a grouped claim."""
+    store = EvidenceStore(Settings.from_env().evidence_store_path)
+    try:
+        return store.claim_sources(claim_id, cursor=cursor, limit=limit)
+    finally:
+        store.close()
+
+
 # The v1 SDK's generated argument model otherwise ignores unknown JSON fields.
-_registered_tool = mcp._tool_manager._tools["catalyst_edge_score"]
-_registered_tool.fn_metadata.arg_model.model_config["extra"] = "forbid"
-_registered_tool.fn_metadata.arg_model.model_rebuild(force=True)
-_registered_tool.parameters = _registered_tool.fn_metadata.arg_model.model_json_schema(
-    by_alias=True
-)
-# Computed public fields such as Evidence.source_count exist only in Pydantic's
-# serialization schema. FastMCP validates serialized tool output against this
-# object, so the validation-mode schema would reject otherwise valid responses.
-_registered_tool.fn_metadata.output_schema = CatalystEdgeResponse.model_json_schema(
-    mode="serialization"
-)
+for _tool_name, _output_model in (
+    ("catalyst_edge_score", CatalystEdgeResponse),
+    ("catalyst_edge_claim_sources", ClaimSourcePage),
+):
+    _registered_tool = mcp._tool_manager._tools[_tool_name]
+    _registered_tool.fn_metadata.arg_model.model_config["extra"] = "forbid"
+    _registered_tool.fn_metadata.arg_model.model_rebuild(force=True)
+    _registered_tool.parameters = _registered_tool.fn_metadata.arg_model.model_json_schema(
+        by_alias=True
+    )
+    # Computed public fields such as Evidence.source_count exist only in Pydantic's
+    # serialization schema. FastMCP validates serialized tool output against this
+    # object, so the validation-mode schema would reject otherwise valid responses.
+    _registered_tool.fn_metadata.output_schema = _output_model.model_json_schema(
+        mode="serialization"
+    )
 
 
 def main() -> None:
