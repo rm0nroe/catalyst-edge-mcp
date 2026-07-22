@@ -6,6 +6,7 @@ from catalyst_edge_mcp.entity_resolution import (
     decide_entity_candidate,
     match_entity_rules,
     ruleset_version,
+    title_matches_issuer,
 )
 
 TSLA = DISCOVERY_ISSUER_INDEX["TSLA"]
@@ -63,3 +64,18 @@ def test_entity_context_requires_publisher_title_alignment():
     assert unaligned.accepted is False
     assert unaligned.reason_code == "title_not_aligned"
     assert ticker_aligned.accepted is True
+
+
+def test_title_alignment_rejects_alias_with_reviewed_negative_context():
+    decision = _decision(
+        "Tesla vehicle deliveries rise",
+        title="Nikola Tesla museum exhibit opens",
+    )
+
+    assert title_matches_issuer(
+        "Nikola Tesla museum exhibit opens",
+        TSLA,
+        published_at=datetime(2026, 7, 21, tzinfo=UTC),
+    ) is False
+    assert decision.accepted is False
+    assert decision.reason_code == "title_not_aligned"
