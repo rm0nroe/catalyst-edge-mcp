@@ -11,6 +11,7 @@ from datetime import datetime
 from catalyst_edge_mcp.registry_models import DiscoveryAliasRule, DiscoveryIssuer
 
 ENTITY_RULESET_PREFIX = "entity-rules-v2"
+ENTITY_DECISION_VERSION = "title-alignment-v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +37,10 @@ class EntityDecision:
 
 
 def ruleset_version(issuer: DiscoveryIssuer) -> str:
-    payload = [asdict(rule) for rule in issuer.effective_entity_rules]
+    payload = {
+        "decision_version": ENTITY_DECISION_VERSION,
+        "rules": [asdict(rule) for rule in issuer.effective_entity_rules],
+    }
     canonical = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     digest = hashlib.sha256(canonical.encode()).hexdigest()
     return f"{ENTITY_RULESET_PREFIX}:{digest}"
@@ -77,6 +81,8 @@ def decide_entity_candidate(
     issuer: DiscoveryIssuer,
     matches: tuple[EntityRuleMatch, ...],
     published_at: datetime,
+    *,
+    title: str,
 ) -> EntityDecision:
     if not matches:
         raise ValueError("Entity decision requires at least one matched alias rule")
@@ -91,7 +97,12 @@ def decide_entity_candidate(
         else None
     )
     statuses = {status for status, _match in evaluations}
-    if selected is not None:
+    if selected is not None and not title_matches_issuer(
+        title, issuer, published_at=published_at
+    ):
+        selected = None
+        reason_code = "title_not_aligned"
+    elif selected is not None:
         reason_code = "accepted"
     elif "negative_context" in statuses:
         reason_code = "negative_context"
@@ -133,6 +144,42 @@ def decide_entity_candidate(
             )
         ),
     )
+
+
+def title_matches_issuer(
+    title: str,
+    issuer: DiscoveryIssuer,
+    *,
+    published_at: datetime | None = None,
+) -> bool:
+    """Require the surfaced publisher title to name the reviewed issuer."""
+    normalized_title = normalize_entity_text(title)
+    if not normalized_title:
+        return False
+    ticker_aliases = {
+        normalized
+        for ticker in issuer.tickers
+        if len(normalized := normalize_entity_text(ticker)) >= 2
+    }
+    if any(_contains_phrase(normalized_title, ticker) for ticker in ticker_aliases):
+        return True
+    day = published_at.date().isoformat() if published_at is not None else None
+    for rule in issuer.effective_entity_rules:
+        alias = normalize_entity_text(rule.alias)
+        if not alias or not _contains_phrase(normalized_title, alias):
+            continue
+        if day is not None and (
+            (rule.valid_from and day < rule.valid_from)
+            or (rule.valid_to and day > rule.valid_to)
+        ):
+            continue
+        if any(
+            _contains_phrase(normalized_title, normalize_entity_text(term))
+            for term in rule.negative_context
+        ):
+            continue
+        return True
+    return False
 
 
 def normalize_entity_text(value: str) -> str:
