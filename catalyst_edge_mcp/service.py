@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import re
 from collections import defaultdict
 from collections.abc import Callable, Sequence
@@ -19,9 +20,13 @@ from catalyst_edge_mcp.models import (
     Evidence,
     FamilyStatus,
     PolicyDecision,
+    ReasonCode,
+    ReasonScope,
+    ScopedReason,
     SourceStatus,
     ToolInput,
 )
+from catalyst_edge_mcp.reason_records import ordered_reasons, scoped_reason
 from catalyst_edge_mcp.redaction import bounded_raw
 from catalyst_edge_mcp.scorer import CANONICAL_FAMILIES, CatalystScorer, DeterministicScorer
 from catalyst_edge_mcp.source_policy import SOURCE_POLICIES
@@ -31,6 +36,7 @@ Clock = Callable[[], datetime]
 MAX_EVIDENCE_PER_FAMILY = 3
 MAX_EVIDENCE_TOTAL = 15
 MAX_WARNINGS = 20
+MAX_REASON_RECORDS = 600
 EXPECTED_PROVIDERS = {
     "filings_news": "SEC, reviewed issuer feeds, or discovery metadata",
     "insider_trading": "direct SEC ownership filings",
@@ -51,6 +57,7 @@ STATUS_PRIORITY = {
     SourceStatus.SCHEMA_ERROR: 5,
     SourceStatus.STALE: 4,
     SourceStatus.NO_OBSERVATIONS: 3,
+    SourceStatus.UNSUPPORTED: 3,
     SourceStatus.UNAVAILABLE: 2,
     SourceStatus.FRESH: 1,
 }
@@ -77,8 +84,14 @@ class CatalystService:
     async def evaluate(self, request: ToolInput) -> CatalystEdgeResponse:
         as_of = self._as_utc(self.clock())
         cutoff = as_of - timedelta(days=request.lookback_days)
+        active_adapters = tuple(
+            adapter
+            for adapter in self.adapters
+            if not callable(supports := getattr(adapter, "supports", None))
+            or supports(request.ticker)
+        )
         results = await asyncio.gather(
-            *(self._collect(adapter, request) for adapter in self.adapters)
+            *(self._collect(adapter, request) for adapter in active_adapters)
         )
 
         evidence: list[Evidence] = []
@@ -87,27 +100,63 @@ class CatalystService:
         providers_by_family: dict[str, set[str]] = defaultdict(set)
         failures_by_family: set[str] = set()
         statuses_by_family: dict[str, list[SourceStatus]] = defaultdict(list)
+        reason_records: list[ScopedReason] = []
 
         for family, provider, result, error, error_status in results:
             providers_by_family[family].add(provider)
             if error:
                 failures_by_family.add(family)
-                statuses_by_family[family].append(error_status or SourceStatus.UNAVAILABLE)
+                effective_error_status = error_status or SourceStatus.UNAVAILABLE
+                statuses_by_family[family].append(effective_error_status)
                 warnings.append(error)
+                reason_records.append(
+                    scoped_reason(
+                        ReasonCode.SOURCE_UNAVAILABLE,
+                        ReasonScope.SOURCE,
+                        provider,
+                        source_id=provider,
+                        family=family,
+                        observed_at=as_of,
+                        detail=effective_error_status.value,
+                    )
+                )
                 continue
             if result is None:
                 failures_by_family.add(family)
                 continue
             policy_decision = result.policy_decision
+            reason_records.extend(result.reason_records)
             if policy_decision is None and result.provider in SOURCE_POLICIES:
                 policy_decision = SOURCE_POLICIES[result.provider].decision
             if policy_decision == PolicyDecision.PERMISSION_REQUIRED:
                 statuses_by_family[family].append(SourceStatus.PERMISSION_REQUIRED)
                 warnings.append(f"{family} provider {result.provider} requires permission.")
+                reason_records.append(
+                    scoped_reason(
+                        ReasonCode.SOURCE_UNSUPPORTED,
+                        ReasonScope.SOURCE,
+                        result.provider,
+                        source_id=result.provider,
+                        family=family,
+                        observed_at=result.collected_at or as_of,
+                        detail="permission_required",
+                    )
+                )
                 continue
             if policy_decision == PolicyDecision.LICENSED_FEED_REQUIRED:
                 statuses_by_family[family].append(SourceStatus.LICENSED_FEED_REQUIRED)
                 warnings.append(f"{family} provider {result.provider} requires a licensed feed.")
+                reason_records.append(
+                    scoped_reason(
+                        ReasonCode.SOURCE_UNSUPPORTED,
+                        ReasonScope.SOURCE,
+                        result.provider,
+                        source_id=result.provider,
+                        family=family,
+                        observed_at=result.collected_at or as_of,
+                        detail="licensed_feed_required",
+                    )
+                )
                 continue
             if policy_decision == PolicyDecision.DEVELOPMENT_PRIVATE_ONLY:
                 status = (
@@ -120,11 +169,41 @@ class CatalystService:
                     f"{family} provider {result.provider} is private diagnostic only; "
                     "no production evidence or coverage credit was granted."
                 )
+                reason_records.append(
+                    scoped_reason(
+                        ReasonCode.SOURCE_UNSUPPORTED,
+                        ReasonScope.SOURCE,
+                        result.provider,
+                        source_id=result.provider,
+                        family=family,
+                        observed_at=result.collected_at or as_of,
+                        detail="development_private_only",
+                    )
+                )
                 continue
             inferred_status = result.status or (
                 SourceStatus.FRESH if result.evidence else SourceStatus.NO_OBSERVATIONS
             )
             statuses_by_family[family].append(inferred_status)
+            if not result.evidence:
+                no_evidence_reason = (
+                    ReasonCode.OBSERVED_NONE
+                    if inferred_status == SourceStatus.NO_OBSERVATIONS
+                    else ReasonCode.SOURCE_UNSUPPORTED
+                    if inferred_status == SourceStatus.UNSUPPORTED
+                    else ReasonCode.SOURCE_UNAVAILABLE
+                )
+                reason_records.append(
+                    scoped_reason(
+                        no_evidence_reason,
+                        ReasonScope.SOURCE,
+                        result.provider,
+                        source_id=result.provider,
+                        family=family,
+                        observed_at=result.collected_at or as_of,
+                        detail=inferred_status.value,
+                    )
+                )
             warnings.extend(self._sanitize_warning(warning) for warning in result.warnings)
             if result.degraded:
                 warnings.append(f"{family} used degraded provider {result.provider}.")
@@ -137,10 +216,45 @@ class CatalystService:
                 if item.timestamp < cutoff:
                     stale.add(family)
                     statuses_by_family[family].append(SourceStatus.STALE)
+                    reason_records.append(
+                        scoped_reason(
+                            ReasonCode.SOURCE_UNAVAILABLE,
+                            ReasonScope.CANDIDATE,
+                            self._evidence_scope_id(item),
+                            source_id=(item.sources[0].source_id if item.sources else None),
+                            family=family,
+                            observed_at=item.timestamp,
+                            detail="outside_lookback",
+                        )
+                    )
                     continue
                 evidence.append(item)
 
         evidence = self._deduplicate(evidence)
+        for item in evidence:
+            scope_id = self._evidence_scope_id(item)
+            if item.context and item.context.materiality == "discovery_only":
+                reason_records.append(
+                    scoped_reason(
+                        ReasonCode.DISCOVERY_ONLY,
+                        ReasonScope.CANDIDATE,
+                        scope_id,
+                        source_id=(item.sources[0].source_id if item.sources else None),
+                        family=item.family,
+                        observed_at=item.timestamp,
+                    )
+                )
+            if item.context and item.context.materiality == "not_material":
+                reason_records.append(
+                    scoped_reason(
+                        ReasonCode.EVALUATED_NOT_MATERIAL,
+                        ReasonScope.CANDIDATE,
+                        scope_id,
+                        source_id=(item.sources[0].source_id if item.sources else None),
+                        family=item.family,
+                        observed_at=item.timestamp,
+                    )
+                )
         observed_canonical = {item.family for item in evidence} & set(self.expected_families)
         missing = set(self.expected_families) - observed_canonical
         configured_families = {adapter.family for adapter in self.adapters}
@@ -152,6 +266,16 @@ class CatalystService:
                 warnings.append(
                     f"{family} is unconfigured; expected {expected_provider} "
                     "and has no fresh evidence."
+                )
+                reason_records.append(
+                    scoped_reason(
+                        ReasonCode.SOURCE_UNSUPPORTED,
+                        ReasonScope.FAMILY,
+                        family,
+                        family=family,
+                        observed_at=as_of,
+                        detail="unconfigured",
+                    )
                 )
             elif family not in failures_by_family:
                 providers = ", ".join(sorted(providers_by_family[family])) or "configured provider"
@@ -220,6 +344,7 @@ class CatalystService:
                     coverage_ratio=coverage_ratio,
                 )
             )
+        ordered_reason_records = ordered_reasons(reason_records)
         response = CatalystEdgeResponse(
             ticker=request.ticker,
             as_of=as_of,
@@ -233,10 +358,29 @@ class CatalystService:
                 stale_families=sorted(stale),
                 warnings=(list(dict.fromkeys(warnings))[: MAX_WARNINGS - len(caveats)] + caveats),
                 family_statuses=family_statuses,
+                reason_records=ordered_reason_records[:MAX_REASON_RECORDS],
+                reason_record_count=len(ordered_reason_records),
+                reason_records_truncated=(
+                    len(ordered_reason_records) > MAX_REASON_RECORDS
+                ),
             ),
             next_checks=checks,
         )
         return response
+
+    @staticmethod
+    def _evidence_scope_id(item: Evidence) -> str:
+        if item.context and item.context.claim_id:
+            return item.context.claim_id
+        source_record = (
+            item.sources[0].accession_or_record_id
+            if item.sources and item.sources[0].accession_or_record_id
+            else ""
+        )
+        payload = "\x1f".join(
+            (item.family, item.signal, item.timestamp.isoformat(), source_record)
+        )
+        return f"candidate_{hashlib.sha256(payload.encode()).hexdigest()}"
 
     async def _collect(
         self, adapter: CatalystSignalAdapter, request: ToolInput

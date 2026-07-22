@@ -28,9 +28,12 @@ from catalyst_edge_mcp.models import (
     Evidence,
     EvidenceContext,
     PolicyDecision,
+    ReasonCode,
+    ReasonScope,
     Source,
     SourceStatus,
 )
+from catalyst_edge_mcp.reason_records import scoped_reason
 from catalyst_edge_mcp.registry_config import publisher_quality_for_domain
 from catalyst_edge_mcp.registry_models import PublisherDomainQuality
 
@@ -296,6 +299,30 @@ class GdeltAdapter:
             warnings.append(
                 f"No GDELT publisher links found for {issuer.tickers[0]} in the window."
             )
+        audit_summary = self.store.entity_match_audit_summary(
+            issuer.issuer_key,
+            since=now - timedelta(days=lookback_days),
+        )
+        rejected_count = int(audit_summary["rejected_documents"])
+        reason_records = (
+            [scoped_reason(
+                ReasonCode.ENTITY_REJECTED,
+                ReasonScope.SOURCE,
+                f"{self.provider}:{issuer.issuer_key}",
+                source_id=self.provider,
+                family=self.family,
+                observed_at=now,
+                detail=(
+                    f"rejected_candidates={rejected_count};reasons="
+                    + ",".join(
+                        f"{code}:{count}"
+                        for code, count in audit_summary["rejection_reasons"].items()
+                    )
+                )[:240],
+            )]
+            if rejected_count
+            else []
+        )
         return AdapterResult(
             family=self.family,
             provider=self.provider,
@@ -305,6 +332,7 @@ class GdeltAdapter:
             policy_decision=PolicyDecision.APPROVED_DISCOVERY,
             degraded=degraded,
             collected_at=now,
+            reason_records=reason_records,
         )
 
     def _failure_result(
@@ -364,6 +392,11 @@ class GdeltAdapter:
                 corroborating_source_count=max(0, event.source_count - 1),
                 source_tiers=list(event.source_tiers),
                 correction_of_event_id=event.correction_of_event_id,
+                claim_id=event.claim_id,
+                supporting_source_ids=list(event.supporting_source_ids),
+                supporting_sources_truncated=(
+                    event.source_count > len(event.supporting_source_ids)
+                ),
             ),
             sources=[
                 Source(
