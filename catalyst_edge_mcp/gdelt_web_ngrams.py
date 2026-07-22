@@ -309,6 +309,7 @@ class GdeltWebNgramsRefresher:
                     issuer,
                     tuple(rule_matches),
                     observation.published_at,
+                    title=observation.title,
                 )
                 self.store.record_entity_match_audit(
                     EntityMatchAudit(
