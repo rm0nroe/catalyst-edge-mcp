@@ -7,6 +7,7 @@ import json
 import re
 import sqlite3
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -663,7 +664,12 @@ class EvidenceStore:
             return [self._stored_event(connection, int(row["id"])) for row in rows]
 
     def list_events_for_source(
-        self, issuer_key: str, source_id: str, since: datetime
+        self,
+        issuer_key: str,
+        source_id: str,
+        since: datetime,
+        *,
+        title_predicate: Callable[[str, datetime], bool] | None = None,
     ) -> list[StoredEvent]:
         """List canonical events observed by one source without changing global ranking."""
         with self._lock:
@@ -680,9 +686,47 @@ class EvidenceStore:
                 """,
                 (issuer_key, source_id, self._iso(since)),
             ).fetchall()
-            return [
-                self._stored_event(connection, int(row["id"]), source_id=source_id) for row in rows
-            ]
+            events = (
+                self._stored_event(
+                    connection,
+                    int(row["id"]),
+                    source_id=source_id,
+                    title_predicate=title_predicate,
+                )
+                for row in rows
+            )
+            return [event for event in events if event is not None]
+
+    def source_observation_title_records(
+        self,
+        issuer_key: str,
+        source_id: str,
+        since: datetime,
+        *,
+        limit: int = 500,
+    ) -> tuple[tuple[str, datetime], ...]:
+        """Return bounded stored titles and publication times for policy checks."""
+        if not 1 <= limit <= 500:
+            raise ValueError("limit must be between 1 and 500")
+        with self._lock:
+            rows = self._connect().execute(
+                """
+                SELECT observation.title, observation.published_at
+                FROM canonical_event AS event
+                JOIN event_source ON event_source.event_id=event.id
+                JOIN source_observation AS observation
+                    ON observation.id=event_source.observation_id
+                WHERE event.issuer_key=? AND observation.source_id=?
+                    AND event.published_at>=?
+                ORDER BY event.published_at DESC, event.id DESC, observation.id ASC
+                LIMIT ?
+                """,
+                (issuer_key, source_id, self._iso(since), limit),
+            ).fetchall()
+            return tuple(
+                (str(row["title"]), self._datetime(row["published_at"]))
+                for row in rows
+            )
 
     def record_social_bucket(
         self,
@@ -840,7 +884,8 @@ class EvidenceStore:
         event_id: int,
         *,
         source_id: str | None = None,
-    ) -> StoredEvent:
+        title_predicate: Callable[[str, datetime], bool] | None = None,
+    ) -> StoredEvent | None:
         event = connection.execute(
             "SELECT * FROM canonical_event WHERE id=?", (event_id,)
         ).fetchone()
@@ -855,32 +900,58 @@ class EvidenceStore:
                 (event_id,),
             ).fetchone()
         else:
-            source = connection.execute(
+            source_rows = connection.execute(
                 """
                 SELECT observation.* FROM event_source
                 JOIN source_observation AS observation
                     ON observation.id=event_source.observation_id
                 WHERE event_source.event_id=? AND observation.source_id=?
-                ORDER BY observation.id ASC LIMIT 1
+                ORDER BY observation.id ASC
                 """,
                 (event_id, source_id),
-            ).fetchone()
-        related = connection.execute(
+            ).fetchall()
+            source = next(
+                (
+                    row
+                    for row in source_rows
+                    if title_predicate is None
+                    or title_predicate(
+                        str(row["title"]), self._datetime(row["published_at"])
+                    )
+                ),
+                None,
+            )
+        related_rows = connection.execute(
             """
-            SELECT observation.canonical_url, observation.source_tier FROM event_source
+            SELECT observation.* FROM event_source
             JOIN source_observation AS observation ON observation.id=event_source.observation_id
-            WHERE event_source.event_id=? AND observation.id!=?
-            ORDER BY event_source.source_rank DESC, observation.id ASC LIMIT 20
+            WHERE event_source.event_id=?
+            ORDER BY event_source.source_rank DESC, observation.id ASC
             """,
-            (event_id, int(source["id"]) if source is not None else -1),
+            (event_id,),
         ).fetchall()
         claim = connection.execute(
             "SELECT claim_id FROM event_claim WHERE event_id=?", (event_id,)
         ).fetchone()
         if event is None or source is None:
+            if source_id is not None and title_predicate is not None:
+                return None
             raise ValueError("Canonical event graph is incomplete")
         if claim is None:
             raise ValueError("Canonical event claim is incomplete")
+        related = [
+            row
+            for row in related_rows
+            if int(row["id"]) != int(source["id"])
+            and not (
+                source_id is not None
+                and str(row["source_id"]) == source_id
+                and title_predicate is not None
+                and not title_predicate(
+                    str(row["title"]), self._datetime(row["published_at"])
+                )
+            )
+        ][:20]
         claim_id = str(claim["claim_id"])
         source_count = int(
             connection.execute(

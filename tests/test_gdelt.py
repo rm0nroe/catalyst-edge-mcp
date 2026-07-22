@@ -6,7 +6,7 @@ import pytest
 
 from catalyst_edge_mcp.adapters.base import ProviderGate
 from catalyst_edge_mcp.adapters.gdelt import GDELT_ENDPOINT, GdeltAdapter
-from catalyst_edge_mcp.discovery_registry import DiscoveryIssuer
+from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX, DiscoveryIssuer
 from catalyst_edge_mcp.evidence_store import EntityMatchAudit, EventObservation, EvidenceStore
 from catalyst_edge_mcp.models import Direction, PolicyDecision, ReasonCode, SourceStatus
 from catalyst_edge_mcp.registry_config import publisher_quality_for_domain
@@ -20,6 +20,7 @@ ISSUER = DiscoveryIssuer(
     tickers=("NVDA",),
     query_aliases=("NVIDIA", "NVIDIA Corporation"),
 )
+TSLA = DISCOVERY_ISSUER_INDEX["TSLA"]
 
 
 def _adapter(tmp_path, client, **kwargs):
@@ -333,6 +334,76 @@ async def test_gdelt_request_path_filters_legacy_unaligned_cached_titles(tmp_pat
     assert result.status is SourceStatus.NO_OBSERVATIONS
     assert result.evidence == []
     assert [reason.code for reason in result.reason_records] == [ReasonCode.ENTITY_REJECTED]
+    assert result.reason_records[0].detail == "cached_title_not_aligned=1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("unaligned_first", [True, False])
+async def test_gdelt_cache_filters_grouped_sources_without_hiding_aligned_title(
+    tmp_path, unaligned_first
+):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    observations = [
+        EventObservation(
+            source_id="gdelt",
+            source_name="GDELT discovery (publisher.example)",
+            source_tier="discovery",
+            issuer_key=TSLA.issuer_key,
+            record_id="unaligned",
+            canonical_url="https://publisher.example/unaligned",
+            title="Q2 earnings put stock in focus",
+            published_at=AS_OF,
+            observed_at=AS_OF,
+            retrieved_at=AS_OF,
+            raw_sha256="a" * 64,
+            parser_version="gdelt-web-ngrams-v2+legacy",
+            policy_decision=PolicyDecision.APPROVED_DISCOVERY,
+        ),
+        EventObservation(
+            source_id="gdelt",
+            source_name="GDELT discovery (publisher.example)",
+            source_tier="discovery",
+            issuer_key=TSLA.issuer_key,
+            record_id="aligned",
+            canonical_url="https://publisher.example/aligned",
+            title="Tesla Q2 earnings put stock in focus",
+            published_at=AS_OF,
+            observed_at=AS_OF,
+            retrieved_at=AS_OF,
+            raw_sha256="b" * 64,
+            parser_version="gdelt-web-ngrams-v2+current",
+            policy_decision=PolicyDecision.APPROVED_DISCOVERY,
+        ),
+    ]
+    if not unaligned_first:
+        observations.reverse()
+    for observation in observations:
+        store.ingest_event(observation)
+    store.update_collector_state(
+        source_id="gdelt",
+        issuer_key=TSLA.issuer_key,
+        feed_url=GDELT_ENDPOINT,
+        status=SourceStatus.FRESH.value,
+        checked_at=AS_OF,
+        succeeded=True,
+    )
+
+    result = await GdeltAdapter(
+        str(tmp_path / "events.sqlite3"),
+        registry={"TSLA": TSLA},
+        store=store,
+        clock=lambda: AS_OF,
+        live_refresh=False,
+    ).collect("TSLA", 14)
+
+    assert result.status is SourceStatus.FRESH
+    assert [item.change.description for item in result.evidence] == [
+        "Publisher coverage discovered: Tesla Q2 earnings put stock in focus"
+    ]
+    assert str(result.evidence[0].sources[0].canonical_url) == (
+        "https://publisher.example/aligned"
+    )
+    assert result.evidence[0].sources[0].related_sources == []
     assert result.reason_records[0].detail == "cached_title_not_aligned=1"
 
 

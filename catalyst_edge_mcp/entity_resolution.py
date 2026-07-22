@@ -97,7 +97,9 @@ def decide_entity_candidate(
         else None
     )
     statuses = {status for status, _match in evaluations}
-    if selected is not None and not title_matches_issuer(title, issuer):
+    if selected is not None and not title_matches_issuer(
+        title, issuer, published_at=published_at
+    ):
         selected = None
         reason_code = "title_not_aligned"
     elif selected is not None:
@@ -144,21 +146,40 @@ def decide_entity_candidate(
     )
 
 
-def title_matches_issuer(title: str, issuer: DiscoveryIssuer) -> bool:
+def title_matches_issuer(
+    title: str,
+    issuer: DiscoveryIssuer,
+    *,
+    published_at: datetime | None = None,
+) -> bool:
     """Require the surfaced publisher title to name the reviewed issuer."""
     normalized_title = normalize_entity_text(title)
     if not normalized_title:
         return False
-    aliases = {
-        normalize_entity_text(rule.alias)
-        for rule in issuer.effective_entity_rules
-    }
-    aliases.update(
+    ticker_aliases = {
         normalized
         for ticker in issuer.tickers
         if len(normalized := normalize_entity_text(ticker)) >= 2
-    )
-    return any(_contains_phrase(normalized_title, alias) for alias in aliases if alias)
+    }
+    if any(_contains_phrase(normalized_title, ticker) for ticker in ticker_aliases):
+        return True
+    day = published_at.date().isoformat() if published_at is not None else None
+    for rule in issuer.effective_entity_rules:
+        alias = normalize_entity_text(rule.alias)
+        if not alias or not _contains_phrase(normalized_title, alias):
+            continue
+        if day is not None and (
+            (rule.valid_from and day < rule.valid_from)
+            or (rule.valid_to and day > rule.valid_to)
+        ):
+            continue
+        if any(
+            _contains_phrase(normalized_title, normalize_entity_text(term))
+            for term in rule.negative_context
+        ):
+            continue
+        return True
+    return False
 
 
 def normalize_entity_text(value: str) -> str:
