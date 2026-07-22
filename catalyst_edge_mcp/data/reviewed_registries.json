@@ -1,12 +1,41 @@
 {
-  "version": 1,
+  "version": 2,
   "issuers": [
     {
       "issuer_key": "CIK0000320193",
       "issuer_name": "Apple Inc.",
       "tickers": ["AAPL"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Apple Inc", "Apple Incorporated"],
+      "discovery_rules": [
+        {
+          "rule_id": "apple_inc_legal_name",
+          "version": "1",
+          "alias": "Apple Inc",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["fruit", "orchard", "growers"],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0000320193",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias with common-noun exclusions."
+        },
+        {
+          "rule_id": "apple_incorporated_legal_name",
+          "version": "1",
+          "alias": "Apple Incorporated",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["fruit", "orchard", "growers"],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0000320193",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed expanded issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["Apple Inc"],
       "issuer_feed": {
         "feed_url": "https://www.apple.com/newsroom/rss-feed.rss",
@@ -20,7 +49,36 @@
       "issuer_name": "NVIDIA Corporation",
       "tickers": ["NVDA"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["NVIDIA", "NVIDIA Corporation"],
+      "discovery_rules": [
+        {
+          "rule_id": "nvidia_brand",
+          "version": "1",
+          "alias": "NVIDIA",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001045810",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed distinctive issuer brand alias."
+        },
+        {
+          "rule_id": "nvidia_corporation_legal_name",
+          "version": "1",
+          "alias": "NVIDIA Corporation",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001045810",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["NVIDIA"],
       "issuer_feed": {
         "feed_url": "https://nvidianews.nvidia.com/cats/press_release.xml",
@@ -34,7 +92,64 @@
       "issuer_name": "Tesla, Inc.",
       "tickers": ["TSLA"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Tesla Inc", "Tesla Motors"],
+      "discovery_rules": [
+        {
+          "rule_id": "tesla_inc_legal_name",
+          "version": "1",
+          "alias": "Tesla Inc",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": "2017-02-01",
+          "valid_to": null,
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Current legal name with Nikola Tesla exclusions."
+        },
+        {
+          "rule_id": "tesla_motors_former_name",
+          "version": "1",
+          "alias": "Tesla Motors",
+          "alias_kind": "former_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": null,
+          "valid_to": "2017-01-31",
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Former legal name bounded to the corporate rename."
+        },
+        {
+          "rule_id": "tesla_energy_brand",
+          "version": "1",
+          "alias": "Tesla Energy",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": ["battery", "storage", "Megapack", "Powerwall", "solar", "deployment"],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": "2015-04-30",
+          "valid_to": null,
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Energy brand requires reviewed product or deployment context."
+        },
+        {
+          "rule_id": "tesla_brand_contextual",
+          "version": "1",
+          "alias": "Tesla",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": ["Inc", "vehicle", "vehicles", "electric", "EV", "Cybertruck", "Model", "deliveries", "factory", "shares", "stock"],
+          "negative_context": ["Nikola", "coil", "museum", "scientist", "inventor"],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001318605",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Bare brand requires issuer context and rejects historical-person references."
+        }
+      ],
       "social_aliases": ["Tesla Inc"],
       "issuer_feed": null
     },
@@ -43,7 +158,36 @@
       "issuer_name": "Rocket Lab USA, Inc.",
       "tickers": ["RKLB"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Rocket Lab", "Rocket Lab USA"],
+      "discovery_rules": [
+        {
+          "rule_id": "rocket_lab_brand",
+          "version": "1",
+          "alias": "Rocket Lab",
+          "alias_kind": "brand",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001819994",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed distinctive issuer brand alias."
+        },
+        {
+          "rule_id": "rocket_lab_usa_legal_name",
+          "version": "1",
+          "alias": "Rocket Lab USA",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001819994",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["Rocket Lab"],
       "issuer_feed": null
     },
@@ -52,9 +196,178 @@
       "issuer_name": "Berkshire Hathaway Inc.",
       "tickers": ["BRK-A", "BRK-B"],
       "reviewed_on": "2026-07-13",
-      "discovery_aliases": ["Berkshire Hathaway"],
+      "discovery_rules": [
+        {
+          "rule_id": "berkshire_hathaway_legal_name",
+          "version": "1",
+          "alias": "Berkshire Hathaway",
+          "alias_kind": "legal_name",
+          "match_mode": "phrase",
+          "required_context": [],
+          "negative_context": [],
+          "valid_from": null,
+          "valid_to": null,
+          "canonical_cik": "CIK0001067983",
+          "reviewed_on": "2026-07-21",
+          "review_note": "Reviewed issuer legal-name alias."
+        }
+      ],
       "social_aliases": ["Berkshire Hathaway"],
       "issuer_feed": null
+    }
+  ],
+  "funds": [
+    {
+      "fund_name": "SPDR S&P 500 ETF Trust",
+      "registrant_cik": "CIK0000884394",
+      "series_id": null,
+      "class_id": null,
+      "identity_status": "unsupported_no_series_class",
+      "ticker_versions": [
+        {"ticker": "SPY", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/spdr-sp-500-etf-trust-spy",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "SEC exchange mapping resolves the CIK, but the official mutual-fund ticker map supplies no series/class IDs."
+    },
+    {
+      "fund_name": "Invesco QQQ Trust, Series 1",
+      "registrant_cik": "CIK0001067839",
+      "series_id": "S000101292",
+      "class_id": "C000271435",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "QQQ", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "Invesco",
+        "notice_url": "https://www.invesco.com/qqq-etf/en/home.html",
+        "official_hosts": ["www.invesco.com", "invesco.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "SPDR Dow Jones Industrial Average ETF Trust",
+      "registrant_cik": "CIK0001041130",
+      "series_id": null,
+      "class_id": null,
+      "identity_status": "unsupported_no_series_class",
+      "ticker_versions": [
+        {"ticker": "DIA", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/spdr-dow-jones-industrial-average-etf-trust-dia",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "SEC exchange mapping resolves the CIK, but the official mutual-fund ticker map supplies no series/class IDs."
+    },
+    {
+      "fund_name": "iShares Russell 2000 ETF",
+      "registrant_cik": "CIK0001100663",
+      "series_id": "S000004344",
+      "class_id": "C000012074",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "IWM", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "iShares",
+        "notice_url": "https://www.ishares.com/us/products/239710/ishares-russell-2000-etf",
+        "official_hosts": ["www.ishares.com", "ishares.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "The Energy Select Sector SPDR Fund",
+      "registrant_cik": "CIK0001064641",
+      "series_id": "S000006410",
+      "class_id": "C000017596",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "XLE", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/the-energy-select-sector-spdr-fund-xle",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "The Technology Select Sector SPDR Fund",
+      "registrant_cik": "CIK0001064641",
+      "series_id": "S000006415",
+      "class_id": "C000017601",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "XLK", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "State Street Global Advisors",
+        "notice_url": "https://www.ssga.com/us/en/intermediary/etfs/the-technology-select-sector-spdr-fund-xlk",
+        "official_hosts": ["www.ssga.com", "ssga.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
+    },
+    {
+      "fund_name": "SPDR Gold Trust",
+      "registrant_cik": "CIK0001222333",
+      "series_id": null,
+      "class_id": null,
+      "identity_status": "unsupported_non_investment_company",
+      "ticker_versions": [
+        {"ticker": "GLD", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "World Gold Trust Services",
+        "notice_url": "https://www.spdrgoldshares.com/usa/",
+        "official_hosts": ["www.spdrgoldshares.com", "spdrgoldshares.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "The official SEC exchange map resolves the CIK, but GLD is not in the N-CEN/NPORT series/class lane."
+    },
+    {
+      "fund_name": "VanEck Gold Miners ETF",
+      "registrant_cik": "CIK0001137360",
+      "series_id": "S000009191",
+      "class_id": "C000024980",
+      "identity_status": "official_series_class",
+      "ticker_versions": [
+        {"ticker": "GDX", "valid_from": null, "valid_to": null, "status": "active"}
+      ],
+      "sponsor_source": {
+        "sponsor_name": "VanEck",
+        "notice_url": "https://www.vaneck.com/us/en/investments/gold-miners-etf-gdx/",
+        "official_hosts": ["www.vaneck.com", "vaneck.com"],
+        "reviewed_on": "2026-07-21",
+        "review_note": "Reviewed sponsor-primary product and notice surface; retain metadata and links only."
+      },
+      "reviewed_on": "2026-07-21",
+      "review_note": "CIK, series ID, class ID, and ticker match the official SEC mutual-fund ticker map."
     }
   ],
   "publisher_domains": [

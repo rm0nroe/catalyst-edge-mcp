@@ -1,13 +1,14 @@
 # Catalyst Edge MCP — Technical Design
 
-**Revision:** Contract foundation implemented; product-validation correction, 2026-07-15
+**Revision:** Provenance/reason completeness implemented; provider-neutral replay addendum, 2026-07-21
 
 ## 1. Scope, outcome, and fixed decisions
 
 This document is the implementation design for the current `PRD.md` local
 acceptance boundary. The
 deliverable is a standalone, read-only MCP server in this repository exposing
-one tool, `catalyst_edge_score`. Completion means the tool can return a compact,
+`catalyst_edge_score` plus the bounded supporting query
+`catalyst_edge_claim_sources`. Completion means the score tool can return a compact,
 source-linked catalyst dossier backed by usable free evidence, with explicit
 missingness for unavailable families. A schema-valid no-data result is required
 failure behavior, but is not sufficient for product acceptance. Local acceptance
@@ -52,6 +53,7 @@ The implementation is split by responsibility rather than by provider runtime:
 ```text
 catalyst_edge_mcp/
   models.py                 # public and internal Pydantic schemas
+  reason_records.py         # scoped reason IDs and display ordering
   source_policy.py          # reviewed rights, quality, rate, and host policy
   evidence_store.py         # SQLite/WAL observations and collector state
   validation.py             # secure input validation
@@ -205,6 +207,12 @@ has a typed `family_status`. Missingness contributes zero directional evidence.
 Optional `alternative` evidence can increase confirmation but never determines
 whether coverage is complete.
 
+The supporting `catalyst_edge_claim_sources` tool accepts `claim_id`, an integer
+cursor defaulting to zero, and a limit from 1–20. It returns an exact total, a
+bounded list of immutable source references, and a next cursor when another page
+exists. Unknown or malformed claim IDs fail closed. The query reads local retained
+metadata only; it performs no provider collection and does not affect scoring.
+
 ## 5. Evidence, provenance, and change normalization
 
 Each `Evidence` contains:
@@ -228,6 +236,13 @@ Source URLs must be returned directly by the source or constructed from a
 documented official URL scheme. Adapters must not invent article or filing
 URLs. Duplicate evidence is removed using `(family, signal, timestamp,
 canonical_source_url)` before scoring.
+
+Every grouped operational event also receives an immutable `clm_<sha256>` claim ID.
+Its evidence context reports the exact source-record count, up to 20 stable
+`src_<sha256>` supporting IDs, and whether that compact list is truncated. The
+claim-source query resolves those IDs to every counted source/accession. Relations
+are append-only and retry-idempotent; existing event/source rows are deterministically
+backfilled when the additive schema opens.
 
 Provider source-quality constants are deterministic and documented rather than
 inferred dynamically:
@@ -313,8 +328,11 @@ Baseline contracts:
   explicit recovery command download the newest bounded Web NGrams index/TOC pairs from the official
   `storage.googleapis.com/data.gdeltproject.org/gdeltv5/weblegacy/ngrams` path,
   matches all reviewed issuers in one pass, and stores publisher metadata/links
-  rather than article bodies or ngram context. Exact host/path validation, byte
-  ceilings, a five-file run limit, and per-issuer document caps bound the collector.
+  rather than article bodies or ngram context. Registry-v2 rules resolve each valid
+  TOC candidate before ingestion using reviewed alias kind, match mode, context,
+  validity, CIK, and rule provenance. Exact host/path validation, byte ceilings, a
+  five-file run limit, a 200-candidate audit cap, and a separate 50-accepted-document
+  ingestion cap per issuer bound the collector.
 - Bluesky: search exact cashtags/reviewed aliases through the documented
   `public.api.bsky.app` AppView host, then the documented `api.bsky.app`
   fallback. Reads are unauthenticated. Never use proxies or scraping to bypass
@@ -341,7 +359,12 @@ partial results with freshness. Cancellation always propagates.
 
 The evidence store uses SQLite/WAL tables for `source_observation`,
 `canonical_event`, `event_source`, `insider_transaction`, `insider_cluster`,
-`social_bucket`, `collector_state`, and `source_policy`. Event deduplication
+`social_bucket`, `collector_state`, `source_policy`, `event_claim`, `claim_source`,
+and `entity_match_audit`.
+Entity decisions are append-only and retry-idempotent by audit fingerprint; a
+ruleset or candidate-context change appends a distinct record. The table retains
+TOC/context hashes and derived matched terms, never publisher bodies or raw NGram
+text. Event deduplication
 normalizes issuer/CIK and canonical URLs, uses exact fingerprints first, then a
 48-hour same-issuer RapidFuzz token-set threshold of `>=92`. Corrections and
 materially changed numbers are linked versions, not discarded duplicates.
@@ -379,7 +402,7 @@ validate input
   -> redact and normalize
   -> deduplicate
   -> enforce freshness and baseline rules
-  -> calculate family/data-quality warnings
+  -> calculate family/data-quality warnings and scoped reasons
   -> score deterministic evidence
   -> generate mode-aware summary
   -> apply compactness/source/raw options
@@ -419,6 +442,19 @@ status wins in this order: `permission_required`, `licensed_feed_required`,
 `rate_limited`, `timeout`, `schema_error`, `stale`, `no_observations`, then
 `unavailable`. Social coverage ratios include collector downtime. No typed
 missingness object is converted into evidence.
+
+`data_quality.reason_records` retains typed reasons at source, candidate, family,
+or evaluation scope. The allowed codes are `observed_none`, `source_unavailable`,
+`source_unsupported`, `entity_rejected`, `discovery_only`, and
+`evaluated_not_material`. Records are deduplicated by deterministic reason ID and
+displayed in that order by precedence groups: unavailable, unsupported, rejected,
+none observed, discovery-only, then evaluated non-material. This display order
+does not erase coexisting reasons or map them to RESEARCH NOW/MONITOR/IGNORE.
+The production-safe output bound is 600 records; total count and truncation are
+explicit if a nonstandard composition exceeds it. GDELT uses one source-scoped
+aggregate `entity_rejected` disposition for the evaluation window; individual
+candidate decisions remain recoverable from the append-only audit and are not
+silently truncated into the dossier.
 
 ## 9. Deterministic scoring
 
@@ -604,6 +640,15 @@ preserving the deterministic unbacktested numeric weights is the evidence-based
 tuning decision. Final target-cohort, fresh GDELT, and recent RKLB acceptance
 passed.
 
+Completed on 2026-07-21: the separate SEC fund lane adds strict reviewed CIK,
+series/class, historical ticker/status, and sponsor-primary metadata for SPY,
+QQQ, DIA, IWM, XLE, XLK, GLD, and GDX. QQQ, IWM, XLE, XLK, and GDX parse
+N-CEN/NPORT XML with report, period-end, filing, acceptance, accession, hash,
+and parser provenance into neutral research-only evidence. SPY and DIA fail
+closed because the official mutual-fund ticker map supplies no series/class IDs;
+GLD is typed outside this investment-company form lane. Fund tickers return
+explicit unsupported reasons from corporate filing and insider collectors.
+
 0. Revise this design and contracts: source policy, provenance, typed statuses,
    quality constants, evidence-semantic readiness, neutral missingness, and
    red tests/fixtures. Do not claim collector implementation from this phase.
@@ -624,6 +669,15 @@ passed.
    aliases, unknown fields, malformed CIKs, and feed-host mismatches fail closed.
    Reviewed publisher-domain tiers deterministically set GDELT quality from 0.62 to
    0.70; unlisted domains receive 0.60 and never inherit through lookalike suffixes.
+   Registry v2 now applies ruleset-versioned per-alias context, exclusion, validity,
+   CIK, and provenance rules before ingestion. Every valid TOC candidate receives an
+   append-only accepted/rejected audit record; reject-only runs remain fresh successful
+   no-observation collections. Legacy registry v1 files remain load-compatible, and
+   legacy cached observations age out normally rather than being destructively purged.
+   Immutable claim/source relations now make every grouped count recoverable through
+   a bounded MCP query, and scoped reason records retain unavailable, unsupported,
+   no-observation, entity-rejected, discovery-only, and evaluated-non-material
+   dispositions without changing scoring semantics.
 4. Implemented: Bluesky exact-match partial attention with cached-to-direct official
    AppView fallback, two bounded historical windows, complete pagination, minimum
    samples, failure-aware coverage, and neutral semantics. Mastodon remains
@@ -672,6 +726,9 @@ Required deterministic dossier scenarios:
 - GDELT request-path cache isolation, one-download-per-file batch matching, bounded
   Web NGrams processing, exact official-host enforcement, publisher-body exclusion,
   startup/periodic lifecycle, restart throttling, clean shutdown, and freshness health;
+- registry-v2 entity-rule validation, legacy-v1 translation, ruleset hashing,
+  required/negative context and validity behavior, accept/reject audit idempotence,
+  rejection non-starvation, and reject-only freshness semantics;
 - Bluesky documented official-host fallback without proxying;
 - sentiment/model-disabled behavior;
 - missing baseline and valid current-vs-prior change calculations;
@@ -743,6 +800,9 @@ Test identifiers below are mandatory names or markers in the test suite.
 | TR20 real-case product validation | §13–§14 | `test_real_catalyst_evaluation.py`, 25 recorded official-SEC cases, completion report |
 | TR21 local collection lifecycle | §6, §8, §14 | `test_collection_lifecycle.py`, cache-only GDELT adapter tests, server lifespan test |
 | TR22 validated local registries and domain tiers | §6, §8, §14 | `test_registry_config.py`, GDELT publisher-quality tests, composition-root tests |
+| TR23 deterministic entity decisions and rejection audit | §6, §8, §14, §17 | `test_entity_resolution.py`, `test_gdelt_web_ngrams.py`, `test_evidence_store.py` |
+| TR24 grouped-source recovery and scoped reasons | §3, §5–§6, §8, §14, §17 | `test_evidence_store.py`, `test_service.py`, `CT_CLAIM_SOURCE_SCHEMA_AND_DIRECT_INVOCATION` |
+| TR25 SEC fund identity and as-filed evidence | §5–§6, §8, §14, §17 | `test_sec_funds.py`, fixed SPY/QQQ/DIA/IWM/XLE/XLK/GLD/GDX registry assertions, composition-root tests |
 
 ### Acceptance criteria, fixtures, and Definition of Done
 
@@ -797,3 +857,463 @@ Test identifiers below are mandatory names or markers in the test suite.
   source is approved; this optional extension does not block local completion.
 - **Scorer:** deterministic v1 behind `CatalystScorer`; no trained scorer or
   performance claim in this implementation.
+
+## 17. Point-in-time replay and backtest addendum
+
+### 17.1 Status and decision boundary
+
+This section defines a future, provider-neutral replay architecture. It does not
+authorize a vendor purchase, paid-data ingestion, scorer calibration, or a
+predictive claim. The current MCP remains `deterministic_v1`, `not_trained`, and
+`unbacktested` until the Stage B acceptance contract below passes.
+
+As of 2026-07-21, entity-resolution v2, append-only rejected-match auditing,
+scoped reason semantics, immutable grouped-source recovery, and the SEC-backed
+fund lane are implemented in the operational collector. The replay dataset and
+every vendor-gated identity/price/terminal-outcome component remain future work.
+
+The chosen design separates two systems:
+
+1. The existing operational SQLite event graph continues to support bounded
+   local collection and current dossier assembly.
+2. A new immutable research dataset freezes historically admissible evidence,
+   identity, configuration, scorer inputs, and outcome labels for replay.
+
+The operational graph is not retroactively treated as a point-in-time ledger.
+Mutable `collector_state` and `source_policy` rows remain operational state and
+cannot establish what a historical evaluation knew.
+
+#### Inputs and normative dependencies
+
+| Input or dependency | Status for this addendum |
+| --- | --- |
+| [Free/open-source coverage research](docs/research/2026-07-21-free-open-source-coverage-research.md) | Normative source-quality and entity-resolution evidence |
+| [Point-in-time dataset research](docs/research/2026-07-21-point-in-time-backtest-dataset-research.md) | Normative replay, label, sampling, and vendor-rights evidence |
+| [Reconciled source roadmap](docs/research/2026-07-21-catalyst-source-roadmap.md) | Normative ordering and approval gates |
+| Operational provenance, collection, missingness, and scoring (§§5–9) | Implemented current-system inputs |
+| Entity-resolution v2, scoped reasons, immutable grouped-source recovery, and SEC-backed ETF/fund identity | Required before Stage A |
+| Point-in-time identity/lifecycle/price rights and provider mappings | Vendor-gated before Stage A |
+| Survivor-aware terminal-outcome rights and mapping | Vendor-gated before Stage B |
+
+#### Domain terms
+
+- **Provider-neutral:** the canonical contract is independent of any vendor's
+  field names or delivery format.
+- **Pre-registered:** frozen and hashed before forward returns are joined.
+- **Source observation:** one immutable version of one source record, including
+  provenance and an availability decision.
+- **Evaluation case:** one security at one `evaluation_at`, with the complete
+  eligible evidence packet and scorer snapshot. Stage A/B sample counts always
+  count evaluation cases, not source observations.
+- **Label:** one outcome for an evaluation case, horizon, and cost scenario.
+- **Fact manifest:** a content-hashed record of extracted facts and provenance
+  used when raw payload retention is not permitted.
+- **Scoped reason record:** a typed missingness/disposition reason attached to a
+  named source, candidate, family, or evaluation scope; multiple reasons may
+  coexist.
+- **Shared untouched test:** one holdout opened once for all scorer candidates
+  frozen before that opening.
+- **Signal bucket:** a score/rank interval whose boundaries are pre-registered.
+- **Claimed family:** an evidence family whose coverage claim and expected-cell
+  denominator are pre-registered before outcomes are joined.
+
+### 17.2 Desired end state
+
+Given an `evaluation_at` timestamp, dataset version, and scorer version, the
+research system reconstructs the exact admissible evidence packet, security
+identity, market session, score, and forward labels without consulting current
+registry state or later corrections. A rerun from retained licensed inputs
+produces byte-identical normalized observations and labels.
+
+Stage A proves replay correctness on 50–100 manually audited evaluation cases.
+Stage B creates at least 1,000 valid evaluation cases, including at least 250 in
+one shared untouched test, from a survivor-aware active/inactive universe beginning
+no earlier than 2018-05-01.
+
+### 17.3 Chosen approach: immutable manifests plus licensed label components
+
+Catalyst Edge owns and freezes the evidence transformation layer:
+
+- SEC accession-level filings and ownership facts;
+- historically admissible issuer-primary metadata;
+- GDELT metadata as discovery-only evidence;
+- entity, deduplication, parser, registry, policy, and scorer decisions; and
+- content hashes or fact manifests when raw retention is not permitted.
+
+Identity, lifecycle, price, adjustment, and terminal-outcome components are
+adapter contracts backed by an approved source. The conditional Stage A
+candidate is Databento Corporate Actions, the separately licensed Databento
+Security Master, and Tiingo end-of-day prices. This is not a Stage B selection.
+Stage B requires CRSP or a contractually equivalent source that supplies
+survivor-aware identity and complete terminal outcomes or delisting returns.
+
+Vendor-specific field mappings remain unset until approved sample schemas and
+written retention/derived-use rights are received. Adapters must map into this
+canonical contract rather than leaking provider field names into replay logic.
+
+### 17.4 Canonical immutable contract
+
+#### Relationship map and version lifecycle
+
+```text
+build_specification ──> build_attempt ──success──> build_run
+       │                                         │
+       └─────────────────────────────────────────> dataset_version
+                                                    │
+                                                    ├─> evaluation_case
+                                                    │      ├─> source_observation(s)
+                                                    │      └─> scorer_snapshot
+                                                    └─> label(s by horizon/scenario)
+```
+
+- A `build_specification` is the canonical, pre-registered set of provider
+  manifests, queries, policies, configurations, and code/environment hashes.
+- A `build_attempt` is one execution with a catalog-only UUID.
+- A successful attempt creates a `build_run` with output and audit hashes.
+- A `dataset_version` is the content-addressed normalized output. Deterministic
+  reruns of the same specification share the dataset version and create separate
+  build runs; changed bytes create a new version. No prior version is overwritten.
+
+One dataset version may have many build runs and evaluation cases. One security
+has many non-overlapping identity intervals and lifecycle records. One evaluation
+case references every eligible source observation in its evidence packet and
+exactly one scorer snapshot. It has one label per horizon and cost scenario.
+
+#### Logical records
+
+Security identity and lifecycle records contain:
+
+- `security_id`, `security_id_type`, issuer CIK, share class, and security type;
+- ticker, name, exchange, and optional classification validity intervals;
+- listing/IPO, halt/suspension, symbol/name change, merger, acquisition,
+  bankruptcy, delisting, and terminal-outcome records; and
+- announcement, record, effective, source-observation, retrieval, version, and
+  hash metadata.
+
+Point-in-time sector or size classifications may be used only when their source
+and interval were valid at `evaluation_at`; otherwise matching uses prior price,
+dollar volume, volatility, and momentum.
+
+Each source observation contains:
+
+- source ID/tier, accession or record ID, canonical URL, and permitted raw-object
+  or fact-manifest reference;
+- event occurrence and authoritative acceptance/publication times;
+- `historically_available_at`, proof type/reference, and `reconstructed_at`;
+- correction, amendment, or deletion lineage;
+- parser, entity-ruleset, deduplication, registry, and source-policy versions; and
+- normalized evidence, supporting source IDs, family status, warnings, and the
+  complete ordered set of scoped reason records.
+
+A 2026 backfill is never represented as collector-observed in 2018. Historical
+issuer content is admissible only with a contemporaneous archive or identical
+immutable SEC filing/exhibit; otherwise it remains discovery-only.
+
+Each evaluation case contains `evaluation_at`, eligibility cutoff, frozen market
+calendar, session relationship, scorer/code/environment hashes, score,
+direction, confidence, and contribution breakdown. A downstream three-class
+evaluation additionally freezes its owner, policy version, class definitions,
+and exact score/reason mapping; those classes are not MCP-owned fields.
+
+Each label contains entry convention and prices; 1/5/20-session raw-price,
+total, SPY-relative, and conditionally sector-relative returns; path excursion;
+halt/missing/merger/delisting/terminal status; and a versioned cost scenario.
+
+#### Immutable IDs
+
+`observation_key` is `cek_` plus SHA-256 of source ID, canonical issuer/security
+ID, and stable source record ID joined by the unit separator. `observation_id`
+is `ceo_` plus the hash of that key and the provider version ID or retained
+payload/fact-manifest hash. Same-record corrections create new observations
+linked through `correction_of_observation_id`.
+
+`dataset_version` is `ced_` plus the build-specification hash. `evaluation_id`
+is `cee_` plus the hash of dataset version, security ID, evaluation timestamp,
+and scorer version. `label_id` adds horizon and cost-scenario version. Existing
+IDs must have identical canonical bytes; a same-version collision with different
+bytes fails the build.
+
+#### Provider protocol and failure policy
+
+Each provider adapter yields provider-neutral identity, lifecycle, price,
+action, or terminal records plus source record/version IDs, publication/record/
+observation timestamps, retrieval manifest, and payload hash. A required
+component that is incomplete, rights-blocked, or cannot map losslessly fails the
+build. Optional evidence families emit typed missingness and never silently
+reduce the eligible universe.
+
+#### Physical storage and modules
+
+```text
+catalyst_edge_mcp/replay/
+  contracts.py       # immutable records and typed failures
+  manifests.py       # canonical manifests, hashes, and build lineage
+  adapters/          # licensed provider mappings
+  eligibility.py     # availability proofs and replay cutoffs
+  sessions.py        # exchange calendar and entry-session mapping
+  labels.py          # adjustments, returns, paths, and costs
+  sampling.py        # pre-registered universe/event/control selection
+  audit.py           # Stage A/Stage B invariants and exclusions
+```
+
+Permitted raw objects are content-addressed by SHA-256. Canonical records use
+JSON Lines for byte identity and Parquet partitioned by dataset/source/date for
+analysis. DuckDB runs frozen queries over Parquet. A small SQLite catalog stores
+immutable specification, run, version, and audit manifests—not mutable source
+truth.
+
+#### Canonical serialization
+
+Canonical output is UTF-8 JSON Lines: keys sorted lexicographically, Unicode
+preserved, no insignificant whitespace, one record per line, one trailing
+newline, and records sorted by immutable primary key. Timestamps are UTC RFC
+3339 with six fractional digits and `Z`. Missing values are JSON `null`; NaN and
+infinity are forbidden. Prices/cash are decimal strings quantized to 8 places;
+returns/rates use 10 places; both use round-half-even. Integers and booleans are
+native. Unordered source/reason sets are sorted by stable ID; paths remain
+session ordered. Canonical JSONL hashes—not Parquet bytes—are the byte-identity
+surface.
+
+#### Label mathematics
+
+Freeze `signal_sign` as `+1`, `0`, or `-1`. Underlying return is
+`exit_price / entry_price - 1`; signed gross return is
+`signal_sign * underlying_total_return`. Neutral cases retain underlying labels
+but have zero hypothetical P&L. Maximum favorable/adverse excursion is the
+maximum/minimum signed excursion from entry across split-adjusted daily high/low
+values through the horizon.
+
+Explicit corporate-action factors are authoritative for the auditable raw path.
+Vendor total-return labels must reconcile to those actions within a pre-registered
+tolerance or fail. End-of-day data does not observe spread, slippage, or borrow.
+Round-trip non-borrow scenario cost is
+`2 * (half_spread_bps + slippage_bps + fee_bps) / 10000`. Negative-signal cases
+also subtract `annual_borrow_rate * calendar_days_held / 365`; neutral and
+positive cases incur no borrow. Net labels use the same decimal/rounding contract.
+
+### 17.5 Eligibility, sessions, and corrections
+
+A fact is eligible only when:
+
+```text
+max(accepted_or_published_at, historically_available_at) <= evaluation_at
+```
+
+The corresponding availability proof must be retained. Allowed proof types are:
+
+- `sec_acceptance`, using the authoritative EDGAR acceptance timestamp;
+- `prospective_collector_receipt`, using the append-only collector receipt for
+  data gathered while the system was operating;
+- `contemporaneous_archive_capture`, using the archive capture time as the
+  conservative availability boundary; and
+- `provider_point_in_time_record`, only when the contracted field semantics
+  establish the provider record timestamp as historical availability.
+
+For non-SEC proofs, `historically_available_at` is the later of the claimed
+publication time and proof time. If multiple valid proofs exist, use the earliest
+resulting proven boundary and retain all proof references. Conflicting issuer,
+record, or timestamp identity makes the observation ineligible pending manual
+resolution. A missing or unapproved proof type is ineligible, never imputed.
+`reconstructed_at` never substitutes for proof. Amendments and corrections
+create new versions; a later version cannot change an earlier replay.
+
+With daily bars, compute `tradable_at = eligibility_time + 15 minutes` and choose
+the first regular-session open whose timestamp is greater than or equal to
+`tradable_at`. This permits the same day's open for sufficiently early premarket
+evidence and otherwise selects the next session open. Horizons count sessions
+under a frozen exchange calendar, including holidays and half-days. Missing
+terminal consideration is a data failure and cannot be silently excluded.
+
+### 17.6 Dataset construction and test discipline
+
+The Stage B period is 2018-05-01 through 2025-12-31 unless an earlier verified
+lifecycle source is selected. The default split is train 2018-05-01–2021,
+validation 2022–2023, and untouched test 2024–2025, with annual walk-forward
+diagnostics.
+
+The sampling query is frozen before joining forward returns:
+
+- U.S. common equities from the licensed point-in-time active/inactive security
+  master, subject to pre-registered minimum prior price and dollar-volume rules at
+  `evaluation_at`;
+- approximately 700 eligible SEC/issuer catalyst evaluation cases sampled under a
+  pre-registered probability rule, with event-family/year population weights;
+- approximately 300 control evaluation cases from the same historical universe,
+  matched on date, prior price/dollar volume, and prior 20-session
+  volatility/momentum, with no eligible catalyst in the pre-registered lookback;
+- population weights for any event-family/year stratification; no direction
+  quotas; and
+- a separate deliberately selected terminal audit set containing inactive,
+  acquired, bankrupt, delisted, and ticker-recycled cases. It is never pooled
+  into performance estimates.
+
+The corpus must cover the 2018 volatility/tightening period, the 2020
+shock/recovery, 2021 risk-on conditions, the 2022 inflation/rate selloff,
+2023–2024 megacap/AI concentration, and the 2025 rate/post-election period.
+Regime labels are descriptive diagnostics frozen without reference to each
+evaluation case's subsequent return.
+
+Stage A contains evaluation cases spanning at least 20 distinct event types and
+at least 10 controls, multiple
+after-hours cases, and correction/amendment cases. Its separate terminal audit
+set contains ticker changes, an acquisition, a bankruptcy/delisting, at least
+five inactive securities, a ticker-recycling case, splits/dividends, an ETF,
+and an ADR. Every timestamp, identity interval, dossier, entry session, and
+label is manually checked.
+
+The unchanged deterministic scorer and every candidate calibrated scorer are
+frozen before one shared untouched-test unseal. A candidate proposed after that
+unseal requires a new future holdout and cannot reuse 2024–2025 as untouched
+evidence.
+
+The pre-registered primary predictive metric defaults to the 20-session net
+SPY-relative return difference between the highest pre-registered signal bucket
+and matched controls. Its ticker-clustered/date-block-bootstrap 95% confidence
+interval must exceed zero for a predictive claim. Directional accuracy, rank
+correlation, concentration, calibration, costs, and walk-forward stability are
+required supporting diagnostics.
+
+Calibration is eligible for the shared untouched test only when it improves the
+pre-registered validation objective over unchanged `deterministic_v1` across at
+least two walk-forward folds. Every attempted model, weight, threshold, horizon,
+and subgroup analysis is logged. Secondary searches use a pre-registered
+false-discovery or family-wise correction and are reported whether favorable or
+unfavorable.
+
+### 17.7 Stage gates
+
+#### Stage A entry criteria
+
+- Entity-resolution v2, append-only rejected-match auditing, and scoped reason
+  semantics are complete.
+- Every grouped source count used by replay resolves through an immutable
+  claim/source relation.
+- The SEC-backed ETF/fund identity and evidence lane is complete because the
+  mandatory Stage A audit set includes an ETF; fund cases never reuse corporate
+  issuer or insider semantics.
+- The selected identity, lifecycle, and price components pass written rights and
+  the 25-symbol sample checks.
+- The provider-neutral contract validator in §17.9 passes.
+
+#### Stage A exit criteria
+
+- Replay visibility changes exactly at each proven historical-availability
+  boundary.
+- Every sampled identity interval and entry session matches source records.
+- Every correction/amendment replays the older version before the change.
+- Every terminal audit case is represented without silent row removal.
+- Frozen manifests reproduce byte-identical canonical observations and labels.
+
+#### Stage B entry criteria
+
+- Stage A passes with all exclusions and manual-audit results retained.
+- CRSP or a contractually equivalent terminal-outcome source passes rights,
+  field-semantics, coverage, and sample checks.
+- The Stage B universe, sampling query, claimed families, primary metric,
+  scorer candidates, cost scenarios, and multiple-testing policy are
+  pre-registered before forward returns are joined.
+
+#### Stage B exit criteria
+
+- At least 1,000 valid evaluation cases and 250 shared-untouched-test cases exist.
+- There are zero known critical timestamp, identity, terminal-outcome,
+  look-ahead, or survivor-selection errors. A sub-1% allowance applies only to
+  pre-registered noncritical metadata.
+- Claimed-family evaluability is at least 95%:
+  `covered expected cells / all expected family-by-evaluation-case cells`.
+  A covered cell resolves to evidence or proven `observed_none`; unavailable,
+  unsupported, stale, failed, and unproven-empty cells are uncovered.
+- The claimed-family set and denominator are frozen before returns are joined and
+  cannot be narrowed afterward. Evidence-presence, missingness, and exclusions
+  are reported separately by family and fold.
+- Baselines, costs, clustered uncertainty, and every primary metric are reported
+  whether favorable or unfavorable.
+- Signed dataset/scorer/config/code hashes reproduce through the required
+  interface `uv run python -m catalyst_edge_mcp.replay.build --dataset-version
+  <ced_id> --replay`. That interface is required before Stage B, not implemented
+  by this addendum.
+
+Passing Stage B does not itself prove predictive value. A predictive claim also
+requires monotonic score-band behavior on the untouched test, stability across
+the pre-registered walk-forward diagnostics, and no material sector or megacap
+concentration explanation for the primary result. If any predictive gate fails,
+the permitted statement is `backtested; no demonstrated predictive edge`.
+
+### 17.8 Alternatives considered
+
+**Operational SQLite as the replay database.** Rejected because mutable
+collector/policy state and incomplete raw/config history cannot reconstruct an
+arbitrary historical dossier. Retrofitting bitemporal research semantics into
+the live graph would also couple current request latency to research storage.
+
+**Zero-cost price APIs plus current ticker mappings.** Rejected for Stage B
+because the reviewed candidates do not establish survivor-aware inactive/delisted
+coverage, frozen revisions, terminal outcomes, or the required retained research
+rights. Such a source may support an owner-only engineering prototype, not a
+backtested product claim.
+
+**Single enterprise market-data vendor.** Viable if one executed agreement
+covers identity, lifecycle, prices, terminal outcomes, retention, model use, and
+derived reports. It trades higher cost for fewer joins. The canonical adapter
+contract deliberately permits this option if it beats the conditional Stage A
+components on coverage and rights.
+
+**CRSP for every stage.** Technically strongest among reviewed research sources,
+but quote/access constraints may make it slower or more expensive for the first
+50–100-case engineering proof. It remains the preferred Stage B source.
+
+### 17.9 Solution validation and open concerns
+
+#### Validated now
+
+The provider-neutral cutoff and serialization contract was exercised with
+`uv run python scripts/validate_replay_contract.py` against
+the 25 recorded official-SEC cases in
+`tests/fixtures/validation/real_catalyst_cases.json`. A read-only executable
+normalized each accession into the contract, checked visibility one microsecond
+before and exactly at acceptance, reversed input order, and compared the
+canonical bytes.
+
+| Dimension | Expected | Measured | Status |
+| --- | ---: | ---: | --- |
+| Recorded official-SEC cases normalized | 25 | 25 | Pass |
+| Unique immutable observation IDs | 25 | 25 | Pass |
+| Visibility-boundary assertions | 50 | 50 passed | Pass |
+| Order-independent canonical bytes | identical | identical | Pass |
+| Canonical JSONL hash | stable | `7a6d8a26673100014173f1d7a240600c7fb219da14580a9d211f66e2b7c6a3e9` | Pass |
+
+This validates deterministic identity, SEC availability cutoffs, ordering, and
+canonical serialization for the real recorded target cases. It does not validate
+market-session mapping, returns, adjustments, terminal outcomes, provider
+corrections, coverage, or rights.
+
+#### Not yet validated
+
+Full end-to-end validation is not yet possible because no approved licensed
+source, sample schema, or terminal-outcome feed is available in the workspace,
+and contacting or purchasing from vendors requires owner approval. Mocked
+provider mappings would not validate point-in-time coverage, terminal outcomes,
+retained-data rights, or vendor rebuild behavior.
+
+#### Open Stage A decisions
+
+- approved provider field mappings and correction semantics;
+- exact retention, post-termination, team, model-calibration, benchmark-report,
+  and hosted-derived-output rights;
+- empirical market-session, adjustment, and cost-label validation;
+- total price for the separately licensed Stage A Corporate Actions, Security
+  Master, and EOD components; and
+- a 25-symbol sample spanning active, renamed, merged, acquired, bankrupt,
+  delisted, recycled-ticker, ETF, ADR, split, and special-distribution cases.
+
+#### Open Stage B decisions
+
+- complete terminal consideration or delisting-return field semantics and
+  empirical terminal-label validation; and
+- rights and total price for CRSP or another approved terminal-outcome source.
+
+#### Authorization boundary
+
+Preparing the questionnaire and sample list is authorized documentation work.
+Sending either, approving a quote, purchasing data, or implementing a
+vendor-specific adapter requires a separate owner decision.

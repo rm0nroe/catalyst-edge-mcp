@@ -16,7 +16,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from rapidfuzz import fuzz
 
 from catalyst_edge_mcp.compat import UTC
-from catalyst_edge_mcp.models import PolicyDecision
+from catalyst_edge_mcp.models import ClaimSourcePage, ClaimSourceReference, PolicyDecision
 from catalyst_edge_mcp.source_policy import SOURCE_POLICIES
 
 TRACKING_QUERY_KEYS = frozenset({"fbclid", "gclid", "mc_cid", "mc_eid", "ref", "source"})
@@ -77,6 +77,28 @@ class EventObservation:
 
 
 @dataclass(frozen=True, slots=True)
+class EntityMatchAudit:
+    source_id: str
+    issuer_key: str
+    document_id: str
+    canonical_url: str
+    published_at: datetime
+    observed_at: datetime
+    retrieved_at: datetime
+    toc_sha256: str
+    context_sha256: str
+    ruleset_version: str
+    accepted: bool
+    reason_code: str
+    selected_rule_id: str | None
+    selected_rule_version: str | None
+    candidate_rule_ids: tuple[str, ...]
+    matched_aliases: tuple[str, ...]
+    required_context_matches: tuple[str, ...]
+    negative_context_matches: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class StoredSource:
     source_id: str
     source_name: str
@@ -104,6 +126,8 @@ class StoredEvent:
     related_urls: tuple[str, ...]
     source_count: int
     source_tiers: tuple[str, ...]
+    claim_id: str
+    supporting_source_ids: tuple[str, ...]
 
 
 class EvidenceStore:
@@ -172,6 +196,20 @@ class EvidenceStore:
                 is_primary INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(event_id, observation_id)
             );
+            CREATE TABLE IF NOT EXISTS event_claim (
+                event_id INTEGER PRIMARY KEY REFERENCES canonical_event(id),
+                claim_id TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS claim_source (
+                id INTEGER PRIMARY KEY,
+                claim_id TEXT NOT NULL REFERENCES event_claim(claim_id),
+                observation_id INTEGER NOT NULL REFERENCES source_observation(id),
+                source_reference_id TEXT NOT NULL,
+                UNIQUE(claim_id, observation_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_claim_source_page
+                ON claim_source(claim_id, id);
             CREATE TABLE IF NOT EXISTS insider_transaction (
                 id INTEGER PRIMARY KEY, issuer_key TEXT NOT NULL, accession TEXT NOT NULL,
                 transaction_json TEXT NOT NULL, observed_at TEXT NOT NULL
@@ -203,6 +241,30 @@ class EvidenceStore:
                 retention TEXT NOT NULL,
                 reviewed_on TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS entity_match_audit (
+                id INTEGER PRIMARY KEY,
+                source_id TEXT NOT NULL,
+                issuer_key TEXT NOT NULL,
+                document_id TEXT NOT NULL,
+                canonical_url TEXT NOT NULL,
+                published_at TEXT NOT NULL,
+                observed_at TEXT NOT NULL,
+                retrieved_at TEXT NOT NULL,
+                toc_sha256 TEXT NOT NULL,
+                context_sha256 TEXT NOT NULL,
+                ruleset_version TEXT NOT NULL,
+                accepted INTEGER NOT NULL CHECK (accepted IN (0, 1)),
+                reason_code TEXT NOT NULL,
+                selected_rule_id TEXT,
+                selected_rule_version TEXT,
+                candidate_rule_ids_json TEXT NOT NULL,
+                matched_aliases_json TEXT NOT NULL,
+                required_context_json TEXT NOT NULL,
+                negative_context_json TEXT NOT NULL,
+                audit_fingerprint TEXT NOT NULL UNIQUE
+            );
+            CREATE INDEX IF NOT EXISTS idx_entity_match_audit_issuer_time
+                ON entity_match_audit(issuer_key, observed_at);
             """
         )
         for policy in SOURCE_POLICIES.values():
@@ -222,6 +284,7 @@ class EvidenceStore:
                     policy.reviewed_on,
                 ),
             )
+        self._backfill_claim_sources(connection)
         connection.commit()
         self._connection = connection
         return connection
@@ -386,9 +449,205 @@ class EvidenceStore:
                 """,
                 (event_id, observation_id, rank),
             )
+            claim_id = self._ensure_claim(connection, event_id)
+            self._link_claim_source(connection, claim_id, observation_id)
             self._rank_primary_source(connection, event_id)
             connection.commit()
             return self._stored_event(connection, event_id)
+
+    def record_entity_match_audit(self, audit: EntityMatchAudit) -> bool:
+        """Append one idempotent metadata-only entity decision."""
+        with self._lock:
+            connection = self._connect()
+            canonical_url = canonicalize_url(audit.canonical_url)
+            fingerprint = self._hash(
+                audit.source_id,
+                audit.issuer_key,
+                audit.document_id,
+                audit.toc_sha256,
+                audit.context_sha256,
+                audit.ruleset_version,
+            )
+            cursor = connection.execute(
+                """
+                INSERT OR IGNORE INTO entity_match_audit(
+                    source_id, issuer_key, document_id, canonical_url,
+                    published_at, observed_at, retrieved_at, toc_sha256,
+                    context_sha256, ruleset_version, accepted, reason_code,
+                    selected_rule_id, selected_rule_version,
+                    candidate_rule_ids_json, matched_aliases_json,
+                    required_context_json, negative_context_json, audit_fingerprint
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    audit.source_id,
+                    audit.issuer_key,
+                    audit.document_id,
+                    canonical_url,
+                    self._iso(audit.published_at),
+                    self._iso(audit.observed_at),
+                    self._iso(audit.retrieved_at),
+                    audit.toc_sha256,
+                    audit.context_sha256,
+                    audit.ruleset_version,
+                    int(audit.accepted),
+                    audit.reason_code,
+                    audit.selected_rule_id,
+                    audit.selected_rule_version,
+                    json.dumps(audit.candidate_rule_ids, separators=(",", ":")),
+                    json.dumps(audit.matched_aliases, separators=(",", ":")),
+                    json.dumps(audit.required_context_matches, separators=(",", ":")),
+                    json.dumps(audit.negative_context_matches, separators=(",", ":")),
+                    fingerprint,
+                ),
+            )
+            connection.commit()
+            return cursor.rowcount == 1
+
+    def entity_match_audits(
+        self,
+        issuer_key: str | None = None,
+        *,
+        since: datetime | None = None,
+        accepted: bool | None = None,
+        limit: int = 500,
+    ) -> list[dict[str, Any]]:
+        """Return bounded decision metadata for diagnostics and fixed audit tests."""
+        if not 1 <= limit <= 500:
+            raise ValueError("limit must be between 1 and 500")
+        with self._lock:
+            connection = self._connect()
+            clauses: list[str] = []
+            parameters: list[Any] = []
+            if issuer_key is not None:
+                clauses.append("issuer_key=?")
+                parameters.append(issuer_key)
+            if since is not None:
+                clauses.append("observed_at>=?")
+                parameters.append(self._iso(since))
+            if accepted is not None:
+                clauses.append("accepted=?")
+                parameters.append(int(accepted))
+            where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+            parameters.append(limit)
+            rows = connection.execute(
+                f"SELECT * FROM entity_match_audit {where} ORDER BY id ASC LIMIT ?",
+                tuple(parameters),
+            ).fetchall()
+            result: list[dict[str, Any]] = []
+            for row in rows:
+                item = dict(row)
+                item["accepted"] = bool(item["accepted"])
+                for source, target in (
+                    ("candidate_rule_ids_json", "candidate_rule_ids"),
+                    ("matched_aliases_json", "matched_aliases"),
+                    ("required_context_json", "required_context_matches"),
+                    ("negative_context_json", "negative_context_matches"),
+                ):
+                    item[target] = tuple(json.loads(str(item.pop(source))))
+                result.append(item)
+            return result
+
+    def entity_match_audit_summary(
+        self, issuer_key: str, *, since: datetime | None = None
+    ) -> dict[str, Any]:
+        """Return aggregate decision counts without source URLs or matched text."""
+        with self._lock:
+            connection = self._connect()
+            since_clause = " AND observed_at>=?" if since is not None else ""
+            parameters: tuple[Any, ...] = (
+                (issuer_key, self._iso(since)) if since is not None else (issuer_key,)
+            )
+            totals = connection.execute(
+                f"""
+                SELECT COUNT(*) AS candidates,
+                    COALESCE(SUM(accepted), 0) AS accepted
+                FROM entity_match_audit WHERE issuer_key=?{since_clause}
+                """,
+                parameters,
+            ).fetchone()
+            reasons = connection.execute(
+                f"""
+                SELECT reason_code, COUNT(*) AS count
+                FROM entity_match_audit
+                WHERE issuer_key=? AND accepted=0{since_clause}
+                GROUP BY reason_code ORDER BY reason_code ASC
+                """,
+                parameters,
+            ).fetchall()
+            candidates = int(totals["candidates"])
+            accepted = int(totals["accepted"])
+            return {
+                "candidate_documents": candidates,
+                "accepted_documents": accepted,
+                "rejected_documents": candidates - accepted,
+                "rejection_reasons": {
+                    str(row["reason_code"]): int(row["count"]) for row in reasons
+                },
+            }
+
+    def claim_sources(self, claim_id: str, *, cursor: int = 0, limit: int = 20) -> ClaimSourcePage:
+        """Return one bounded immutable claim/source relation page."""
+        if not re.fullmatch(r"clm_[0-9a-f]{64}", claim_id):
+            raise ValueError("claim_id must be a canonical immutable claim ID")
+        if cursor < 0:
+            raise ValueError("cursor must be nonnegative")
+        if not 1 <= limit <= 20:
+            raise ValueError("limit must be between 1 and 20")
+        with self._lock:
+            connection = self._connect()
+            exists = connection.execute(
+                "SELECT 1 FROM event_claim WHERE claim_id=?", (claim_id,)
+            ).fetchone()
+            if exists is None:
+                raise ValueError("Unknown claim_id")
+            total = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM claim_source WHERE claim_id=?", (claim_id,)
+                ).fetchone()[0]
+            )
+            rows = connection.execute(
+                """
+                SELECT relation.id AS relation_id, relation.source_reference_id,
+                    observation.*
+                FROM claim_source AS relation
+                JOIN source_observation AS observation
+                    ON observation.id=relation.observation_id
+                WHERE relation.claim_id=? AND relation.id>?
+                ORDER BY relation.id ASC LIMIT ?
+                """,
+                (claim_id, cursor, limit + 1),
+            ).fetchall()
+            page_rows = rows[:limit]
+            sources = [
+                ClaimSourceReference(
+                    source_reference_id=str(row["source_reference_id"]),
+                    source_id=str(row["source_id"]),
+                    source_name=str(row["source_name"]),
+                    source_tier=str(row["source_tier"]),
+                    accession_or_record_id=str(row["record_id"]),
+                    canonical_url=str(row["canonical_url"]),
+                    published_at=self._datetime(row["published_at"]),
+                    observed_at=self._datetime(row["observed_at"]),
+                    retrieved_at=self._datetime(row["retrieved_at"]),
+                    raw_sha256=str(row["raw_sha256"]) if row["raw_sha256"] else None,
+                    parser_version=str(row["parser_version"]),
+                    policy_decision=PolicyDecision(str(row["policy_decision"])),
+                )
+                for row in page_rows
+            ]
+            next_cursor = (
+                int(page_rows[-1]["relation_id"])
+                if len(rows) > limit and page_rows
+                else None
+            )
+            return ClaimSourcePage(
+                claim_id=claim_id,
+                sources=sources,
+                total_sources=total,
+                cursor=cursor,
+                next_cursor=next_cursor,
+            )
 
     def list_events(self, issuer_key: str, since: datetime) -> list[StoredEvent]:
         with self._lock:
@@ -525,6 +784,56 @@ class EvidenceStore:
                 (event_id, int(row["observation_id"])),
             )
 
+    def _backfill_claim_sources(self, connection: sqlite3.Connection) -> None:
+        events = connection.execute("SELECT id FROM canonical_event ORDER BY id ASC").fetchall()
+        for event in events:
+            event_id = int(event["id"])
+            claim_id = self._ensure_claim(connection, event_id)
+            observations = connection.execute(
+                "SELECT observation_id FROM event_source WHERE event_id=? ORDER BY observation_id",
+                (event_id,),
+            ).fetchall()
+            for observation in observations:
+                self._link_claim_source(connection, claim_id, int(observation["observation_id"]))
+
+    def _ensure_claim(self, connection: sqlite3.Connection, event_id: int) -> str:
+        existing = connection.execute(
+            "SELECT claim_id FROM event_claim WHERE event_id=?", (event_id,)
+        ).fetchone()
+        if existing is not None:
+            return str(existing["claim_id"])
+        event = connection.execute(
+            "SELECT issuer_key, exact_fingerprint, created_at FROM canonical_event WHERE id=?",
+            (event_id,),
+        ).fetchone()
+        if event is None:
+            raise ValueError("Cannot create a claim for a missing canonical event")
+        claim_id = f"clm_{self._hash(str(event['issuer_key']), str(event['exact_fingerprint']))}"
+        connection.execute(
+            "INSERT INTO event_claim(event_id, claim_id, created_at) VALUES (?, ?, ?)",
+            (event_id, claim_id, str(event["created_at"])),
+        )
+        return claim_id
+
+    def _link_claim_source(
+        self, connection: sqlite3.Connection, claim_id: str, observation_id: int
+    ) -> None:
+        observation = connection.execute(
+            "SELECT observation_fingerprint FROM source_observation WHERE id=?",
+            (observation_id,),
+        ).fetchone()
+        if observation is None:
+            raise ValueError("Cannot link a missing source observation")
+        source_reference_id = f"src_{self._hash(str(observation['observation_fingerprint']))}"
+        connection.execute(
+            """
+            INSERT OR IGNORE INTO claim_source(
+                claim_id, observation_id, source_reference_id
+            ) VALUES (?, ?, ?)
+            """,
+            (claim_id, observation_id, source_reference_id),
+        )
+
     def _stored_event(
         self,
         connection: sqlite3.Connection,
@@ -565,8 +874,35 @@ class EvidenceStore:
             """,
             (event_id, int(source["id"]) if source is not None else -1),
         ).fetchall()
+        claim = connection.execute(
+            "SELECT claim_id FROM event_claim WHERE event_id=?", (event_id,)
+        ).fetchone()
         if event is None or source is None:
             raise ValueError("Canonical event graph is incomplete")
+        if claim is None:
+            raise ValueError("Canonical event claim is incomplete")
+        claim_id = str(claim["claim_id"])
+        source_count = int(
+            connection.execute(
+                "SELECT COUNT(*) FROM claim_source WHERE claim_id=?", (claim_id,)
+            ).fetchone()[0]
+        )
+        supporting_rows = connection.execute(
+            """
+            SELECT source_reference_id FROM claim_source
+            WHERE claim_id=? ORDER BY id ASC LIMIT 20
+            """,
+            (claim_id,),
+        ).fetchall()
+        tier_rows = connection.execute(
+            """
+            SELECT DISTINCT observation.source_tier FROM claim_source AS relation
+            JOIN source_observation AS observation
+                ON observation.id=relation.observation_id
+            WHERE relation.claim_id=? ORDER BY observation.source_tier ASC
+            """,
+            (claim_id,),
+        ).fetchall()
         primary = StoredSource(
             source_id=str(source["source_id"]),
             source_name=str(source["source_name"]),
@@ -594,9 +930,11 @@ class EvidenceStore:
             ),
             primary_source=primary,
             related_urls=tuple(str(row["canonical_url"]) for row in related),
-            source_count=len(related) + 1,
-            source_tiers=tuple(
-                sorted({primary.source_tier, *(str(row["source_tier"]) for row in related)})
+            source_count=source_count,
+            source_tiers=tuple(str(row["source_tier"]) for row in tier_rows),
+            claim_id=claim_id,
+            supporting_source_ids=tuple(
+                str(row["source_reference_id"]) for row in supporting_rows
             ),
         )
 
@@ -621,6 +959,13 @@ class EvidenceStore:
             connection = self._connect()
             counts = {
                 table: int(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
-                for table in ("source_observation", "canonical_event", "event_source")
+                for table in (
+                    "source_observation",
+                    "canonical_event",
+                    "event_source",
+                    "event_claim",
+                    "claim_source",
+                    "entity_match_audit",
+                )
             }
             return json.dumps(counts, sort_keys=True)

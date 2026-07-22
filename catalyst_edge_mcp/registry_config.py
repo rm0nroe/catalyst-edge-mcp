@@ -13,7 +13,11 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from catalyst_edge_mcp.registry_models import (
+    DiscoveryAliasRule,
     DiscoveryIssuer,
+    FundIdentity,
+    FundSponsorSource,
+    FundTickerVersion,
     IssuerFeed,
     PublisherDomainQuality,
     SocialIssuer,
@@ -24,6 +28,14 @@ DEFAULT_REGISTRY_PATH = Path(__file__).with_name("data") / "reviewed_registries.
 MAX_REGISTRY_BYTES = 256_000
 CIK_PATTERN = re.compile(r"^CIK\d{10}$")
 HOST_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
+RULE_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+RULE_VERSION_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
+SERIES_ID_PATTERN = re.compile(r"^S\d{9}$")
+CLASS_ID_PATTERN = re.compile(r"^C\d{9}$")
+DISCOVERY_ALIAS_KINDS = frozenset(
+    {"legal_name", "former_name", "brand", "subsidiary", "product", "ticker"}
+)
+DISCOVERY_MATCH_MODES = frozenset({"phrase", "ticker_token"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,10 +44,12 @@ class RegistryBundle:
     discovery_issuers: tuple[DiscoveryIssuer, ...]
     social_issuers: tuple[SocialIssuer, ...]
     publisher_domains: tuple[PublisherDomainQuality, ...]
+    funds: tuple[FundIdentity, ...]
     issuer_feed_index: MappingProxyType
     discovery_index: MappingProxyType
     social_index: MappingProxyType
     publisher_quality_index: MappingProxyType
+    fund_identity_index: MappingProxyType
 
 
 def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBundle:
@@ -54,10 +68,11 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
         payload,
         "registry",
         required={"version", "issuers"},
-        optional={"publisher_domains"},
+        optional={"publisher_domains", "funds"},
     )
-    if type(root["version"]) is not int or root["version"] != 1:
-        raise ValueError("Collector registry version must be 1")
+    version = root["version"]
+    if type(version) is not int or version not in {1, 2}:
+        raise ValueError("Collector registry version must be 1 or 2")
     issuers = root["issuers"]
     if not isinstance(issuers, list) or not 1 <= len(issuers) <= 200:
         raise ValueError("Collector registry issuers must contain 1 to 200 entries")
@@ -71,6 +86,7 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
     issuer_keys: set[str] = set()
     for index, raw_issuer in enumerate(issuers):
         label = f"issuers[{index}]"
+        discovery_field = "discovery_aliases" if version == 1 else "discovery_rules"
         item = _object(
             raw_issuer,
             label,
@@ -79,7 +95,7 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
                 "issuer_name",
                 "tickers",
                 "reviewed_on",
-                "discovery_aliases",
+                discovery_field,
                 "social_aliases",
                 "issuer_feed",
             },
@@ -98,9 +114,19 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
             if owner != issuer_key:
                 raise ValueError(f"Ticker {ticker} is assigned to multiple issuers")
 
-        discovery_aliases = _aliases(
-            item["discovery_aliases"], f"{label}.discovery_aliases"
-        )
+        if version == 1:
+            discovery_aliases = _aliases(
+                item["discovery_aliases"], f"{label}.discovery_aliases"
+            )
+            discovery_rules: tuple[DiscoveryAliasRule, ...] = ()
+        else:
+            discovery_rules = _discovery_rules(
+                item["discovery_rules"],
+                label=f"{label}.discovery_rules",
+                issuer_key=issuer_key,
+                tickers=tickers,
+            )
+            discovery_aliases = tuple(dict.fromkeys(rule.alias for rule in discovery_rules))
         social_aliases = _aliases(item["social_aliases"], f"{label}.social_aliases")
         _claim_aliases(discovery_aliases, issuer_key, discovery_alias_owners, "discovery")
         _claim_aliases(social_aliases, issuer_key, social_alias_owners, "social")
@@ -112,6 +138,7 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
                     tickers=tickers,
                     query_aliases=discovery_aliases,
                     reviewed_on=reviewed_on,
+                    entity_rules=discovery_rules,
                 )
             )
         if social_aliases:
@@ -139,17 +166,218 @@ def load_registry_bundle(path: str | Path = DEFAULT_REGISTRY_PATH) -> RegistryBu
             raise ValueError(f"{label} does not enable any reviewed collector")
 
     publisher_domains = _publisher_domains(root.get("publisher_domains", []))
+    funds = _funds(root.get("funds", []), issuer_ticker_owners=ticker_owners)
     return RegistryBundle(
         issuer_feeds=tuple(feeds),
         discovery_issuers=tuple(discovery),
         social_issuers=tuple(social),
         publisher_domains=publisher_domains,
+        funds=funds,
         issuer_feed_index=MappingProxyType(_index(feeds)),
         discovery_index=MappingProxyType(_index(discovery)),
         social_index=MappingProxyType(_index(social)),
         publisher_quality_index=MappingProxyType(
             {record.domain: record for record in publisher_domains}
         ),
+        fund_identity_index=MappingProxyType(_index(funds)),
+    )
+
+
+def _funds(
+    value: object,
+    *,
+    issuer_ticker_owners: Mapping[str, str],
+) -> tuple[FundIdentity, ...]:
+    if not isinstance(value, list) or len(value) > 100:
+        raise ValueError("funds must contain at most 100 entries")
+    records: list[FundIdentity] = []
+    ticker_owners: dict[str, str] = {}
+    identity_keys: set[tuple[str, str | None, str | None]] = set()
+    allowed_identity_statuses = {
+        "official_series_class",
+        "unsupported_no_series_class",
+        "unsupported_non_investment_company",
+    }
+    for index, raw in enumerate(value):
+        label = f"funds[{index}]"
+        item = _object(
+            raw,
+            label,
+            required={
+                "fund_name",
+                "registrant_cik",
+                "series_id",
+                "class_id",
+                "identity_status",
+                "ticker_versions",
+                "sponsor_source",
+                "reviewed_on",
+                "review_note",
+            },
+        )
+        fund_name = _text(item["fund_name"], f"{label}.fund_name", 160)
+        registrant_cik = _text(item["registrant_cik"], f"{label}.registrant_cik", 13)
+        if not CIK_PATTERN.fullmatch(registrant_cik):
+            raise ValueError(f"{label}.registrant_cik must match CIK plus 10 digits")
+        series_id = _nullable_identifier(
+            item["series_id"], f"{label}.series_id", SERIES_ID_PATTERN
+        )
+        class_id = _nullable_identifier(
+            item["class_id"], f"{label}.class_id", CLASS_ID_PATTERN
+        )
+        identity_status = _text(
+            item["identity_status"], f"{label}.identity_status", 48
+        )
+        if identity_status not in allowed_identity_statuses:
+            raise ValueError(f"{label}.identity_status is not supported")
+        if identity_status == "official_series_class":
+            if series_id is None or class_id is None:
+                raise ValueError(
+                    f"{label} official_series_class requires series_id and class_id"
+                )
+        elif series_id is not None or class_id is not None:
+            raise ValueError(
+                f"{label} unsupported identities must not invent series/class IDs"
+            )
+        identity_key = (registrant_cik, series_id, class_id)
+        if identity_key in identity_keys:
+            raise ValueError(f"Duplicate fund identity: {identity_key}")
+        identity_keys.add(identity_key)
+        ticker_versions = _fund_ticker_versions(
+            item["ticker_versions"], label=f"{label}.ticker_versions"
+        )
+        for ticker_version in ticker_versions:
+            ticker = ticker_version.ticker
+            if ticker in issuer_ticker_owners:
+                raise ValueError(f"Fund ticker {ticker} is also assigned to an issuer")
+            owner = ticker_owners.setdefault(ticker, fund_name)
+            if owner != fund_name:
+                raise ValueError(f"Fund ticker {ticker} is assigned to multiple funds")
+        records.append(
+            FundIdentity(
+                fund_name=fund_name,
+                registrant_cik=registrant_cik,
+                series_id=series_id,
+                class_id=class_id,
+                identity_status=identity_status,
+                ticker_versions=ticker_versions,
+                sponsor_source=_fund_sponsor_source(
+                    item["sponsor_source"], label=f"{label}.sponsor_source"
+                ),
+                reviewed_on=_review_date(item["reviewed_on"], f"{label}.reviewed_on"),
+                review_note=_text(item["review_note"], f"{label}.review_note", 240),
+            )
+        )
+    return tuple(records)
+
+
+def _fund_ticker_versions(value: object, *, label: str) -> tuple[FundTickerVersion, ...]:
+    if not isinstance(value, list) or not 1 <= len(value) <= 20:
+        raise ValueError(f"{label} must contain 1 to 20 entries")
+    versions: list[FundTickerVersion] = []
+    intervals_by_ticker: dict[str, list[tuple[str | None, str | None]]] = {}
+    for index, raw in enumerate(value):
+        item_label = f"{label}[{index}]"
+        item = _object(
+            raw,
+            item_label,
+            required={"ticker", "valid_from", "valid_to", "status"},
+        )
+        ticker_value = item["ticker"]
+        if not isinstance(ticker_value, str):
+            raise ValueError(f"{item_label}.ticker must be a string")
+        ticker = normalize_ticker(ticker_value)
+        if ticker_value != ticker or "." in ticker_value:
+            raise ValueError(
+                f"{item_label}.ticker must be a canonical uppercase dash ticker"
+            )
+        valid_from = _nullable_review_date(
+            item["valid_from"], f"{item_label}.valid_from"
+        )
+        valid_to = _nullable_review_date(item["valid_to"], f"{item_label}.valid_to")
+        if valid_from and valid_to and valid_from > valid_to:
+            raise ValueError(f"{item_label} validity window is reversed")
+        status = _text(item["status"], f"{item_label}.status", 16)
+        if status not in {"active", "inactive"}:
+            raise ValueError(f"{item_label}.status must be active or inactive")
+        intervals = intervals_by_ticker.setdefault(ticker, [])
+        if any(
+            _date_intervals_overlap(valid_from, valid_to, start, end)
+            for start, end in intervals
+        ):
+            raise ValueError(f"{label} contains overlapping versions for {ticker}")
+        intervals.append((valid_from, valid_to))
+        versions.append(
+            FundTickerVersion(
+                ticker=ticker,
+                valid_from=valid_from,
+                valid_to=valid_to,
+                status=status,
+            )
+        )
+    return tuple(versions)
+
+
+def _fund_sponsor_source(value: object, *, label: str) -> FundSponsorSource:
+    item = _object(
+        value,
+        label,
+        required={
+            "sponsor_name",
+            "notice_url",
+            "official_hosts",
+            "reviewed_on",
+            "review_note",
+        },
+    )
+    notice_url = _text(item["notice_url"], f"{label}.notice_url", 500)
+    hosts = _hosts(item["official_hosts"], f"{label}.official_hosts")
+    parsed = urlsplit(notice_url)
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError(f"{label}.notice_url contains an invalid port") from exc
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or port not in {None, 443}
+        or parsed.hostname.lower().rstrip(".") not in hosts
+    ):
+        raise ValueError(
+            f"{label}.notice_url must be credential-free HTTPS on an official host"
+        )
+    return FundSponsorSource(
+        sponsor_name=_text(item["sponsor_name"], f"{label}.sponsor_name", 120),
+        notice_url=notice_url,
+        official_hosts=hosts,
+        reviewed_on=_review_date(item["reviewed_on"], f"{label}.reviewed_on"),
+        review_note=_text(item["review_note"], f"{label}.review_note", 240),
+    )
+
+
+def _nullable_identifier(
+    value: object,
+    label: str,
+    pattern: re.Pattern[str],
+) -> str | None:
+    if value is None:
+        return None
+    identifier = _text(value, label, 10)
+    if not pattern.fullmatch(identifier):
+        raise ValueError(f"{label} has an invalid SEC identifier")
+    return identifier
+
+
+def _date_intervals_overlap(
+    left_start: str | None,
+    left_end: str | None,
+    right_start: str | None,
+    right_end: str | None,
+) -> bool:
+    return (left_end is None or right_start is None or right_start <= left_end) and (
+        right_end is None or left_start is None or left_start <= right_end
     )
 
 
@@ -329,6 +557,123 @@ def _aliases(value: object, label: str) -> tuple[str, ...]:
         seen.add(folded)
         aliases.append(alias)
     return tuple(aliases)
+
+
+def _discovery_rules(
+    value: object,
+    *,
+    label: str,
+    issuer_key: str,
+    tickers: tuple[str, ...],
+) -> tuple[DiscoveryAliasRule, ...]:
+    if not isinstance(value, list) or len(value) > 40:
+        raise ValueError(f"{label} must contain at most 40 rules")
+    rules: list[DiscoveryAliasRule] = []
+    rule_ids: set[str] = set()
+    for index, raw_rule in enumerate(value):
+        rule_label = f"{label}[{index}]"
+        item = _object(
+            raw_rule,
+            rule_label,
+            required={
+                "rule_id",
+                "version",
+                "alias",
+                "alias_kind",
+                "match_mode",
+                "required_context",
+                "negative_context",
+                "valid_from",
+                "valid_to",
+                "canonical_cik",
+                "reviewed_on",
+                "review_note",
+            },
+        )
+        rule_id = _text(item["rule_id"], f"{rule_label}.rule_id", 64)
+        if not RULE_ID_PATTERN.fullmatch(rule_id):
+            raise ValueError(f"{rule_label}.rule_id must use lowercase snake case")
+        if rule_id in rule_ids:
+            raise ValueError(f"{label} contains duplicate rule_id {rule_id}")
+        rule_ids.add(rule_id)
+        rule_version = _text(item["version"], f"{rule_label}.version", 32)
+        if not RULE_VERSION_PATTERN.fullmatch(rule_version):
+            raise ValueError(f"{rule_label}.version contains unsupported characters")
+        alias = _text(item["alias"], f"{rule_label}.alias", 80)
+        if len(alias) < 2 or not any(character.isalnum() for character in alias):
+            raise ValueError(f"{rule_label}.alias must contain at least two characters")
+        alias_kind = _text(item["alias_kind"], f"{rule_label}.alias_kind", 20)
+        if alias_kind not in DISCOVERY_ALIAS_KINDS:
+            raise ValueError(f"{rule_label}.alias_kind is not supported")
+        match_mode = _text(item["match_mode"], f"{rule_label}.match_mode", 20)
+        if match_mode not in DISCOVERY_MATCH_MODES:
+            raise ValueError(f"{rule_label}.match_mode is not supported")
+        if match_mode == "ticker_token" and alias not in tickers:
+            raise ValueError(f"{rule_label}.ticker_token alias must be a canonical ticker")
+        required = _context_terms(
+            item["required_context"], f"{rule_label}.required_context"
+        )
+        negative = _context_terms(
+            item["negative_context"], f"{rule_label}.negative_context"
+        )
+        overlap = {term.casefold() for term in required} & {
+            term.casefold() for term in negative
+        }
+        if overlap:
+            raise ValueError(f"{rule_label} required and negative context overlap")
+        valid_from = _nullable_review_date(
+            item["valid_from"], f"{rule_label}.valid_from"
+        )
+        valid_to = _nullable_review_date(item["valid_to"], f"{rule_label}.valid_to")
+        if valid_from and valid_to and valid_from > valid_to:
+            raise ValueError(f"{rule_label} validity window is reversed")
+        canonical_cik = _text(
+            item["canonical_cik"], f"{rule_label}.canonical_cik", 13
+        )
+        if canonical_cik != issuer_key:
+            raise ValueError(f"{rule_label}.canonical_cik must match the parent issuer_key")
+        rules.append(
+            DiscoveryAliasRule(
+                rule_id=rule_id,
+                version=rule_version,
+                alias=alias,
+                alias_kind=alias_kind,
+                match_mode=match_mode,
+                required_context=required,
+                negative_context=negative,
+                valid_from=valid_from,
+                valid_to=valid_to,
+                canonical_cik=canonical_cik,
+                reviewed_on=_review_date(
+                    item["reviewed_on"], f"{rule_label}.reviewed_on"
+                ),
+                review_note=_text(item["review_note"], f"{rule_label}.review_note", 240),
+            )
+        )
+    return tuple(rules)
+
+
+def _context_terms(value: object, label: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or len(value) > 20:
+        raise ValueError(f"{label} must contain at most 20 terms")
+    terms: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        term = _text(item, label, 80)
+        if len(term) < 2 or not any(character.isalnum() for character in term):
+            raise ValueError(f"{label} terms must contain at least two characters")
+        folded = term.casefold()
+        if folded in seen:
+            raise ValueError(f"{label} contains a duplicate case-insensitive term")
+        seen.add(folded)
+        terms.append(term)
+    return tuple(terms)
+
+
+def _nullable_review_date(value: object, label: str) -> str | None:
+    if value is None:
+        return None
+    return _review_date(value, label)
 
 
 def _claim_aliases(
