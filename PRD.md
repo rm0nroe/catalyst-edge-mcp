@@ -42,7 +42,9 @@ a versioned allowlist of supported semantics, not general filing understanding.
 
 GDELT entity-resolution registry v2 is also implemented. Reviewed per-alias context,
 exclusion, validity, CIK, and provenance rules now produce a deterministic decision
-before ingestion, and accepted/rejected candidate metadata is retained in an
+before ingestion. Body-context matches must also align to a reviewed issuer alias or
+non-single-letter ticker in the surfaced publisher title; tangential titles fail closed
+as `title_not_aligned`. Accepted/rejected candidate metadata is retained in an
 append-only, retry-idempotent audit table without publisher bodies or raw NGram text.
 This improves discovery precision and creates a future replay input; it does not make
 the operational event graph a point-in-time backtest dataset.
