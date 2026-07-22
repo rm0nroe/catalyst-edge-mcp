@@ -20,6 +20,7 @@ from catalyst_edge_mcp.collection_lifecycle import (
 )
 from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX, DiscoveryIssuer
+from catalyst_edge_mcp.entity_resolution import title_matches_issuer
 from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore, StoredEvent
 from catalyst_edge_mcp.models import (
     AdapterResult,
@@ -287,9 +288,13 @@ class GdeltAdapter:
         warning: str | None = None,
         degraded: bool = False,
     ) -> AdapterResult:
-        events = self.store.list_events_for_source(
+        cached_events = self.store.list_events_for_source(
             issuer.issuer_key, self.provider, now - timedelta(days=lookback_days)
         )
+        events = [
+            event for event in cached_events if title_matches_issuer(event.title, issuer)
+        ]
+        cached_title_rejections = len(cached_events) - len(events)
         evidence = [self._evidence(event) for event in events]
         effective_status = status or (
             SourceStatus.FRESH if evidence else SourceStatus.NO_OBSERVATIONS
@@ -304,25 +309,31 @@ class GdeltAdapter:
             since=now - timedelta(days=lookback_days),
         )
         rejected_count = int(audit_summary["rejected_documents"])
-        reason_records = (
-            [scoped_reason(
+        rejection_detail = []
+        if rejected_count:
+            rejection_detail.append(f"rejected_candidates={rejected_count}")
+            rejection_detail.append(
+                "reasons="
+                + ",".join(
+                    f"{code}:{count}"
+                    for code, count in audit_summary["rejection_reasons"].items()
+                )
+            )
+        if cached_title_rejections:
+            rejection_detail.append(
+                f"cached_title_not_aligned={cached_title_rejections}"
+            )
+        reason_records = [
+            scoped_reason(
                 ReasonCode.ENTITY_REJECTED,
                 ReasonScope.SOURCE,
                 f"{self.provider}:{issuer.issuer_key}",
                 source_id=self.provider,
                 family=self.family,
                 observed_at=now,
-                detail=(
-                    f"rejected_candidates={rejected_count};reasons="
-                    + ",".join(
-                        f"{code}:{count}"
-                        for code, count in audit_summary["rejection_reasons"].items()
-                    )
-                )[:240],
-            )]
-            if rejected_count
-            else []
-        )
+                detail=";".join(rejection_detail)[:240],
+            )
+        ] if rejection_detail else []
         return AdapterResult(
             family=self.family,
             provider=self.provider,
