@@ -60,12 +60,19 @@ the complete relation in pages of at most 20. Reason records retain all six code
 stable IDs, explicit scopes, precedence, total count, and truncation state without
 changing scorer or downstream classification semantics.
 
-### PR 3 — ETF/fund lane
+### PR 3 — ETF/fund lane — implemented locally 2026-07-21
 
 - CIK + SEC series/class identity with historical ticker/status versions.
 - N-CEN and N-PORT as-filed parsing with report/end/filing timestamps.
 - Reviewed sponsor-primary notices for SPY, QQQ, DIA, IWM, XLE, XLK, GLD, and GDX.
 - Gate: every named fund resolves official IDs or an explicit unsupported reason; no corporate-insider inference.
+
+Implementation note: QQQ, IWM, XLE, XLK, and GDX resolve the official SEC
+registrant CIK plus series/class IDs. SPY and DIA retain their official CIK but
+fail closed because the SEC mutual-fund ticker map provides no series/class IDs;
+GLD is typed outside the N-CEN/NPORT investment-company lane. N-CEN/NPORT
+evidence is neutral and retains report, period-end, filing, and acceptance
+chronology. Reviewed sponsor-primary URLs are metadata-only related sources.
 
 ### TDD addendum — point-in-time replay
 
@@ -108,7 +115,9 @@ After the owner approves vendor contact, request a 25-symbol sample spanning act
 
 ## Current recommendation
 
-**PR 1, PR 2, and the provider-neutral replay TDD are now complete locally. Implement
-PR 3 next.** Prepare—but do not send or purchase without owner approval—the four-part
-rights questionnaire and sample request. Vendor-specific mappings wait for returned
+**PR 1, PR 2, PR 3, and the provider-neutral replay TDD are now complete locally.**
+The four-part
+[rights questionnaire and sample request](./2026-07-21-vendor-rights-questionnaire-and-sample-request.md)
+is prepared but must not be sent and no purchase may be made without owner approval.
+Vendor-specific mappings wait for returned
 rights/coverage answers; Stage A implementation waits for the approved source contract.

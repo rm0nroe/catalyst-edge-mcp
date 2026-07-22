@@ -57,6 +57,16 @@ contract scenarios. It exposed and closed event-priority, merger-delisting, and
 recorded Item 8.01 specificity defects; all recorded classification, provenance,
 freshness, distinct-event, research-value, and dossier-direction checks pass.
 
+The SEC-backed fund lane is implemented for SPY, QQQ, DIA, IWM, XLE, XLK, GLD,
+and GDX. QQQ, IWM, XLE, XLK, and GDX resolve reviewed SEC registrant CIK plus
+series/class IDs and produce neutral N-CEN/NPORT context with separate report,
+period-end, filing, and acceptance chronology. SPY and DIA have official CIKs
+but no SEC mutual-fund series/class mapping; GLD is outside the N-CEN/NPORT
+investment-company lane. Those three cases return explicit `source_unsupported`
+reasons instead of invented identifiers. Reviewed sponsor-primary URLs are
+retained as metadata only, and every reviewed fund bypasses corporate filing
+and insider semantics.
+
 Item 8.01 primary-document enrichment is intentionally bounded rather than a
 general SEC semantic parser. The versioned `sec-primary-document-v1` rules cover
 explicit completed debt offerings, entered or amended equity distribution
@@ -89,8 +99,8 @@ uv run ruff check .
 
 All default tests are offline. Provider tests use sanitized fixtures and
 `httpx.MockTransport`; live credentials are not required. Direct SEC event,
-ownership, and Form 144 parsing plus issuer RSS/Atom collection and event-graph
-behavior and GDELT Web NGrams discovery are implemented with fixed fixtures.
+ownership, Form 144, N-CEN, and NPORT parsing plus issuer RSS/Atom collection,
+event-graph behavior, and GDELT Web NGrams discovery are implemented with fixed fixtures.
 Official-host Bluesky partial-attention collection is also fixture-covered.
 Phase 5 sentiment/options gates and 28 dated Phase 6 synthetic contract cases are also
 executable offline.
@@ -103,6 +113,7 @@ The live Web NGrams replacement evidence is recorded in
 | Evidence | Configuration | Behavior when absent |
 | --- | --- | --- |
 | Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required local live-data baseline; missing identity blocks live collection |
+| SEC fund identity/N-CEN/NPORT | Same SEC user agent; reviewed SPY/QQQ/DIA/IWM/XLE/XLK/GLD/GDX registry | Official series/class IDs yield neutral as-filed context; absent or inapplicable IDs return typed unsupported status; never uses corporate-insider semantics |
 | Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; `CATALYST_EDGE_ISSUER_FEEDS=enabled` | Enabled by default; unregistered tickers make no feed request and return typed no-observation status |
 | GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Server lifespan runs bounded startup/periodic refresh out of band; request-time reads remain cache-only; metadata/links remain neutral and never receive launch-readiness credit |
 | Bluesky partial attention | Reviewed exact aliases; `CATALYST_EDGE_BLUESKY=enabled` | Two complete historical seven-day windows are fetched from official AppView hosts; attention remains neutral |

@@ -32,6 +32,7 @@ class RiskMode(str, Enum):
 class SourceStatus(str, Enum):
     FRESH = "fresh"
     NO_OBSERVATIONS = "no_observations"
+    UNSUPPORTED = "unsupported"
     STALE = "stale"
     RATE_LIMITED = "rate_limited"
     PERMISSION_REQUIRED = "permission_required"
