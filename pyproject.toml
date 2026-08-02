@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "catalyst-edge-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Source-linked deterministic catalyst evidence scoring over MCP"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,7 @@ dev = [
   "jsonschema>=4.20,<5",
   "pytest>=8.3,<10",
   "pytest-asyncio>=0.25,<2",
+  "pyyaml>=6.0.2,<7",
   "ruff>=0.12,<1",
 ]
 diagnostic = [
@@ -39,6 +40,18 @@ catalyst-edge-health = "catalyst_edge_mcp.collection_lifecycle:health_main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["catalyst_edge_mcp"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/.env.example",
+  "/LICENSE",
+  "/README.md",
+  "/catalyst_edge_mcp",
+  "/docs/demo/five-ticker-demo-runbook.md",
+  "/pyproject.toml",
+  "/scripts/run_design_partner_demo.py",
+  "/uv.lock",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"
