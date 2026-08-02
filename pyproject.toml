@@ -46,6 +46,7 @@ include = [
   "/.env.example",
   "/LICENSE",
   "/README.md",
+  "/server.json",
   "/catalyst_edge_mcp",
   "/docs/demo/five-ticker-demo-runbook.md",
   "/pyproject.toml",

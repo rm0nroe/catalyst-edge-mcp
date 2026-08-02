@@ -32,6 +32,7 @@ REQUIRED_SDIST_PATHS = {
     "LICENSE",
     "README.md",
     "catalyst_edge_mcp/data/reviewed_registries.json",
+    "server.json",
 }
 PROHIBITED_PARTS = {
     ".cache",

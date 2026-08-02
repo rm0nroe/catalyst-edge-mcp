@@ -1,5 +1,7 @@
 # Catalyst Edge MCP
 
+<!-- mcp-name: io.github.rm0nroe/catalyst-edge-mcp -->
+
 Catalyst Edge is a standalone, read-only MCP server that returns compact,
 source-linked catalyst evidence dossiers for public-company tickers. It collects
 independent evidence families concurrently and applies a documented deterministic
