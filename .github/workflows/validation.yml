@@ -90,8 +90,7 @@ jobs:
             --sdist "$sdist" \
             --python 3.14 \
             --manifest "dist/catalyst-edge-mcp-$version-SHA256SUMS.txt" \
-            --record "dist/artifact-verification.json" \
-            --offline
+            --record "dist/artifact-verification.json"
           {
             echo "### Release-candidate hashes"
             echo '```text'
