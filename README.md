@@ -79,7 +79,7 @@ or filing structures remain `other_material_event` and require human review.
 
 No numeric scorer change was justified because the real corpus contains no
 forward-return labels. The scorer remains deterministic and explicitly
-unbacktested. Paid options flow, licensed OHLC, sentiment, packaging, CI, hosted
+unbacktested. Paid options flow, licensed OHLC, sentiment, hosted
 deployment, consumer distribution, and broader SEC semantic extraction are
 future capabilities, not blockers for the documented local acceptance boundary.
 
@@ -95,6 +95,7 @@ Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required.
 uv sync --extra dev
 uv run pytest
 uv run ruff check .
+uv build --no-sources --out-dir dist
 ```
 
 All default tests are offline. Provider tests use sanitized fixtures and
@@ -104,6 +105,14 @@ event-graph behavior, and GDELT Web NGrams discovery are implemented with fixed 
 Official-host Bluesky partial-attention collection is also fixture-covered.
 Phase 5 sentiment/options gates and 28 dated Phase 6 synthetic contract cases are also
 executable offline.
+
+Pull requests and release tags run the required Python 3.10/3.14 offline matrix,
+stdio/loopback contract suite, clean build, and installed-artifact verifier in
+`.github/workflows/validation.yml`. The workflow has read-only repository permissions
+and contains no package publish, release creation, registry, credential, or artifact-upload step.
+
+For a local release-candidate artifact, onboarding, and rollback proof, follow
+[`docs/demo/customer-installation-runbook.md`](docs/demo/customer-installation-runbook.md).
 
 The live Web NGrams replacement evidence is recorded in
 [`docs/validation/gdelt-web-ngrams-live-2026-07-14.md`](docs/validation/gdelt-web-ngrams-live-2026-07-14.md).
@@ -247,7 +256,7 @@ assertions pass. A separate 25-case real SEC product evaluation now covers the
 primary-source gate. See
 [`docs/validation/phase6-historical-validation-2026-07-13.md`](docs/validation/phase6-historical-validation-2026-07-13.md).
 
-The real-case evaluation, semantic corrections, 372-test suite, live target
+The real-case evaluation, semantic corrections, offline suite, live target
 cohort, fresh GDELT health, and final RKLB `launch_ready=true` smoke are recorded
 in [`docs/validation/real-catalyst-evaluation-2026-07-15.md`](docs/validation/real-catalyst-evaluation-2026-07-15.md)
 and [`docs/validation/local-product-completion-2026-07-15.md`](docs/validation/local-product-completion-2026-07-15.md).
