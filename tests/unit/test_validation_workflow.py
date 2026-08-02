@@ -39,6 +39,9 @@ def test_validation_workflow_contract():
         assert required in commands
 
     serialized = WORKFLOW.read_text(encoding="utf-8").casefold()
+    artifact_command = serialized.split("scripts/verify_release.py artifact", 1)[1]
+    artifact_command = artifact_command.split("\n          {", 1)[0]
+    assert "--offline" not in artifact_command
     for prohibited in (
         "actions/upload-artifact",
         "gh release",
