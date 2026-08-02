@@ -35,6 +35,7 @@ REQUIRED_MEMBERS = (
     "package/LICENSE",
     "package/README.md",
     "package/catalyst_edge_mcp/data/reviewed_registries.json",
+    "package/server.json",
 )
 
 
@@ -84,7 +85,7 @@ def test_release_verifier_checks_sdist_inventory(tmp_path):
     _write_sdist(path)
 
     inventory = _inspect_sdist(path)
-    assert inventory["member_count"] == 3
+    assert inventory["member_count"] == 4
 
 
 @pytest.mark.parametrize("name", ("package/../escape", "/absolute"))
