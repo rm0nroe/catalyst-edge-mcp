@@ -1,0 +1,100 @@
+name: validation
+
+on:
+  pull_request:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.9.17"
+      - name: Check lock
+        run: uv lock --check
+      - name: Sync locked development environment
+        run: uv sync --frozen --extra dev --python "${{ matrix.python-version }}"
+      - name: Lint
+        run: uv run --frozen --python "${{ matrix.python-version }}" ruff check .
+      - name: Run offline suite
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --frozen --python "${{ matrix.python-version }}" pytest -q \
+            | tee pytest-output.txt
+          test_count=$(uv run --frozen --python "${{ matrix.python-version }}" \
+            pytest --collect-only -q | awk -F': ' '/: [0-9]+$/ {sum += $NF} END {print sum}')
+          {
+            echo "### Python ${{ matrix.python-version }} test summary"
+            echo "$test_count tests collected; offline suite passed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  artifact:
+    name: Installed artifact
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.9.17"
+      - name: Sync locked verifier environment
+        run: uv sync --frozen --extra dev --python 3.14
+      - name: Build wheel and source distribution
+        run: uv build --no-sources --out-dir dist
+      - name: Verify installed artifacts
+        shell: bash
+        run: |
+          mapfile -t wheels < <(find dist -maxdepth 1 -name '*.whl' -print)
+          mapfile -t sdists < <(find dist -maxdepth 1 -name '*.tar.gz' -print)
+          test "${#wheels[@]}" -eq 1
+          test "${#sdists[@]}" -eq 1
+          wheel=${wheels[0]}
+          sdist=${sdists[0]}
+          version=$(uv run --frozen python -c \
+            'from importlib.metadata import version; print(version("catalyst-edge-mcp"))')
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "tag $GITHUB_REF_NAME does not match package version $version" >&2
+            exit 1
+          fi
+          uv run --frozen python scripts/verify_release.py artifact \
+            --wheel "$wheel" \
+            --sdist "$sdist" \
+            --python 3.14 \
+            --manifest "dist/catalyst-edge-mcp-$version-SHA256SUMS.txt" \
+            --record "dist/artifact-verification.json"
+          {
+            echo "### Release-candidate hashes"
+            echo '```text'
+            cat "dist/catalyst-edge-mcp-$version-SHA256SUMS.txt"
+            echo '```'
+            echo "Artifacts were verified locally in the job; no publish or upload step is configured."
+          } >> "$GITHUB_STEP_SUMMARY"
