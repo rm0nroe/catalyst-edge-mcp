@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "package_version": "0.1.1",
+  "source_hashes": {
+    "README.md": "45d8e4d93cfb20bca27beb2dc44cf193a34f2baf1edbe9e14af71eff4c1e18ce",
+    "pyproject.toml": "7d9ad04f711ca48fb4917b97e2a3adf4bf53324ea3b21ed36d3df6effe543033",
+    "uv.lock": "a996b00ce76863f83f579ddf7a28631f2fd5461fec505a25165b3484f153e2e3",
+    ".github/workflows/validation.yml": "cef0315e101330dc0dae9be0d6993f4d21824c719b03e0f4221e8fb8a1f25d11",
+    "scripts/verify_release.py": "eb8a5543f411a645a03960a1b5f58ac066fb3892ab3ad88e34543c5b809941ad",
+    "scripts/run_design_partner_demo.py": "af9413892d2830af91e688adb782ad615dc5627e4fccf6dbcaaa2abed447f672",
+    "server.json": "1939dca0e01927bc917add6c8330e70d1f91663218a4a0e12571864065901f2b",
+    "tests/unit/test_release_verifier.py": "f7dd8e039cf02c70cff681db9d283f092f7378c1c079bc818f165732e6ece76e",
+    "tests/unit/test_validation_workflow.py": "2a6bfb054d86ecfc9d75275ffe25ea95258036b3f72beca4777a11848eddc5a4",
+    "tests/unit/test_registry_metadata.py": "41822ff7cce3b1a55265d114a1387fd63a80bb447f51e7815bbdd8712c64fe0f",
+    "tests/fixtures/release/0.1.0-offline-config.json": "d56ce4a1d36e3a44976b4ee412db596639c1737ef847d74b5f5258baf98868aa",
+    "tests/fixtures/release/0.1.1-offline-config.json": "c26ff14086d4c7ef7d161210cfe5d9062e705fed0f329c1c88129c539bc1f0ca"
+  },
+  "artifact_record": {
+    "path": "/tmp/catalyst-edge-rc-0.1.1-listing-final.zglGAM/artifact-verification.json",
+    "sha256": "e991aa0e4f14d008599310320f5fa4cde2a264c86dec988fb694ba6477072f8b"
+  },
+  "manifest": {
+    "path": "/tmp/catalyst-edge-rc-0.1.1-listing-final.zglGAM/catalyst-edge-mcp-0.1.1-SHA256SUMS.txt",
+    "sha256": "983410b6e7435564ea901632e60fdd4fd295c4c79cfdf768b5d4b3ef300a0f38"
+  },
+  "rollback_record": {
+    "path": "/tmp/catalyst-edge-rollback-0.1.1-listing.vtGXYT/rollback-verification.json",
+    "sha256": "375813e8da5f98ecb4f6f2332d253a4d9984a2636d3cf8fe9c2de23826c391b4"
+  },
+  "demo_manifest": {
+    "path": "/tmp/catalyst-edge-demo-0.1.1-listing.qqxKG5/proof/manifest.json",
+    "sha256": "28076d08130f7943f568497cd16b0a342d7fd8d7be6227b34ad5dca06c8e67d1"
+  },
+  "test_counts": {
+    "3.10": 443,
+    "3.14": 443
+  },
+  "gates": {
+    "R0": "met_locally",
+    "R1": "partial",
+    "R2": "partial",
+    "R3": "partial",
+    "R4": "partial",
+    "R5": "partial",
+    "R6": "met_locally",
+    "R7": "open_delivery_blocking"
+  }
+}
