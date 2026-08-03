@@ -47,6 +47,8 @@ class Settings:
     gdelt_refresh_lookback_days: int = 14
     gdelt_freshness_max_age_seconds: int = 900
     bluesky_enabled: bool = False
+    bluesky_refresh_interval_seconds: int = 21_600
+    bluesky_freshness_max_age_seconds: int = 43_200
     registry_path: str = str(DEFAULT_REGISTRY_PATH)
     evidence_store_path: str = str(
         Path.home() / ".local" / "state" / "catalyst-edge-mcp" / "evidence.sqlite3"
@@ -139,6 +141,17 @@ class Settings:
         bluesky = os.getenv("CATALYST_EDGE_BLUESKY", "disabled").strip().lower()
         if bluesky not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_BLUESKY must be 'enabled' or 'disabled'")
+        bluesky_refresh_interval_seconds = _bounded_int_env(
+            "CATALYST_EDGE_BLUESKY_REFRESH_SECONDS", 21_600, 900, 86_400
+        )
+        bluesky_freshness_max_age_seconds = _bounded_int_env(
+            "CATALYST_EDGE_BLUESKY_MAX_AGE_SECONDS", 43_200, 900, 604_800
+        )
+        if bluesky_freshness_max_age_seconds < bluesky_refresh_interval_seconds:
+            raise ValueError(
+                "CATALYST_EDGE_BLUESKY_MAX_AGE_SECONDS must be greater than or equal to "
+                "CATALYST_EDGE_BLUESKY_REFRESH_SECONDS"
+            )
         return cls(
             sec_user_agent=_optional_env("CATALYST_EDGE_SEC_USER_AGENT"),
             fmp_api_key=_optional_env("FMP_API_KEY"),
@@ -156,6 +169,8 @@ class Settings:
             gdelt_refresh_lookback_days=gdelt_refresh_lookback_days,
             gdelt_freshness_max_age_seconds=gdelt_freshness_max_age_seconds,
             bluesky_enabled=bluesky == "enabled",
+            bluesky_refresh_interval_seconds=bluesky_refresh_interval_seconds,
+            bluesky_freshness_max_age_seconds=bluesky_freshness_max_age_seconds,
             registry_path=(
                 _optional_env("CATALYST_EDGE_REGISTRY_PATH")
                 or str(DEFAULT_REGISTRY_PATH)

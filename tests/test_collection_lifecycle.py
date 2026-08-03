@@ -7,6 +7,7 @@ import httpx
 import pytest
 
 from catalyst_edge_mcp.collection_lifecycle import (
+    BlueskyCollectionLifecycle,
     FreshnessState,
     GdeltCollectionLifecycle,
     health_main,
@@ -14,8 +15,9 @@ from catalyst_edge_mcp.collection_lifecycle import (
 from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX
 from catalyst_edge_mcp.evidence_store import EvidenceStore
 from catalyst_edge_mcp.gdelt_web_ngrams import GdeltWebNgramsRefresher
-from catalyst_edge_mcp.models import SourceStatus
+from catalyst_edge_mcp.models import AdapterResult, SourceStatus
 from catalyst_edge_mcp.settings import Settings
+from catalyst_edge_mcp.social_registry import SOCIAL_ISSUER_INDEX
 from tests.conftest import AS_OF
 
 
@@ -25,6 +27,8 @@ def _settings(tmp_path, **overrides):
         "gdelt_refresh_interval_seconds": 300,
         "gdelt_refresh_lookback_days": 14,
         "gdelt_freshness_max_age_seconds": 900,
+        "bluesky_refresh_interval_seconds": 21600,
+        "bluesky_freshness_max_age_seconds": 43200,
     }
     values.update(overrides)
     return Settings(**values)
@@ -197,3 +201,65 @@ def test_health_command_emits_machine_readable_never_refreshed_state(
     assert payload["provider"] == "gdelt"
     assert payload["results"][0]["freshness"] == "never_refreshed"
     assert payload["results"][0]["last_success_age_seconds"] is None
+
+
+@pytest.mark.asyncio
+async def test_bluesky_lifecycle_runs_out_of_band_and_tracks_persisted_schedule(tmp_path):
+    settings = _settings(tmp_path, bluesky_enabled=True)
+    store = EvidenceStore(settings.evidence_store_path)
+    calls = []
+
+    class RecordingCollector:
+        async def collect(self, ticker, lookback_days):
+            calls.append((ticker, lookback_days))
+            issuer = SOCIAL_ISSUER_INDEX[ticker]
+            store.update_collector_state(
+                source_id="bluesky",
+                issuer_key=issuer.issuer_key,
+                feed_url="https://api.bsky.app/xrpc/app.bsky.feed.searchPosts",
+                status=SourceStatus.FRESH.value,
+                checked_at=AS_OF,
+                succeeded=True,
+            )
+            return AdapterResult(
+                family="social",
+                provider="bluesky",
+                status=SourceStatus.NO_OBSERVATIONS,
+                collected_at=AS_OF,
+            )
+
+    lifecycle = BlueskyCollectionLifecycle(
+        settings,
+        tickers=["NVDA"],
+        collector=RecordingCollector(),
+        store=store,
+        clock=lambda: AS_OF,
+    )
+    results = await lifecycle.run_once()
+
+    assert calls == [("NVDA", 14)]
+    assert results["NVDA"].provider == "bluesky"
+    assert lifecycle.seconds_until_refresh() == 21600
+    assert lifecycle.health()[0].freshness is FreshnessState.FRESH
+    await lifecycle.stop()
+
+
+@pytest.mark.asyncio
+async def test_bluesky_lifecycle_skips_unregistered_ticker(tmp_path):
+    settings = _settings(tmp_path, bluesky_enabled=True)
+
+    class RejectingCollector:
+        async def collect(self, ticker, lookback_days):
+            raise AssertionError("unregistered ticker must not be collected")
+
+    lifecycle = BlueskyCollectionLifecycle(
+        settings,
+        tickers=["UNKNOWN"],
+        collector=RejectingCollector(),
+        clock=lambda: AS_OF,
+    )
+    try:
+        assert await lifecycle.run_once() == {}
+        assert lifecycle.health()[0].freshness is FreshnessState.UNREGISTERED
+    finally:
+        await lifecycle.stop()
