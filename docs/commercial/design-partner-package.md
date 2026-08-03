@@ -1,6 +1,8 @@
 # Catalyst Edge MCP Design Partner Package
 
-**Status:** Commercial package baseline; customer-specific price, sources, environment, and terms remain open until discovery and counsel review.
+**Status:** Superseded historical design-partner package; non-executable. The current
+self-serve motion is defined in `internal-plan`. Its interviews, custom demonstration,
+customer acceptance, installation, and founder-support assumptions are not active.
 
 ## Outcome
 

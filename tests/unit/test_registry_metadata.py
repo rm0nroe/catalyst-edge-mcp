@@ -17,6 +17,12 @@ def test_registry_metadata_matches_package():
     assert package["identifier"] == "catalyst-edge-mcp"
     assert package["version"] == package_version
     assert package["transport"] == {"type": "stdio"}
+    sec_identity = next(
+        item
+        for item in package["environmentVariables"]
+        if item["name"] == "CATALYST_EDGE_SEC_USER_AGENT"
+    )
+    assert sec_identity["isRequired"] is True
     assert f"<!-- mcp-name: {MCP_NAME} -->" in (ROOT / "README.md").read_text(
         encoding="utf-8"
     )

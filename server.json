@@ -20,8 +20,8 @@
       "environmentVariables": [
         {
           "name": "CATALYST_EDGE_SEC_USER_AGENT",
-          "description": "Optional SEC-compliant identity in Company email@example.com form.",
-          "isRequired": false,
+          "description": "Required SEC-compliant identity in Company email@example.com form for live evidence collection.",
+          "isRequired": true,
           "isSecret": false
         },
         {

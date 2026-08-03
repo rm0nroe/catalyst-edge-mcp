@@ -1,6 +1,8 @@
 # Catalyst Edge MCP Design Partner Order Form
 
-**DRAFT — NOT FOR SIGNATURE OR DELIVERY.** Counsel must replace or approve every bracketed item and the complete agreement for the actual customer and deployment. This file does not create an offer, authorize source use, or establish an adviser-client relationship.
+**Status:** Superseded historical design-partner draft; non-executable. The current
+self-serve motion is defined in `internal-plan`. Do not use this document for outreach,
+customer discovery, signature, delivery, or counsel quote requests.
 
 ## Parties and term
 

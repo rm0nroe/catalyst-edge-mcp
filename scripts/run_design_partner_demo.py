@@ -1,4 +1,4 @@
-"""Run the bounded five-ticker design-partner demonstration."""
+"""Run the bounded five-ticker release-sample verification."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from catalyst_edge_mcp.settings import Settings
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run five single-ticker calls and capture bounded acceptance proof"
+        description="Run five single-ticker calls and capture bounded release-sample proof"
     )
     parser.add_argument("tickers", nargs=5, metavar="TICKER")
     parser.add_argument("--lookback-days", type=int, default=14)
@@ -158,7 +158,7 @@ def main() -> None:
     try:
         raise SystemExit(asyncio.run(_run(_parser().parse_args())))
     except (OSError, ValidationError, ValueError) as exc:
-        print(f"demo failed: {exc}", file=sys.stderr)
+        print(f"release sample failed: {exc}", file=sys.stderr)
         raise SystemExit(2) from exc
 
 

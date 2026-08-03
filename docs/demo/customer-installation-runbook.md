@@ -1,69 +1,95 @@
-# Customer-Installed MCP Runbook
+# Local Self-Serve Installation and Rollback Runbook
 
-**Status:** Reusable local procedure. Replace every placeholder with the accepted customer release record; this document does not authorize delivery or source enablement.
+**Status:** Current local-user procedure. The legacy filename is retained for release
+continuity. No public artifact is available yet; use this with a locally built or future
+authorized release wheel. It does not authorize publication or source enablement.
 
-## Prerequisites and timer boundary
+## Prerequisites
 
-Have these ready before starting the onboarding timer:
+- Python 3.10+ and `uv`.
+- Claude Desktop, Codex, or another local stdio MCP client.
+- A pinned wheel plus SHA-256 manifest from the exact release candidate.
+- A monitored SEC identity in `Company email@example.com` form.
+- An absolute user-owned local evidence-store path.
+- The prior pinned wheel/configuration when testing rollback.
 
-- a supported Python runtime, `uv`, and the customer's local MCP client;
-- the pinned wheel, source distribution, and signed SHA-256 manifest;
-- an absolute customer-owned evidence-store path;
-- the completed customer configuration and deployment rights records;
-- the prior pinned wheel and prior configuration for rollback.
+Issuer feeds, GDELT, Bluesky, options, and sentiment are disabled by default. Do not
+enable them merely to obtain more output; follow the current source-rights matrix.
 
-Start the timer immediately before artifact hash verification. Stop only when the actual MCP client lists exactly `catalyst_edge_score` and `catalyst_edge_claim_sources`. Retain the first attempt, all commands, versions, exits, corrections, and readback even if the five-minute target is missed.
-
-## Verify and install
+## Verify and install the wheel
 
 ```bash
 sha256sum -c catalyst-edge-mcp-VERSION-SHA256SUMS.txt
-uv venv --python 3.10 /absolute/customer/path/catalyst-edge-venv
+uv venv --python 3.10 /absolute/local/path/catalyst-edge-venv
 uv pip install \
-  --python /absolute/customer/path/catalyst-edge-venv/bin/python \
-  /absolute/customer/path/catalyst_edge_mcp-VERSION-py3-none-any.whl
+  --python /absolute/local/path/catalyst-edge-venv/bin/python \
+  /absolute/path/catalyst_edge_mcp-VERSION-py3-none-any.whl
 ```
 
-Do not copy credentials into client-visible chat or command history. Inject any approved credentials through the customer-controlled process environment. A credential does not approve a source.
-
-The fail-closed offline configuration is:
+The installed executable is:
 
 ```text
+/absolute/local/path/catalyst-edge-venv/bin/catalyst-edge-mcp
+```
+
+Keep credentials out of chat, committed files, and shell history. The SEC identity is a
+contact identifier, not a secret, but it must be real and monitored.
+
+## Public-default environment
+
+```text
+CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com
 CATALYST_EDGE_TRANSPORT=stdio
 CATALYST_EDGE_ISSUER_FEEDS=disabled
 CATALYST_EDGE_GDELT=disabled
 CATALYST_EDGE_BLUESKY=disabled
 CATALYST_EDGE_OPTIONS_PROVIDER=none
 CATALYST_EDGE_SENTIMENT_MODEL=disabled
-CATALYST_EDGE_EVIDENCE_STORE=/absolute/customer/path/evidence.sqlite3
+CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3
 ```
 
-Use the absolute installed command in the customer's MCP client configuration:
+## Add to Codex
+
+The installed Codex CLI supports stdio MCP registration with `codex mcp add`:
+
+```bash
+codex mcp add catalyst-edge \
+  --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
+  --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
+  -- /absolute/local/path/catalyst-edge-venv/bin/catalyst-edge-mcp
+codex mcp get catalyst-edge
+```
+
+The omitted source toggles remain disabled by runtime default. Open a fresh Codex task and
+confirm exact discovery of `catalyst_edge_score` and `catalyst_edge_claim_sources` before
+calling one public ticker.
+
+## Add to Claude Desktop manually
+
+For pre-release QA only, configure the installed executable directly until the signed
+`.mcpb` is built and authorized. This manual path does not satisfy the public Claude
+release requirement:
 
 ```json
 {
   "mcpServers": {
     "catalyst-edge": {
-      "command": "/absolute/customer/path/catalyst-edge-venv/bin/catalyst-edge-mcp",
+      "command": "/absolute/local/path/catalyst-edge-venv/bin/catalyst-edge-mcp",
       "env": {
-        "CATALYST_EDGE_TRANSPORT": "stdio",
-        "CATALYST_EDGE_ISSUER_FEEDS": "disabled",
-        "CATALYST_EDGE_GDELT": "disabled",
-        "CATALYST_EDGE_BLUESKY": "disabled",
-        "CATALYST_EDGE_OPTIONS_PROVIDER": "none",
-        "CATALYST_EDGE_SENTIMENT_MODEL": "disabled",
-        "CATALYST_EDGE_EVIDENCE_STORE": "/absolute/customer/path/evidence.sqlite3"
+        "CATALYST_EDGE_SEC_USER_AGENT": "Company ops@example.com",
+        "CATALYST_EDGE_EVIDENCE_STORE": "/absolute/local/path/evidence.sqlite3"
       }
     }
   }
 }
 ```
 
-Restart the customer-owned MCP client and retain its tool-list readback. A server process that starts without the client readback does not pass onboarding.
+Restart Claude Desktop and confirm exact discovery of the same two tools. Process startup
+without client tool readback does not prove onboarding.
 
-## Local release-candidate proof
+## Local SDK artifact proof
 
-The repository verifier uses the official MCP SDK client against a clean installed wheel and sdist, checks exact two-tool discovery, and makes one schema-valid no-data call:
+Maintainers can verify a wheel/sdist without changing a user MCP configuration:
 
 ```bash
 uv run python scripts/verify_release.py artifact \
@@ -74,26 +100,40 @@ uv run python scripts/verify_release.py artifact \
   --record /absolute/path/artifact-verification.json
 ```
 
-This local SDK proof is CI and runbook evidence. Customer acceptance still requires readback from the customer's named client and environment.
+This proves SDK-client installation and tool discovery; it does not replace the Codex and
+Claude Desktop user-path checks.
+
+## Local data and privacy boundary
+
+- The evidence store is local SQLite/WAL state at the configured absolute path.
+- Back up or delete the SQLite file and any `-wal`/`-shm` companions together while the
+  MCP process is stopped.
+- Tool inputs are public-company tickers and research-mode options. Do not submit holdings,
+  positions, account credentials, material nonpublic information, or personal financial
+  data.
+- Provider credentials, if ever added under an approved source decision, remain in the
+  local process environment and must not be logged or returned.
 
 ## Rollback
 
-1. Stop the customer-owned MCP process.
-2. Copy the current configuration and SQLite database, including WAL/SHM companions when present, to the customer-approved backup location.
+1. Stop the local MCP client/process.
+2. Back up the current configuration and SQLite database plus WAL/SHM companions.
 3. Reinstall the prior wheel by exact path; do not delete the evidence store.
-4. Restore the prior configuration without overwriting customer-controlled secrets.
-5. Restart the MCP client and retain exact two-tool discovery plus one schema-valid call.
-6. Record artifact/configuration hashes, versions, commands, readback, data warnings, and backup ownership.
+4. Restore the prior secret-free configuration.
+5. Restart the client and retain exact two-tool discovery plus one schema-valid call.
+6. Record artifact/configuration hashes, versions, commands, readback, warnings, and
+   backup path.
 
-Any incompatible or one-way database migration blocks delivery until an explicit restore test passes.
+Any incompatible or one-way database migration blocks release until this restore test
+passes.
 
-## Required retained record
+## Required retained QA record
 
 - start/end time and first-attempt duration;
 - platform, Python, `uv`, MCP client, and package versions;
-- wheel/sdist/configuration/registry hashes;
-- install command and exit status;
+- artifact, configuration, registry, and manifest hashes;
+- install/registration commands and exits;
 - exact two-tool discovery readback;
-- schema-valid call result boundary, not customer evidence content;
-- every correction and exception;
-- rollback artifact/configuration, backup path/owner, and post-rollback readback.
+- schema-valid call boundary, never personal research content;
+- every correction/exception; and
+- rollback artifacts, backup path, and post-rollback readback.
