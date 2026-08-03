@@ -82,10 +82,14 @@ def build_service(
             )
         )
     if settings.bluesky_enabled:
+        # AppView search is ranked and historical cursors are unreliable. Requests
+        # read only locally observed forward buckets; the lifespan owns collection.
         adapters.append(
             BlueskyAdapter(
                 settings.evidence_store_path,
                 registry=registry.social_index,
+                live_refresh=False,
+                max_cache_age_seconds=settings.bluesky_freshness_max_age_seconds,
             )
         )
     # Conditional vendor keys are intentionally not composed until a deployed

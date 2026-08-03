@@ -30,6 +30,12 @@
           "format": "filepath",
           "isRequired": false,
           "isSecret": false
+        },
+        {
+          "name": "CATALYST_EDGE_BLUESKY",
+          "description": "Optional explicit opt-in: set to enabled for forward-only partial public attention; defaults to disabled.",
+          "isRequired": false,
+          "isSecret": false
         }
       ]
     }
