@@ -82,10 +82,10 @@ class SocialIssuer:
     @property
     def bluesky_query(self) -> str:
         terms = [
-            *(f'"${ticker}"' for ticker in self.tickers),
+            *(f"${ticker}" for ticker in self.tickers),
             *(f'"{alias}"' for alias in self.exact_aliases),
         ]
-        return f"({' OR '.join(terms)})"
+        return " | ".join(terms)
 
 
 @dataclass(frozen=True, slots=True)

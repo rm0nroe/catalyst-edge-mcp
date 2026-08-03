@@ -612,9 +612,11 @@ Phase 3 has bounded success/empty/malformed/rate-limit/timeout/host/provenance
 fixtures. Repeated live request-path timeouts moved DOC refreshes into an explicit
 out-of-band command; MCP evaluation now reads the typed cache without response-body
 retention.
-Phase 4 uses only the two documented Bluesky AppView hosts, persists derived
-attention windows without post bodies, enforces complete pagination and sample gates,
-and keeps attention neutral. No Mastodon instance registry is composed because the
+Phase 4 now uses only the two documented Bluesky AppView hosts from an out-of-band
+forward collector. Request-time evaluation is cache-only. The collector persists 14
+completed daily buckets without post bodies, never follows search cursors, fails closed
+on reported ranked-page overflow, gaps, stale/outage state, or disappeared URI hashes, and
+keeps attention neutral. No Mastodon instance registry is composed because the
 review found no approved instance set from which representative cross-instance
 coverage could be established. The live Bluesky POC confirmed the current 403 on
 the cached public search host and successful unauthenticated direct-AppView fallback.
@@ -686,9 +688,10 @@ explicit unsupported reasons from corporate filing and insider collectors.
    a bounded MCP query, and scoped reason records retain unavailable, unsupported,
    no-observation, entity-rejected, discovery-only, and evaluated-non-material
    dispositions without changing scoring semantics.
-4. Implemented: Bluesky exact-match partial attention with cached-to-direct official
-   AppView fallback, two bounded historical windows, complete pagination, minimum
-   samples, failure-aware coverage, and neutral semantics. Mastodon remains
+4. Implemented: Bluesky exact-match partial public attention with cached-to-direct
+   official AppView fallback, scheduled forward daily buckets, 14-day warm-up,
+   cache-only MCP reads, minimum samples, deletion-aware failure states, and neutral
+   semantics. Mastodon remains
    uncomposed after the measured allowlist decision found no reviewed instance
    set for representative coverage.
 5. Implemented: audited Finnhub sentiment, TextBlob, VADER, DistilBERT SST-2,

@@ -777,6 +777,44 @@ class EvidenceStore:
                 for row in rows
             ]
 
+    def prune_social_buckets(
+        self,
+        issuer_key: str,
+        source_id: str,
+        *,
+        before: datetime,
+    ) -> int:
+        """Delete derived social buckets outside the rolling product window."""
+        with self._lock:
+            connection = self._connect()
+            cursor = connection.execute(
+                """
+                DELETE FROM social_bucket
+                WHERE issuer_key=? AND source_id=? AND bucket_at<?
+                """,
+                (issuer_key, source_id, self._iso(before)),
+            )
+            connection.commit()
+            return max(0, int(cursor.rowcount))
+
+    def delete_social_cache(self, issuer_key: str, source_id: str) -> dict[str, int]:
+        """Delete one issuer's social buckets and collector state on request."""
+        with self._lock:
+            connection = self._connect()
+            bucket_cursor = connection.execute(
+                "DELETE FROM social_bucket WHERE issuer_key=? AND source_id=?",
+                (issuer_key, source_id),
+            )
+            state_cursor = connection.execute(
+                "DELETE FROM collector_state WHERE issuer_key=? AND source_id=?",
+                (issuer_key, source_id),
+            )
+            connection.commit()
+            return {
+                "buckets_deleted": max(0, int(bucket_cursor.rowcount)),
+                "collector_states_deleted": max(0, int(state_cursor.rowcount)),
+            }
+
     def _fuzzy_candidate(
         self,
         connection: sqlite3.Connection,
