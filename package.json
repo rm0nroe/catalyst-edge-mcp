@@ -9,7 +9,8 @@
   },
   "scripts": {
     "mcpb:validate": "mcpb validate manifest.json",
-    "mcpb:pack": "mcpb pack . dist/catalyst-edge-mcp-0.1.1.mcpb && uv run --frozen python scripts/normalize_mcpb.py dist/catalyst-edge-mcp-0.1.1.mcpb"
+    "mcpb:pack": "mcpb pack . dist/catalyst-edge-mcp-0.1.1.mcpb && uv run --frozen python scripts/normalize_mcpb.py dist/catalyst-edge-mcp-0.1.1.mcpb",
+    "mcpb:sign": "uv run --frozen python scripts/sign_mcpb.py"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2"

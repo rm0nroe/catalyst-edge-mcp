@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catalyst Edge Local Beta — launch creative review</title>
+  <style>
+    :root {
+      --ink: #080b0f;
+      --ink-soft: #0e141b;
+      --panel: #131b24;
+      --panel-high: #192531;
+      --line: #2b3b49;
+      --line-bright: #4d6577;
+      --paper: #eef4f2;
+      --paper-warm: #e8e2d6;
+      --muted: #9eacb5;
+      --muted-dark: #4f5a60;
+      --signal: #c8f65a;
+      --signal-dim: #4d6720;
+      --source: #7fa7ff;
+      --caution: #ffb563;
+      --caution-dark: #8a4700;
+      --danger: #a82e38;
+      --white: #ffffff;
+      --shadow: rgba(0, 0, 0, .34);
+      --grid: rgba(127, 167, 255, .11);
+      --glass: rgba(19, 27, 36, .82);
+      --display: "Baskerville", "Times New Roman", serif;
+      --body: "Avenir Next", "Avenir", sans-serif;
+      --mono: "Menlo", "SFMono-Regular", monospace;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--ink); }
+    body {
+      margin: 0;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: var(--body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .gallery-header {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 42px 32px 20px;
+      color: var(--paper);
+    }
+    .gallery-header h1 {
+      margin: 0 0 8px;
+      font-family: var(--display);
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 400;
+    }
+    .gallery-header p {
+      max-width: 740px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .gallery {
+      display: grid;
+      gap: 54px;
+      padding: 28px 28px 80px;
+    }
+    .asset-shell {
+      display: grid;
+      gap: 12px;
+      justify-content: center;
+    }
+    .asset-label {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .artboard {
+      position: relative;
+      width: min(96vw, 1440px);
+      aspect-ratio: 12 / 5;
+      overflow: hidden;
+      background: var(--ink);
+      box-shadow: 0 28px 72px var(--shadow);
+      container-type: inline-size;
+    }
+    .artboard.social { aspect-ratio: 1200 / 628; }
+    .artboard.square { aspect-ratio: 1 / 1; max-width: 900px; }
+    .artboard.infographic { aspect-ratio: 8 / 5; background: var(--paper); color: var(--ink); }
+
+    body.asset-mode { overflow: hidden; }
+    body.asset-mode .gallery-header,
+    body.asset-mode .asset-label { display: none; }
+    body.asset-mode .gallery { display: block; padding: 0; }
+    body.asset-mode .asset-shell { display: none; }
+    body.asset-mode .asset-shell.active { display: block; }
+    body.asset-mode .artboard {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      aspect-ratio: auto;
+      box-shadow: none;
+    }
+
+    .grid-field::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(90deg, transparent, var(--white) 30%, var(--white));
+      pointer-events: none;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: clamp(10px, 1.15cqw, 17px);
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .brand-mark {
+      position: relative;
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--signal);
+      transform: rotate(45deg);
+    }
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 6px;
+      background: var(--signal);
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--signal);
+      font-family: var(--mono);
+      font-size: clamp(9px, 1cqw, 14px);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 30px;
+      height: 1px;
+      background: currentColor;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      padding: 6px 12px;
+      border: 1px solid var(--line-bright);
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: clamp(8px, .8cqw, 12px);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--signal); }
+    .pill.caution { border-color: var(--caution); color: var(--caution); }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 12px 19px;
+      border: 1px solid var(--signal);
+      color: var(--ink);
+      background: var(--signal);
+      font-family: var(--mono);
+      font-size: clamp(9px, .9cqw, 13px);
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .hero-ledger {
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      padding: 5.6cqw 6cqw 4.8cqw;
+      background:
+        radial-gradient(circle at 78% 55%, var(--panel-high) 0, var(--ink) 42%),
+        var(--ink);
+    }
+    .hero-ledger .brand { position: absolute; top: 3.2cqw; left: 6cqw; }
+    .hero-ledger .version { position: absolute; top: 3.1cqw; right: 5cqw; }
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      align-self: center;
+      max-width: 760px;
+    }
+    .hero-copy h2 {
+      max-width: 850px;
+      margin: 1.4cqw 0 1.4cqw;
+      font-family: var(--display);
+      font-size: clamp(52px, 5.55cqw, 100px);
+      font-weight: 400;
+      line-height: .95;
+      letter-spacing: -.035em;
+    }
+    .hero-copy h2 em { color: var(--signal); font-style: italic; }
+    .hero-copy p {
+      max-width: 580px;
+      margin: 0 0 2cqw;
+      color: var(--muted);
+      font-size: clamp(14px, 1.18cqw, 20px);
+      line-height: 1.55;
+    }
+    .hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .microcopy {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: clamp(8px, .72cqw, 11px);
+      line-height: 1.5;
+    }
+
+    .dossier {
+      position: relative;
+      z-index: 2;
+      align-self: center;
+      justify-self: end;
+      width: 92%;
+      padding: 2cqw;
+      border: 1px solid var(--line-bright);
+      background: var(--glass);
+      box-shadow: 0 24px 70px var(--shadow);
+      backdrop-filter: blur(14px);
+      transform: rotate(1.2deg);
+      animation: settle .7s ease-out both;
+    }
+    .dossier-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+    .ticker {
+      font-family: var(--display);
+      font-size: clamp(30px, 3cqw, 52px);
+      line-height: 1;
+    }
+    .score-block { text-align: right; }
+    .score {
+      display: block;
+      color: var(--paper);
+      font-family: var(--mono);
+      font-size: clamp(34px, 4cqw, 70px);
+      line-height: .9;
+    }
+    .score-label { color: var(--caution); font-family: var(--mono); font-size: clamp(8px, .8cqw, 12px); text-transform: uppercase; }
+    .metric-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.25fr;
+      margin: 1.5cqw 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .metric { padding: 1cqw 1cqw 1cqw 0; }
+    .metric + .metric { padding-left: 1cqw; border-left: 1px solid var(--line); }
+    .metric strong { display: block; font-family: var(--mono); font-size: clamp(14px, 1.45cqw, 23px); }
+    .metric span { color: var(--muted); font-family: var(--mono); font-size: clamp(7px, .68cqw, 10px); text-transform: uppercase; }
+    .source-row {
+      display: grid;
+      grid-template-columns: 74px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: .85cqw 0;
+      border-bottom: 1px solid var(--line);
+      font-size: clamp(9px, .82cqw, 13px);
+    }
+    .source-form { color: var(--source); font-family: var(--mono); }
+    .source-date { color: var(--muted); font-family: var(--mono); font-size: .82em; }
+    .gap-row { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 1.25cqw; }
+    .gap {
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: clamp(6px, .55cqw, 9px);
+      text-transform: uppercase;
+    }
+
+    .hero-map {
+      padding: 4.4cqw 5.8cqw;
+      background: var(--ink-soft);
+    }
+    .hero-map .topline { display: flex; align-items: center; justify-content: space-between; }
+    .map-layout {
+      display: grid;
+      grid-template-columns: .8fr 1.2fr;
+      gap: 4.5cqw;
+      align-items: center;
+      height: calc(100% - 42px);
+    }
+    .map-copy h2 {
+      margin: 1.3cqw 0 1.2cqw;
+      font-family: var(--display);
+      font-size: clamp(54px, 5.1cqw, 94px);
+      font-weight: 400;
+      line-height: .96;
+      letter-spacing: -.04em;
+    }
+    .map-copy p { color: var(--muted); font-size: clamp(14px, 1.1cqw, 19px); line-height: 1.55; }
+    .map-copy strong { color: var(--paper); font-weight: 600; }
+    .evidence-map { position: relative; height: 70%; min-height: 340px; }
+    .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .s-line { fill: none; stroke: var(--line-bright); stroke-width: 1.5; }
+    .s-source { fill: var(--source); }
+    .s-signal { fill: var(--signal); }
+    .s-caution { fill: var(--caution); }
+    .s-panel { fill: var(--panel); stroke: var(--line-bright); stroke-width: 1.2; }
+    .flow-line { stroke-dasharray: 8 12; animation: dash 1.8s linear infinite; }
+    .node-label {
+      position: absolute;
+      padding: 10px 12px;
+      border: 1px solid var(--line-bright);
+      background: var(--panel);
+      font-family: var(--mono);
+      font-size: clamp(7px, .72cqw, 11px);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      box-shadow: 0 12px 30px var(--shadow);
+    }
+    .node-a { top: 10%; left: 3%; color: var(--source); }
+    .node-b { bottom: 14%; left: 4%; color: var(--source); }
+    .node-c { top: 39%; left: 43%; color: var(--signal); }
+    .node-d { top: 35%; right: 2%; color: var(--caution); }
+
+    .hero-missing {
+      padding: 4.7cqw 5.4cqw;
+      background: var(--paper-warm);
+      color: var(--ink);
+    }
+    .hero-missing .brand-mark { border-color: var(--ink); }
+    .hero-missing .brand-mark::after { background: var(--ink); }
+    .hero-missing .pill.caution { border-color: var(--caution-dark); color: var(--caution-dark); }
+    .hero-missing .topline { display: flex; justify-content: space-between; }
+    .missing-layout {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      align-items: end;
+      height: calc(100% - 36px);
+      gap: 5cqw;
+    }
+    .not-buy {
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(74px, 8.8cqw, 160px);
+      font-weight: 400;
+      line-height: .78;
+      letter-spacing: -.065em;
+    }
+    .not-buy span { display: block; color: var(--danger); font-style: italic; }
+    .missing-note {
+      padding-left: 2.2cqw;
+      border-left: 5px solid var(--danger);
+    }
+    .missing-note h3 {
+      margin: 0 0 1cqw;
+      font-family: var(--mono);
+      font-size: clamp(18px, 2cqw, 34px);
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+    .missing-note p { margin: 0 0 1.4cqw; color: var(--muted-dark); font-size: clamp(13px, 1.08cqw, 18px); line-height: 1.55; }
+    .missing-note .pill { border-color: var(--ink); color: var(--ink); }
+
+    .social-map {
+      padding: 6.4cqw 6.8cqw;
+      background:
+        radial-gradient(circle at 90% 12%, var(--panel-high), transparent 45%),
+        var(--ink);
+    }
+    .social-map .brand { position: absolute; top: 5cqw; left: 6.8cqw; }
+    .social-map .pill { position: absolute; top: 4.5cqw; right: 6.8cqw; }
+    .social-grid {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 4cqw;
+      align-items: center;
+      height: 100%;
+    }
+    .social-map h2 {
+      margin: 2cqw 0 1.8cqw;
+      font-family: var(--display);
+      font-size: clamp(54px, 6.3cqw, 96px);
+      font-weight: 400;
+      line-height: .9;
+      letter-spacing: -.045em;
+    }
+    .social-map h2 em { color: var(--signal); font-style: italic; }
+    .social-map p { max-width: 550px; margin: 0; color: var(--muted); font-size: clamp(14px, 1.35cqw, 20px); line-height: 1.5; }
+    .source-stack { display: grid; gap: 1.2cqw; }
+    .stack-card {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 1.4cqw;
+      align-items: center;
+      padding: 1.6cqw;
+      border: 1px solid var(--line-bright);
+      background: var(--panel);
+    }
+    .stack-card strong { font-family: var(--mono); font-size: clamp(12px, 1.35cqw, 20px); }
+    .stack-card span { color: var(--muted); font-size: clamp(9px, .85cqw, 13px); }
+    .stack-card .status { color: var(--source); font-family: var(--mono); font-size: clamp(8px, .8cqw, 12px); text-transform: uppercase; }
+    .stack-arrow { color: var(--signal); font-family: var(--mono); text-align: center; }
+    .stack-card.result { border-color: var(--signal); }
+    .stack-card.result .status { color: var(--caution); }
+
+    .square-map {
+      padding: 7cqw;
+      background: var(--ink-soft);
+    }
+    .square-map .topline { display: flex; justify-content: space-between; align-items: center; }
+    .square-map h2 {
+      max-width: 85%;
+      margin: 8cqw 0 5cqw;
+      font-family: var(--display);
+      font-size: clamp(56px, 9.2cqw, 100px);
+      font-weight: 400;
+      line-height: .9;
+      letter-spacing: -.05em;
+    }
+    .square-map h2 em { color: var(--signal); font-style: italic; }
+    .square-flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 2cqw;
+      align-items: center;
+      margin-top: 4cqw;
+    }
+    .square-step { min-height: 15cqw; padding: 2.4cqw; border: 1px solid var(--line-bright); background: var(--panel); }
+    .square-step b { display: block; margin-bottom: 1cqw; color: var(--source); font-family: var(--mono); font-size: clamp(10px, 1.4cqw, 16px); text-transform: uppercase; }
+    .square-step strong { font-size: clamp(15px, 2cqw, 24px); line-height: 1.25; }
+    .square-step.result { border-color: var(--signal); }
+    .square-step.result b { color: var(--caution); }
+    .square-arrow { color: var(--signal); font-family: var(--mono); font-size: 3cqw; }
+    .square-foot { position: absolute; left: 7cqw; right: 7cqw; bottom: 5cqw; display: flex; justify-content: space-between; color: var(--muted); font-family: var(--mono); font-size: clamp(8px, 1cqw, 12px); }
+
+    .info-board {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 2cqw;
+      padding: 3.5cqw 4.2cqw 3cqw;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, transparent 49.94%, var(--muted-dark) 50%, transparent 50.06%),
+        var(--paper);
+    }
+    .info-head { display: grid; grid-template-columns: 1.2fr .8fr; gap: 3cqw; align-items: end; }
+    .info-head .brand-mark { border-color: var(--ink); }
+    .info-head .brand-mark::after { background: var(--ink); }
+    .info-head h2 {
+      margin: 1cqw 0 0;
+      font-family: var(--display);
+      font-size: clamp(54px, 5.4cqw, 90px);
+      font-weight: 400;
+      line-height: .9;
+      letter-spacing: -.05em;
+    }
+    .info-deck { padding-left: 2cqw; border-left: 4px solid var(--signal-dim); color: var(--muted-dark); font-size: clamp(12px, 1.05cqw, 17px); line-height: 1.55; }
+    .info-flow {
+      display: grid;
+      grid-template-columns: .8fr .78fr 1.22fr;
+      gap: 2.3cqw;
+      align-items: stretch;
+    }
+    .info-section { position: relative; padding-top: 2cqw; border-top: 2px solid var(--ink); }
+    .section-index { position: absolute; top: -1.1cqw; right: 0; padding-left: 8px; background: var(--paper); color: var(--muted-dark); font-family: var(--mono); font-size: clamp(8px, .72cqw, 11px); }
+    .info-section h3 { margin: 0 0 1.1cqw; font-family: var(--mono); font-size: clamp(12px, 1.25cqw, 20px); text-transform: uppercase; }
+    .filing {
+      margin-bottom: 1cqw;
+      padding: 1.2cqw;
+      border: 1px solid var(--ink);
+      background: var(--white);
+    }
+    .filing b { display: flex; justify-content: space-between; gap: 12px; color: var(--source); font-family: var(--mono); font-size: clamp(9px, .95cqw, 14px); }
+    .filing strong { display: block; margin: .6cqw 0; font-size: clamp(11px, 1.05cqw, 16px); }
+    .filing span { color: var(--muted-dark); font-family: var(--mono); font-size: clamp(7px, .7cqw, 10px); }
+    .transform-list { display: grid; gap: .7cqw; }
+    .transform-step {
+      display: grid;
+      grid-template-columns: 27px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 1cqw 0;
+      border-bottom: 1px solid var(--muted-dark);
+      font-size: clamp(10px, 1cqw, 15px);
+    }
+    .transform-step i { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--signal-dim); font-family: var(--mono); font-size: 10px; font-style: normal; }
+    .result-frame { display: grid; grid-template-columns: .62fr 1.38fr; gap: 1.3cqw; height: calc(100% - 2.5cqw); }
+    .result-score { display: flex; flex-direction: column; justify-content: space-between; padding: 1.4cqw; background: var(--ink); color: var(--paper); }
+    .result-score strong { font-family: var(--mono); font-size: clamp(52px, 6cqw, 96px); line-height: .9; }
+    .result-score span { color: var(--caution); font-family: var(--mono); font-size: clamp(8px, .8cqw, 12px); text-transform: uppercase; }
+    .result-score small { color: var(--muted); font-size: clamp(8px, .75cqw, 11px); line-height: 1.5; }
+    .gap-panel { padding: 1.4cqw; border: 1px solid var(--ink); }
+    .gap-panel h4 { margin: 0 0 1cqw; font-family: var(--mono); font-size: clamp(10px, 1cqw, 15px); text-transform: uppercase; }
+    .coverage-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: .62cqw 0; border-bottom: 1px solid var(--muted-dark); font-size: clamp(9px, .9cqw, 13px); }
+    .coverage-row b { font-family: var(--mono); font-size: .8em; text-transform: uppercase; }
+    .coverage-row.available b { color: var(--signal-dim); }
+    .coverage-row.missing b { color: var(--danger); }
+    .info-foot {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 2cqw;
+      align-items: center;
+      padding-top: 1.2cqw;
+      border-top: 1px solid var(--muted-dark);
+      color: var(--muted-dark);
+      font-family: var(--mono);
+      font-size: clamp(7px, .72cqw, 11px);
+      text-transform: uppercase;
+    }
+    .guardrails { display: flex; gap: 1.5cqw; flex-wrap: wrap; }
+    .guardrails span::before { content: "□ "; color: var(--danger); }
+    .info-cta { color: var(--ink); font-weight: 700; }
+
+    @keyframes settle {
+      from { opacity: 0; transform: translateY(24px) rotate(1.2deg); }
+      to { opacity: 1; transform: translateY(0) rotate(1.2deg); }
+    }
+    @keyframes dash { to { stroke-dashoffset: -40; } }
+
+    @media (max-width: 700px) {
+      .gallery { padding: 16px 12px 60px; gap: 28px; }
+      .gallery-header { padding: 28px 18px 10px; }
+      body.asset-mode { overflow: auto; }
+      body.asset-mode .artboard { height: auto; min-height: 100dvh; }
+      .hero-ledger,
+      .map-layout,
+      .missing-layout,
+      .social-grid,
+      .info-head,
+      .info-flow { grid-template-columns: 1fr; }
+      .artboard { aspect-ratio: 3 / 4; }
+      .artboard.social,
+      .artboard.square,
+      .artboard.infographic { aspect-ratio: 3 / 4; }
+      .hero-ledger,
+      .hero-map,
+      .hero-missing,
+      .social-map,
+      .square-map,
+      .info-board { padding: 28px 22px; }
+      .hero-ledger .brand,
+      .social-map .brand { top: 28px; left: 22px; }
+      .hero-ledger .version,
+      .social-map .pill { top: 22px; right: 22px; }
+      .hero-ledger { gap: 24px; padding-top: 96px; }
+      .hero-copy h2,
+      .map-copy h2 { font-size: 48px; }
+      .dossier { width: 100%; padding: 18px; }
+      .evidence-map { min-height: 320px; }
+      .not-buy { font-size: 72px; }
+      .missing-layout { align-content: center; }
+      .social-grid { padding-top: 70px; }
+      .social-map h2 { font-size: 50px; }
+      .square-map h2 { max-width: 100%; font-size: 52px; }
+      .square-flow { grid-template-columns: 1fr; }
+      .square-arrow { transform: rotate(90deg); justify-self: center; }
+      .square-step { min-height: 96px; }
+      .square-foot { position: static; margin-top: 30px; gap: 18px; }
+      .info-board { display: block; background: var(--paper); }
+      .info-head h2 { font-size: 50px; }
+      .info-deck { margin: 20px 0 28px; }
+      .info-section { margin-bottom: 28px; padding-top: 22px; }
+      .section-index { top: -12px; }
+      .result-frame { grid-template-columns: 1fr; }
+      .result-score { min-height: 220px; }
+      .info-foot { grid-template-columns: 1fr; margin-top: 12px; padding: 18px 0 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="gallery-header">
+    <h1>Launch creative review</h1>
+    <p>Three banner directions, two social crops, and one explanatory infographic. All facts use the retained August 3, 2026 AAPL SEC-only QA output. Nothing here is publication-approved.</p>
+  </header>
+
+  <main class="gallery">
+    <section class="asset-shell" data-asset="hero-ledger">
+      <div class="asset-label">Option 01 · Evidence ledger · website hero · 1920 × 800</div>
+      <article class="artboard hero-ledger grid-field" aria-label="Catalyst Edge evidence-ledger website hero">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
+        <div class="pill version"><span class="dot"></span> Local Beta · 0.1.1</div>
+        <div class="hero-copy">
+          <div class="eyebrow">Primary-source research</div>
+          <h2>Know what changed.<br><em>Trace why.</em></h2>
+          <p>Turn public-company evidence into a source-linked dossier—with missing data shown, not guessed away.</p>
+          <div class="hero-actions">
+            <span class="cta">Inspect every source</span>
+            <span class="microcopy">Free local MCP · Claude + Codex<br>Deterministic · unbacktested · non-advisory</span>
+          </div>
+        </div>
+        <div class="dossier" aria-label="AAPL example dossier: neutral score 50, partial coverage, two SEC sources">
+          <div class="dossier-top">
+            <div><div class="eyebrow">SEC-only · 14 days</div><div class="ticker">AAPL</div></div>
+            <div class="score-block"><span class="score">50</span><span class="score-label">Neutral ≠ signal</span></div>
+          </div>
+          <div class="metric-strip">
+            <div class="metric"><strong>2</strong><span>primary sources</span></div>
+            <div class="metric"><strong>partial</strong><span>coverage</span></div>
+            <div class="metric"><strong>rules_v1</strong><span>scoring method</span></div>
+          </div>
+          <div class="source-row"><span class="source-form">10-Q</span><span>Quarterly report observed</span><span class="source-date">JUL 31</span></div>
+          <div class="source-row"><span class="source-form">8-K</span><span>Results + exhibits reported</span><span class="source-date">JUL 30</span></div>
+          <div class="gap-row" aria-label="Evidence families without fresh scored evidence">
+            <span class="gap">Insider trading</span><span class="gap">Options flow</span><span class="gap">Social</span><span class="gap">Technical</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="asset-shell" data-asset="hero-map">
+      <div class="asset-label">Option 02 · Source map · website hero · 1920 × 800</div>
+      <article class="artboard hero-map grid-field" aria-label="Catalyst Edge source-map website hero">
+        <div class="topline">
+          <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
+          <div class="pill"><span class="dot"></span> Evidence first</div>
+        </div>
+        <div class="map-layout">
+          <div class="map-copy">
+            <div class="eyebrow">From filing to fact pattern</div>
+            <h2>Follow the evidence,<br>not the noise.</h2>
+            <p><strong>Every observation keeps its source.</strong> Every coverage gap stays visible. Your agent gets a research state—not a buy/sell instruction.</p>
+          </div>
+          <div class="evidence-map" aria-label="Two SEC filings flow through deterministic evidence processing to a neutral partial-coverage dossier">
+            <svg class="map-svg" viewBox="0 0 760 430" role="img" aria-label="SEC filings flowing into a source-linked AAPL dossier">
+              <path class="s-line flow-line" d="M100 95 C260 95 260 215 365 215"></path>
+              <path class="s-line flow-line" d="M100 335 C260 335 260 215 365 215"></path>
+              <path class="s-line flow-line" d="M405 215 C510 215 520 210 670 210"></path>
+              <circle class="s-source" cx="80" cy="95" r="10"></circle>
+              <circle class="s-source" cx="80" cy="335" r="10"></circle>
+              <rect class="s-panel" x="350" y="200" width="40" height="30"></rect>
+              <circle class="s-signal" cx="370" cy="215" r="7"></circle>
+              <rect class="s-panel" x="640" y="175" width="75" height="70"></rect>
+              <circle class="s-caution" cx="677" cy="210" r="12"></circle>
+            </svg>
+            <div class="node-label node-a">SEC · Form 10-Q · Jul 31</div>
+            <div class="node-label node-b">SEC · Form 8-K · Jul 30</div>
+            <div class="node-label node-c">Source-linked evidence</div>
+            <div class="node-label node-d">AAPL · 50 neutral<br>partial coverage</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="asset-shell" data-asset="hero-missingness">
+      <div class="asset-label">Option 03 · Missingness first · website hero · 1920 × 800</div>
+      <article class="artboard hero-missing" aria-label="Catalyst Edge missingness-first website hero">
+        <div class="topline">
+          <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
+          <div class="pill caution">AAPL · partial coverage</div>
+        </div>
+        <div class="missing-layout">
+          <h2 class="not-buy">50 is <span>not a buy.</span></h2>
+          <div class="missing-note">
+            <h3>It is a research state.</h3>
+            <p>Two SEC filings observed. Insider activity returned none; Bluesky partial public attention was off; options and technical data require licensed sources.</p>
+            <div class="pill">Deterministic rules · unbacktested · non-advisory</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="asset-shell" data-asset="social-wide">
+      <div class="asset-label">Recommended direction · social wide · 1200 × 628</div>
+      <article class="artboard social social-map grid-field" aria-label="Catalyst Edge social launch banner">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
+        <div class="pill"><span class="dot"></span> Local Beta</div>
+        <div class="social-grid">
+          <div>
+            <div class="eyebrow">Primary sources in. Research state out.</div>
+            <h2>Evidence first.<br><em>Gaps included.</em></h2>
+            <p>Source-linked catalyst dossiers for Claude and Codex.</p>
+          </div>
+          <div class="source-stack">
+            <div class="stack-card"><strong>10-Q</strong><span>Quarterly report · Jul 31</span><span class="status">SEC</span></div>
+            <div class="stack-card"><strong>8-K</strong><span>Results + exhibits · Jul 30</span><span class="status">SEC</span></div>
+            <div class="stack-arrow" aria-hidden="true">↓</div>
+            <div class="stack-card result"><strong>AAPL · 50</strong><span>2 sources · 4 explicit gaps</span><span class="status">neutral</span></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="asset-shell" data-asset="social-square">
+      <div class="asset-label">Recommended direction · social square · 1080 × 1080</div>
+      <article class="artboard square square-map grid-field" aria-label="Catalyst Edge square social launch graphic">
+        <div class="topline">
+          <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
+          <div class="pill"><span class="dot"></span> Local Beta</div>
+        </div>
+        <h2>Evidence first.<br><em>Gaps included.</em></h2>
+        <div class="square-flow">
+          <div class="square-step"><b>01 · Observe</b><strong>10-Q + 8-K</strong></div>
+          <div class="square-arrow" aria-hidden="true">→</div>
+          <div class="square-step"><b>02 · Trace</b><strong>2 SEC sources</strong></div>
+          <div class="square-arrow" aria-hidden="true">→</div>
+          <div class="square-step result"><b>03 · Bound</b><strong>50 neutral<br>partial</strong></div>
+        </div>
+        <div class="square-foot"><span>Claude + Codex · local MCP</span><span>Unbacktested · non-advisory</span></div>
+      </article>
+    </section>
+
+    <section class="asset-shell" data-asset="infographic">
+      <div class="asset-label">Explanatory one-pager · 1600 × 1000</div>
+      <article class="artboard infographic info-board" aria-label="AAPL evidence-flow infographic">
+        <header class="info-head">
+          <div>
+            <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge · Example 001</div>
+            <h2>AAPL, traced end to end.</h2>
+          </div>
+          <div class="info-deck">A real SEC-only example for the 14 days ending August 3, 2026. The score is a bounded research summary—not a trading signal.</div>
+        </header>
+
+        <div class="info-flow">
+          <section class="info-section">
+            <span class="section-index">01 / public inputs</span>
+            <h3>Two primary records</h3>
+            <div class="filing">
+              <b><span>FORM 10-Q</span><span>JUL 31</span></b>
+              <strong>Quarterly report observed</strong>
+              <span>SEC accession 0000320193-26-000020</span>
+            </div>
+            <div class="filing">
+              <b><span>FORM 8-K</span><span>JUL 30</span></b>
+              <strong>Results + exhibits reported</strong>
+              <span>SEC accession 0000320193-26-000018</span>
+            </div>
+          </section>
+
+          <section class="info-section">
+            <span class="section-index">02 / evidence loop</span>
+            <h3>Facts stay attached</h3>
+            <div class="transform-list">
+              <div class="transform-step"><i>1</i><span>Collect official metadata</span></div>
+              <div class="transform-step"><i>2</i><span>Preserve source + accession</span></div>
+              <div class="transform-step"><i>3</i><span>Classify the event</span></div>
+              <div class="transform-step"><i>4</i><span>Score deterministically</span></div>
+              <div class="transform-step"><i>5</i><span>Expose missing coverage</span></div>
+            </div>
+          </section>
+
+          <section class="info-section">
+            <span class="section-index">03 / bounded output</span>
+            <h3>Research state, not advice</h3>
+            <div class="result-frame">
+              <div class="result-score">
+                <div><strong>50</strong><span>neutral</span></div>
+                <small>2 evidence items<br>partial coverage<br>rules_v1 scorer</small>
+              </div>
+              <div class="gap-panel">
+                <h4>Coverage readout</h4>
+                <div class="coverage-row available"><span>Filings + news</span><b>2 fresh SEC</b></div>
+                <div class="coverage-row missing"><span>Insider trading</span><b>queried · none</b></div>
+                <div class="coverage-row missing"><span>Options flow</span><b>license required</b></div>
+                <div class="coverage-row missing"><span>Bluesky partial attention</span><b>public default off</b></div>
+                <div class="coverage-row missing"><span>Technical data</span><b>license required</b></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <footer class="info-foot">
+          <div class="guardrails"><span>deterministic</span><span>unbacktested</span><span>non-advisory</span><span>bounded coverage</span></div>
+          <div class="info-cta">Open the filings. Verify the facts. →</div>
+        </footer>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const asset = new URLSearchParams(window.location.search).get("asset");
+    if (asset) {
+      const shell = document.querySelector(`[data-asset="${CSS.escape(asset)}"]`);
+      if (shell) {
+        document.body.classList.add("asset-mode");
+        shell.classList.add("active");
+      }
+    }
+  </script>
+</body>
+</html>
