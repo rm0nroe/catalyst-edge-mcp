@@ -1,0 +1,20 @@
+{
+  "name": "catalyst-edge-mcp-release-tooling",
+  "version": "0.1.1",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": "24.9.0",
+    "npm": "11.6.0"
+  },
+  "scripts": {
+    "mcpb:validate": "mcpb validate manifest.json",
+    "mcpb:pack": "mcpb pack . dist/catalyst-edge-mcp-0.1.1.mcpb && uv run --frozen python scripts/normalize_mcpb.py dist/catalyst-edge-mcp-0.1.1.mcpb"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2"
+  },
+  "overrides": {
+    "tmp": "0.2.7"
+  }
+}

@@ -66,6 +66,10 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           version: "0.9.17"
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.9.0"
       - name: Sync locked verifier environment
         run: uv sync --frozen --extra dev --python 3.14
       - name: Build wheel and source distribution
@@ -97,4 +101,21 @@ jobs:
             cat "dist/catalyst-edge-mcp-$version-SHA256SUMS.txt"
             echo '```'
             echo "Artifacts were verified locally in the job; no publish or upload step is configured."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Build and verify MCPB
+        shell: bash
+        run: |
+          npm ci --ignore-scripts
+          npm audit --audit-level=low
+          npm run mcpb:validate
+          npm run mcpb:pack
+          uv run --frozen python scripts/verify_mcpb.py \
+            --bundle dist/catalyst-edge-mcp-0.1.1.mcpb \
+            --record dist/mcpb-verification.json
+          {
+            echo "### MCPB release-candidate hash"
+            echo '```text'
+            sha256sum dist/catalyst-edge-mcp-0.1.1.mcpb
+            echo '```'
+            echo "MCPB CLI $(./node_modules/.bin/mcpb --version); validated and packed only."
           } >> "$GITHUB_STEP_SUMMARY"
