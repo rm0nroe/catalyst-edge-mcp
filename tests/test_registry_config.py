@@ -165,6 +165,9 @@ def test_custom_registry_composes_all_collectors_from_one_validated_file(tmp_pat
     settings = Settings(
         registry_path=str(path),
         evidence_store_path=str(tmp_path / "events.sqlite3"),
+        issuer_feeds_enabled=True,
+        gdelt_enabled=True,
+        bluesky_enabled=True,
     )
 
     service = build_service(settings)
