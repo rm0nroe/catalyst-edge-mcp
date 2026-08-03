@@ -37,6 +37,26 @@ integration, and managed support are outside this release.
 Passing R0–R6 does not authorize R7. A paid Hosted Pro experience has a separate legal,
 security, privacy, billing, and operating gate; it is not part of Local Beta readiness.
 
+## Hosted Pro measurement boundary
+
+The Local Beta page may include `Hosted Pro — $29/month, coming soon` only as a paid-intent
+measurement surface. It must separate raw verified intent from the activation-linked subset,
+use double opt-in and deduplication, retain offer version/source, exclude bots/staff/QA/
+duplicates/“maybe,” and keep successful Local Beta activation privacy-preserving.
+
+The current plan uses three recent activation-linked thresholds:
+
+- **350:** separately authorize at most a 56-hour disposable OAuth/client spike;
+- **1,350:** separately authorize one scoped legal/source/payment-provider review; and
+- **11,100:** re-cost and reconsider the complete build with observed data.
+
+The first two are heuristic risk-budget caps. The last is a safeguarded planning gate, not
+automatic implementation authority. Intent expires after 180 days unless voluntarily
+reconfirmed through the current self-serve offer. The raw verified intent rate must also
+retain a one-sided 95% Wilson lower bound of at least 3%; activation yield is reported
+separately. No auth, billing, tenancy, hosted operations, payment, or paid delivery belongs
+to R0–R7.
+
 ## Required CI lanes
 
 The existing read-only workflow must run on pull requests and release tags:
@@ -117,6 +137,8 @@ willingness to pay.
 - [ ] Codex and Claude Desktop exact two-tool onboarding is measured.
 - [ ] Wheel, sdist, and signed `.mcpb` hashes match the final artifacts.
 - [ ] Public-safe sample and security/source limitations are reviewed.
+- [ ] Paid-intent measurement copy, double opt-in, deduplication, offer-version/source,
+      activation-link privacy, raw-intent denominator, and exclusion rules are reviewed.
 - [ ] Exact publication targets and actions receive explicit Ryan authorization.
 
 ## Prepared publication targets and order
