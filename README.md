@@ -12,11 +12,31 @@ The public surface has two read-only tools: `catalyst_edge_score` returns the
 compact dossier, and `catalyst_edge_claim_sources` pages through every immutable
 source record counted by a grouped claim.
 
+## Audience and distribution status
+
+Catalyst Edge is for analysts and builders. **Builders includes retail traders and
+technically capable individual investors who assemble their own Claude, Codex, Cursor,
+or other MCP research workflows.** It is not limited to institutional teams.
+
+The product promise is bounded:
+
+> Ask your AI research agent what changed for a ticker, why it matters, what contradicts
+> it, and show every source and missing-data warning.
+
+The scorer is deterministic and unbacktested. Catalyst Edge does not promise alpha,
+investment performance, buy/sell signals, personalized advice, or execution.
+
+As of 2026-08-02, the self-serve release is prepared but not public: the GitHub repository
+is private, and no git tag, GitHub release, PyPI project, MCP Registry entry, or signed
+Claude Desktop `.mcpb` exists. The current direction is a complete free Local Beta plus a
+`Hosted Pro — $29/month` paid-intent test; publication and paid launch remain separately
+gated in [`GTM_PLAN.md`](GTM_PLAN.md).
+
 ## Current status and completion boundary
 
 As of 2026-07-21, the zero-subscription local runtime has the free dependencies
-needed to deliver the revised product: direct SEC filings and insider records,
-reviewed issuer feeds, GDELT Web NGrams discovery, and Bluesky partial attention.
+needed to deliver the revised product: direct SEC filings and insider records plus
+implemented, opt-in issuer-feed, GDELT Web NGrams, and Bluesky capabilities.
 The MCP transports, schemas, provenance, typed missingness, event graph, and
 deterministic scorer are implemented and tested.
 
@@ -27,7 +47,8 @@ drive event-specific headlines, invalidation criteria, and next checks. The slic
 is covered by fixed real RKLB SEC metadata and was rechecked against live RKLB
 Form 144 and 8-K records.
 
-The automatic local GDELT lifecycle is now implemented: server startup schedules
+The opt-in local GDELT lifecycle is implemented: when GDELT is explicitly enabled,
+server startup schedules
 a bounded catch-up when persisted state is due, periodic refresh remains outside
 the MCP request path, shutdown cancels cleanly, and `catalyst-edge-health` reports
 last-success age plus fresh, stale, failed, never-refreshed, or unregistered state.
@@ -81,15 +102,15 @@ or filing structures remain `other_material_event` and require human review.
 
 No numeric scorer change was justified because the real corpus contains no
 forward-return labels. The scorer remains deterministic and explicitly
-unbacktested. Paid options flow, licensed OHLC, sentiment, hosted
-deployment, consumer distribution, and broader SEC semantic extraction are
-future capabilities, not blockers for the documented local acceptance boundary.
+unbacktested. Paid options flow, licensed OHLC, sentiment, hosted deployment, and
+broader SEC semantic extraction are future capabilities. Public self-serve distribution
+is the selected GTM but is not yet authorized or released.
 
 In older implementation notes and runtime messages, “production” means the
 real non-fixture composition path used by the local MCP. It does not imply a
 hosted service, third-party provider role, paid account, or consumer rollout.
 
-## Install and verify
+## Build and verify from the private source checkout
 
 Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required.
 
@@ -113,8 +134,12 @@ stdio/loopback contract suite, clean build, and installed-artifact verifier in
 `.github/workflows/validation.yml`. The workflow has read-only repository permissions
 and contains no package publish, release creation, registry, credential, or artifact-upload step.
 
-For a local release-candidate artifact, onboarding, and rollback proof, follow
+These are maintainer/source-checkout commands, not a public installation path. For the
+current wheel installation, Codex/Claude configuration, exact two-tool readback, and
+rollback procedure, follow
 [`docs/demo/customer-installation-runbook.md`](docs/demo/customer-installation-runbook.md).
+The filename is retained for release continuity; the document now describes generic
+self-serve local installation.
 
 The live Web NGrams replacement evidence is recorded in
 [`docs/validation/gdelt-web-ngrams-live-2026-07-14.md`](docs/validation/gdelt-web-ngrams-live-2026-07-14.md).
@@ -125,9 +150,9 @@ The live Web NGrams replacement evidence is recorded in
 | --- | --- | --- |
 | Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required local live-data baseline; missing identity blocks live collection |
 | SEC fund identity/N-CEN/NPORT | Same SEC user agent; reviewed SPY/QQQ/DIA/IWM/XLE/XLK/GLD/GDX registry | Official series/class IDs yield neutral as-filed context; absent or inapplicable IDs return typed unsupported status; never uses corporate-insider semantics |
-| Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; `CATALYST_EDGE_ISSUER_FEEDS=enabled` | Enabled by default; unregistered tickers make no feed request and return typed no-observation status |
-| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=enabled` | Server lifespan runs bounded startup/periodic refresh out of band; request-time reads remain cache-only; metadata/links remain neutral and never receive launch-readiness credit |
-| Bluesky partial attention | Reviewed exact aliases; `CATALYST_EDGE_BLUESKY=enabled` | Two complete historical seven-day windows are fetched from official AppView hosts; attention remains neutral |
+| Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; explicit `CATALYST_EDGE_ISSUER_FEEDS=enabled` opt-in | Disabled by public default pending source-specific output-rights clearance; unregistered tickers make no feed request |
+| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; explicit `CATALYST_EDGE_GDELT=enabled` opt-in | Disabled by public default until required GDELT citation/linking is implemented in the output; when enabled, refresh is out of band and request-time reads are cache-only |
+| Bluesky partial attention | Reviewed exact aliases; explicit `CATALYST_EDGE_BLUESKY=enabled` opt-in | Disabled by public default pending output, privacy, retention, and deletion-policy clearance; attention remains neutral when explicitly enabled |
 | Mastodon attention | Reviewed-instance registry required | No instance is composed: measured representative coverage has not justified an allowlist |
 | FMP and Finnhub | Key plus recorded policy approval | Keys alone do not establish commercial rights and are not composed by default |
 | FlowAlgo/CheddarFlow/future OPRA vendor | Key plus recorded transaction-and-quote license | Otherwise `options_flow` is `licensed_feed_required` |
@@ -139,7 +164,7 @@ Provider credentials are read only from this process environment. They are never
 loaded from `../analysis-api`, logged, or returned in raw signals.
 
 Copy the checked-in template, populate the SEC identity, then export it into the
-current shell. Conditional provider keys are useful only after policy approval:
+current shell. The template leaves issuer feeds, GDELT, and Bluesky disabled:
 
 ```bash
 cp .env.example .env
@@ -147,8 +172,6 @@ cp .env.example .env
 set -a
 source .env
 set +a
-uv run catalyst-edge-refresh-gdelt AAPL NVDA TSLA BRK.B RKLB --lookback-days 14
-uv run catalyst-edge-health AAPL NVDA TSLA BRK.B RKLB
 uv run catalyst-edge-smoke NVDA --lookback-days 14
 ```
 
@@ -164,12 +187,12 @@ Runtime settings:
 | `CATALYST_EDGE_TRANSPORT` | `stdio` | Also accepts `streamable-http` |
 | `CATALYST_EDGE_HOST` | `127.0.0.1` | Loopback addresses only |
 | `CATALYST_EDGE_PORT` | `8000` | Streamable HTTP port |
-| `CATALYST_EDGE_ISSUER_FEEDS` | `enabled` | Set `disabled` to suppress issuer-feed requests |
-| `CATALYST_EDGE_GDELT` | `enabled` | Enables cache-only request reads and automatic out-of-band startup/periodic refresh; set `disabled` for a fully disabled GDELT path |
+| `CATALYST_EDGE_ISSUER_FEEDS` | `disabled` | Explicit opt-in only after source-specific rights and output review |
+| `CATALYST_EDGE_GDELT` | `disabled` | Explicit opt-in only after required GDELT citation/linking is implemented; when enabled, request reads are cache-only and refresh is out of band |
 | `CATALYST_EDGE_GDELT_REFRESH_SECONDS` | `300` | Period between bounded background attempts; 60–86,400 seconds |
 | `CATALYST_EDGE_GDELT_LOOKBACK_DAYS` | `14` | Event-store reporting window used by each background refresh; 1–90 days |
 | `CATALYST_EDGE_GDELT_MAX_AGE_SECONDS` | `900` | Last-success age after which request-time cache health becomes stale; must be at least the refresh interval |
-| `CATALYST_EDGE_BLUESKY` | `enabled` | Set `disabled` to suppress AppView requests; disable all three public collectors for a fully offline runtime |
+| `CATALYST_EDGE_BLUESKY` | `disabled` | Explicit opt-in only after output, privacy, retention, and deletion-policy review |
 | `CATALYST_EDGE_REGISTRY_PATH` | Packaged `reviewed_registries.json` | Optional local JSON replacing the complete reviewed issuer/feed/discovery/social/publisher registry; invalid or ambiguous entries fail startup |
 | `CATALYST_EDGE_EVIDENCE_STORE` | `~/.local/state/catalyst-edge-mcp/evidence.sqlite3` | Local SQLite/WAL collector state, canonical event graph, immutable claim/source relations, and entity-decision audit |
 | `CATALYST_EDGE_SENTIMENT_MODEL` | `disabled` | Any other value fails configuration until a reviewed candidate passes every gate |

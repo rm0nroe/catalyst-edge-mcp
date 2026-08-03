@@ -41,12 +41,12 @@ class Settings:
     transport: str = "stdio"
     host: str = "127.0.0.1"
     port: int = 8000
-    issuer_feeds_enabled: bool = True
-    gdelt_enabled: bool = True
+    issuer_feeds_enabled: bool = False
+    gdelt_enabled: bool = False
     gdelt_refresh_interval_seconds: int = 300
     gdelt_refresh_lookback_days: int = 14
     gdelt_freshness_max_age_seconds: int = 900
-    bluesky_enabled: bool = True
+    bluesky_enabled: bool = False
     registry_path: str = str(DEFAULT_REGISTRY_PATH)
     evidence_store_path: str = str(
         Path.home() / ".local" / "state" / "catalyst-edge-mcp" / "evidence.sqlite3"
@@ -116,10 +116,10 @@ class Settings:
         host = os.getenv("CATALYST_EDGE_HOST", "127.0.0.1").strip()
         if host not in {"127.0.0.1", "localhost", "::1"}:
             raise ValueError("CATALYST_EDGE_HOST must be a loopback address")
-        issuer_feeds = os.getenv("CATALYST_EDGE_ISSUER_FEEDS", "enabled").strip().lower()
+        issuer_feeds = os.getenv("CATALYST_EDGE_ISSUER_FEEDS", "disabled").strip().lower()
         if issuer_feeds not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_ISSUER_FEEDS must be 'enabled' or 'disabled'")
-        gdelt = os.getenv("CATALYST_EDGE_GDELT", "enabled").strip().lower()
+        gdelt = os.getenv("CATALYST_EDGE_GDELT", "disabled").strip().lower()
         if gdelt not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_GDELT must be 'enabled' or 'disabled'")
         gdelt_refresh_interval_seconds = _bounded_int_env(
@@ -136,7 +136,7 @@ class Settings:
                 "CATALYST_EDGE_GDELT_MAX_AGE_SECONDS must be greater than or equal to "
                 "CATALYST_EDGE_GDELT_REFRESH_SECONDS"
             )
-        bluesky = os.getenv("CATALYST_EDGE_BLUESKY", "enabled").strip().lower()
+        bluesky = os.getenv("CATALYST_EDGE_BLUESKY", "disabled").strip().lower()
         if bluesky not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_BLUESKY must be 'enabled' or 'disabled'")
         return cls(
