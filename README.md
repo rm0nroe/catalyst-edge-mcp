@@ -172,7 +172,7 @@ The live Web NGrams replacement evidence is recorded in
 | SEC fund identity/N-CEN/NPORT | Same SEC user agent; reviewed SPY/QQQ/DIA/IWM/XLE/XLK/GLD/GDX registry | Official series/class IDs yield neutral as-filed context; absent or inapplicable IDs return typed unsupported status; never uses corporate-insider semantics |
 | Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; explicit `CATALYST_EDGE_ISSUER_FEEDS=enabled` opt-in | Disabled by public default pending source-specific output-rights clearance; unregistered tickers make no feed request |
 | GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; explicit `CATALYST_EDGE_GDELT=enabled` opt-in | Disabled by public default until required GDELT citation/linking is implemented in the output; when enabled, refresh is out of band and request-time reads are cache-only |
-| Bluesky partial attention | Reviewed exact aliases; explicit `CATALYST_EDGE_BLUESKY=enabled` opt-in | Disabled by public default pending output, privacy, retention, and deletion-policy clearance; attention remains neutral when explicitly enabled |
+| Bluesky partial public attention | Reviewed exact aliases; explicit `CATALYST_EDGE_BLUESKY=enabled` opt-in | Disabled by public default; opt-in uses forward-only local collection, 14-day derived-cache retention, operator deletion, and neutral-only output |
 | Mastodon attention | Reviewed-instance registry required | No instance is composed: measured representative coverage has not justified an allowlist |
 | FMP and Finnhub | Key plus recorded policy approval | Keys alone do not establish commercial rights and are not composed by default |
 | FlowAlgo/CheddarFlow/future OPRA vendor | Key plus recorded transaction-and-quote license | Otherwise `options_flow` is `licensed_feed_required` |
@@ -212,7 +212,9 @@ Runtime settings:
 | `CATALYST_EDGE_GDELT_REFRESH_SECONDS` | `300` | Period between bounded background attempts; 60–86,400 seconds |
 | `CATALYST_EDGE_GDELT_LOOKBACK_DAYS` | `14` | Event-store reporting window used by each background refresh; 1–90 days |
 | `CATALYST_EDGE_GDELT_MAX_AGE_SECONDS` | `900` | Last-success age after which request-time cache health becomes stale; must be at least the refresh interval |
-| `CATALYST_EDGE_BLUESKY` | `disabled` | Explicit opt-in only after output, privacy, retention, and deletion-policy review |
+| `CATALYST_EDGE_BLUESKY` | `disabled` | Explicit opt-in to ranked, incomplete partial public attention; no request-time network call |
+| `CATALYST_EDGE_BLUESKY_REFRESH_SECONDS` | `21600` | Out-of-band completed-day refresh cadence; six hours by default |
+| `CATALYST_EDGE_BLUESKY_MAX_AGE_SECONDS` | `43200` | Fail-closed maximum age since the last collector check |
 | `CATALYST_EDGE_REGISTRY_PATH` | Packaged `reviewed_registries.json` | Optional local JSON replacing the complete reviewed issuer/feed/discovery/social/publisher registry; invalid or ambiguous entries fail startup |
 | `CATALYST_EDGE_EVIDENCE_STORE` | `~/.local/state/catalyst-edge-mcp/evidence.sqlite3` | Local SQLite/WAL collector state, canonical event graph, immutable claim/source relations, and entity-decision audit |
 | `CATALYST_EDGE_SENTIMENT_MODEL` | `disabled` | Any other value fails configuration until a reviewed candidate passes every gate |
@@ -273,13 +275,20 @@ ticker is fresh.
 
 Bluesky searches reviewed exact cashtags and company aliases through
 `public.api.bsky.app`, falling back only to `api.bsky.app`. Both are documented,
-unauthenticated AppView hosts; no proxy or scraper path exists. The collector
-queries non-overlapping historical seven-day windows using documented `since`,
-`until`, and cursor parameters. It fetches at most three 100-post pages per window,
-deduplicates post URIs, counts unique authors, and persists derived window metrics
-plus at most three representative links—not post bodies. Both windows must paginate
-completely and contain at least five exact-match posts; otherwise no trend is emitted.
-Attention direction always remains neutral. Mastodon remains uncomposed because no
+unauthenticated AppView hosts; no proxy, scraper, account, or credential path exists.
+The six-hour out-of-band lifecycle queries one bounded first page for the previous
+completed UTC day and never follows a cursor. Each daily bucket deduplicates AT URIs,
+counts unique authors, and retains counts, pseudonymous SHA-256 identifiers, response
+hash, coverage/outage state, and at most three representative links—not post bodies.
+Buckets auto-prune to the 14 completed days needed for two equal seven-day windows;
+`catalyst-edge-purge-bluesky-cache TICKER...` deletes the local buckets and collector
+state on request. Missing days, reported hit overflow, upstream failures, stale state,
+or disappeared URI hashes fail closed. Until 14 consecutive adequate forward buckets
+exist, output explicitly reports `warm_up`. Even after warm-up, each seven-day window
+must contain at least five posts from three unique authors. Search is ranked and
+incomplete, so output is always labeled partial public attention, remains neutral, and
+never claims sentiment or market-wide coverage. MCP requests read cache only.
+Mastodon remains uncomposed because no
 reviewed instance set was available to establish representative cross-instance
 coverage; no instance is treated as a global index.
 

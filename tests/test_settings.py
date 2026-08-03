@@ -170,6 +170,28 @@ def test_bluesky_toggle_is_explicit(monkeypatch):
         Settings.from_env()
 
 
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("CATALYST_EDGE_BLUESKY_REFRESH_SECONDS", "899"),
+        ("CATALYST_EDGE_BLUESKY_MAX_AGE_SECONDS", "not-an-integer"),
+    ],
+)
+def test_bluesky_lifecycle_settings_reject_invalid_values(monkeypatch, name, value):
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValueError, match=name):
+        Settings.from_env()
+
+
+def test_bluesky_max_age_cannot_be_shorter_than_refresh_interval(monkeypatch):
+    monkeypatch.setenv("CATALYST_EDGE_BLUESKY_REFRESH_SECONDS", "21600")
+    monkeypatch.setenv("CATALYST_EDGE_BLUESKY_MAX_AGE_SECONDS", "18000")
+
+    with pytest.raises(ValueError, match="CATALYST_EDGE_BLUESKY_MAX_AGE_SECONDS"):
+        Settings.from_env()
+
+
 def test_sentiment_model_is_explicitly_disabled(monkeypatch):
     monkeypatch.delenv("CATALYST_EDGE_SENTIMENT_MODEL", raising=False)
     settings = Settings.from_env()
