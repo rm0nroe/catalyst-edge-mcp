@@ -69,7 +69,7 @@ SOURCE_POLICIES: dict[str, SourcePolicy] = {
         frozenset({"social"}),
         "partial_attention",
         PolicyDecision.APPROVED_PARTIAL_ATTENTION,
-        "minimal post metadata, derived windows, and representative links",
+        "14 daily derived buckets, pseudonymous hashes, and up to 3 links per bucket; no bodies",
         0.50,
         0.60,
         official_hosts=("public.api.bsky.app", "api.bsky.app"),

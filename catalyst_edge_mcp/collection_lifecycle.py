@@ -13,15 +13,16 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
+from catalyst_edge_mcp.adapters.bluesky import BlueskyAdapter
 from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.evidence_store import EvidenceStore
 from catalyst_edge_mcp.gdelt_web_ngrams import (
     GdeltWebNgramsRefresher,
     GdeltWebNgramsResult,
 )
-from catalyst_edge_mcp.models import SourceStatus
+from catalyst_edge_mcp.models import AdapterResult, SourceStatus
 from catalyst_edge_mcp.registry_config import RegistryBundle, load_registry_bundle
-from catalyst_edge_mcp.registry_models import DiscoveryIssuer
+from catalyst_edge_mcp.registry_models import DiscoveryIssuer, SocialIssuer
 from catalyst_edge_mcp.settings import Settings
 from catalyst_edge_mcp.validation import normalize_ticker
 
@@ -260,10 +261,164 @@ class GdeltCollectionLifecycle:
             await asyncio.sleep(self.settings.gdelt_refresh_interval_seconds)
 
 
-def build_collection_lifecycle(settings: Settings) -> GdeltCollectionLifecycle | None:
-    if not settings.gdelt_enabled:
-        return None
-    return GdeltCollectionLifecycle(settings)
+class BlueskyCollectionLifecycle:
+    """Collect one completed UTC day at a bounded out-of-band cadence."""
+
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        tickers: Sequence[str] | None = None,
+        collector: BlueskyAdapter | None = None,
+        store: EvidenceStore | None = None,
+        registry: RegistryBundle | None = None,
+        clock=None,
+    ) -> None:
+        self.settings = settings
+        self.registry = registry or load_registry_bundle(settings.registry_path)
+        self.social_index = self.registry.social_index
+        self.tickers = tuple(
+            tickers or (issuer.tickers[0] for issuer in self.registry.social_issuers)
+        )
+        self.store = store or EvidenceStore(settings.evidence_store_path)
+        self.collector = collector or BlueskyAdapter(
+            settings.evidence_store_path,
+            registry=self.social_index,
+            store=self.store,
+            live_refresh=True,
+            max_cache_age_seconds=settings.bluesky_freshness_max_age_seconds,
+        )
+        self._clock = clock or (lambda: datetime.now(UTC))
+        self._task: asyncio.Task[None] | None = None
+        self.last_results: dict[str, AdapterResult] = {}
+
+    @property
+    def running(self) -> bool:
+        return self._task is not None and not self._task.done()
+
+    def start(self) -> None:
+        if self.running:
+            return
+        self._task = asyncio.create_task(
+            self._run_loop(),
+            name="catalyst-edge-bluesky-refresh",
+        )
+
+    async def stop(self) -> None:
+        task = self._task
+        self._task = None
+        if task is not None and not task.done():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+        self.store.close()
+
+    async def run_once(self) -> dict[str, AdapterResult]:
+        results: dict[str, AdapterResult] = {}
+        for ticker in self.tickers:
+            if self._issuer(ticker) is not None:
+                results[ticker] = await self.collector.collect(ticker, 14)
+        self.last_results = results
+        return results
+
+    def health(self, tickers: Sequence[str] | None = None) -> list[CollectionHealth]:
+        now = _as_utc(self._clock())
+        reports: list[CollectionHealth] = []
+        for ticker in tickers or self.tickers:
+            issuer = self._issuer(ticker)
+            if issuer is None:
+                reports.append(
+                    CollectionHealth(
+                        ticker=ticker,
+                        issuer_key=None,
+                        freshness=FreshnessState.UNREGISTERED,
+                        source_status=SourceStatus.NO_OBSERVATIONS,
+                        last_checked_at=None,
+                        last_success_at=None,
+                        last_success_age_seconds=None,
+                        error_class=None,
+                    )
+                )
+                continue
+            reports.append(
+                collection_health_from_state(
+                    ticker,
+                    issuer.issuer_key,
+                    self.store.collector_state("bluesky", issuer.issuer_key),
+                    now=now,
+                    max_age_seconds=self.settings.bluesky_freshness_max_age_seconds,
+                )
+            )
+        return reports
+
+    def seconds_until_refresh(self) -> float:
+        now = _as_utc(self._clock())
+        delays: list[float] = []
+        seen: set[str] = set()
+        for ticker in self.tickers:
+            issuer = self._issuer(ticker)
+            if issuer is None or issuer.issuer_key in seen:
+                continue
+            seen.add(issuer.issuer_key)
+            state = self.store.collector_state("bluesky", issuer.issuer_key)
+            last_checked = _parse_datetime(state.get("last_checked_at")) if state else None
+            if last_checked is None:
+                return 0.0
+            due_at = last_checked + timedelta(
+                seconds=self.settings.bluesky_refresh_interval_seconds
+            )
+            delays.append(max(0.0, (due_at - now).total_seconds()))
+        return min(
+            delays,
+            default=float(self.settings.bluesky_refresh_interval_seconds),
+        )
+
+    def _issuer(self, ticker: str) -> SocialIssuer | None:
+        try:
+            canonical = normalize_ticker(ticker)
+        except ValueError:
+            return None
+        return self.social_index.get(canonical) or self.social_index.get(
+            canonical.replace(".", "-")
+        )
+
+    async def _run_loop(self) -> None:
+        initial_delay = self.seconds_until_refresh()
+        if initial_delay:
+            await asyncio.sleep(initial_delay)
+        while True:
+            try:
+                await self.run_once()
+            except Exception as exc:  # pragma: no cover - collector types normal failures
+                LOGGER.warning(
+                    "Bluesky lifecycle refresh failed with %s",
+                    type(exc).__name__,
+                )
+            await asyncio.sleep(self.settings.bluesky_refresh_interval_seconds)
+
+
+class CollectionLifecycleGroup:
+    """Own every enabled out-of-band collector under one server lifespan."""
+
+    def __init__(self, lifecycles: Sequence[Any]) -> None:
+        self.lifecycles = tuple(lifecycles)
+
+    def start(self) -> None:
+        for lifecycle in self.lifecycles:
+            lifecycle.start()
+
+    async def stop(self) -> None:
+        for lifecycle in reversed(self.lifecycles):
+            await lifecycle.stop()
+
+
+def build_collection_lifecycle(settings: Settings) -> CollectionLifecycleGroup | None:
+    lifecycles = []
+    if settings.gdelt_enabled:
+        lifecycles.append(GdeltCollectionLifecycle(settings))
+    if settings.bluesky_enabled:
+        lifecycles.append(BlueskyCollectionLifecycle(settings))
+    return CollectionLifecycleGroup(lifecycles) if lifecycles else None
 
 
 def _parse_datetime(value: object) -> datetime | None:
