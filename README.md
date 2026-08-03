@@ -27,10 +27,12 @@ The scorer is deterministic and unbacktested. Catalyst Edge does not promise alp
 investment performance, buy/sell signals, personalized advice, or execution.
 
 As of 2026-08-02, the self-serve release is prepared but not public: the GitHub repository
-is private, and no git tag, GitHub release, PyPI project, MCP Registry entry, or signed
-Claude Desktop `.mcpb` exists. The current direction is a complete free Local Beta plus a
-`Hosted Pro — $29/month` paid-intent test; publication and paid launch remain separately
-gated in [`GTM_PLAN.md`](GTM_PLAN.md).
+is private, and no git tag, GitHub release, PyPI project, MCP Registry entry, or
+release-signed Claude Desktop `.mcpb` exists. A reproducible unsigned MCPB release
+candidate passes inventory checks and local Codex/Claude QA; production-compatible
+signing remains an open release gate. The current direction is a complete free Local Beta
+plus a `Hosted Pro — $29/month` paid-intent test; publication and paid launch remain
+separately gated in [`GTM_PLAN.md`](GTM_PLAN.md).
 
 ## Current status and completion boundary
 
@@ -133,6 +135,24 @@ Pull requests and release tags run the required Python 3.10/3.14 offline matrix,
 stdio/loopback contract suite, clean build, and installed-artifact verifier in
 `.github/workflows/validation.yml`. The workflow has read-only repository permissions
 and contains no package publish, release creation, registry, credential, or artifact-upload step.
+
+The same workflow validates the MCPB release candidate with pinned Node/npm and
+`@anthropic-ai/mcpb` versions, a locked dependency integrity, zero known npm audit
+findings, a fail-closed file inventory, and deterministic ZIP metadata. Maintainers can
+run the identical packaging lane from a private checkout:
+
+```bash
+npm ci --ignore-scripts
+npm audit --audit-level=low
+npm run mcpb:validate
+npm run mcpb:pack
+uv run --frozen python scripts/verify_mcpb.py \
+  --bundle dist/catalyst-edge-mcp-0.1.1.mcpb
+```
+
+This produces an **unsigned private release candidate**, not an authorized public
+download. Signing, publication, registry submission, and client distribution require
+separate approval and a client-compatible production signing path.
 
 These are maintainer/source-checkout commands, not a public installation path. For the
 current wheel installation, Codex/Claude configuration, exact two-tool readback, and
