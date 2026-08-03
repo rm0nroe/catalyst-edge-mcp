@@ -1,6 +1,6 @@
 # Catalyst Edge MCP — Technical Design
 
-**Revision:** Provenance/reason completeness implemented; provider-neutral replay addendum, 2026-07-21
+**Revision:** Public self-serve source defaults aligned, 2026-08-02
 
 ## 1. Scope, outcome, and fixed decisions
 
@@ -27,9 +27,12 @@ Fixed decisions:
 - FastMCP with verified local stdio and local streamable HTTP transports.
 - Deterministic scoring only: `scoring_method=deterministic_v1` and
   `model_status=not_trained`.
-- The zero-subscription local baseline is direct SEC data, reviewed issuer feeds, GDELT
-  discovery metadata, Bluesky AppView, and reviewed Mastodon instances. Each
-  non-SEC source remains constrained by the source-policy registry in §6.
+- The zero-subscription capability set is direct SEC data, reviewed issuer feeds, GDELT
+  discovery metadata, Bluesky AppView, and reviewed Mastodon instances. The public
+  self-serve runtime composes SEC only when a monitored identity is supplied; issuer
+  feeds, GDELT, and Bluesky default to disabled and require explicit opt-in after the
+  applicable source/output review. Each non-SEC source remains constrained by the
+  source-policy registry in §6.
 - FMP, Finnhub, Reddit, Stocktwits, OCC, and any options vendor are conditional:
   credentials alone never prove commercial authorization. Their adapters may
   run only after an explicit policy decision records the needed
@@ -304,9 +307,9 @@ hosts, and review date. A key or reachable endpoint cannot override policy.
 | Source | Policy decision | Production behavior |
 | --- | --- | --- |
 | SEC submissions/archive, Forms 3/4/5/144, 8-K/6-K | `approved` | Required baseline; identifying user agent; parsed facts/hashes/links |
-| Reviewed issuer RSS/Atom | `approved_per_registry` | Only reviewed feeds/terms; metadata and factual extraction by default |
-| GDELT Web NGrams/TOC | `approved_discovery` | Official downloadable index plus article metadata/links only; discovery never outranks primary evidence |
-| Bluesky AppView | `approved_partial_attention` | Minimal post metadata/derived buckets; deletion/takedown honored |
+| Reviewed issuer RSS/Atom | `approved_per_registry` | Disabled by public default; only reviewed feeds/terms and bounded metadata/factual extraction after explicit opt-in |
+| GDELT Web NGrams/TOC | `approved_discovery` | Disabled by public default until required GDELT citation/linking is implemented; discovery never outranks primary evidence |
+| Bluesky AppView | `approved_partial_attention` | Disabled by public default; minimal post metadata/derived buckets only after output/privacy/retention review |
 | Reviewed Mastodon instance | `approved_per_registry` | Instance-scoped partial attention only |
 | FMP/Finnhub/Reddit/Stocktwits/OCC | `permission_required` | Disabled until written rights are recorded |
 | OPRA-derived options vendor | `licensed_feed_required` | Enabled only after non-display/storage/output rights and fields are approved |
@@ -852,10 +855,13 @@ Test identifiers below are mandatory names or markers in the test suite.
   §6 policy. No sibling runtime imports.
 - **Flask migration:** decision-complete design only; execution remains the
   PRD-stated follow-up.
-- **Legally available sources:** SEC is approved under fair-access and content-
-  retention constraints. Issuer/GDELT/Bluesky/Mastodon use the reviewed policies
-  in §6. FMP, Finnhub, Reddit, Stocktwits, OCC, OHLC vendors, and options vendors
-  require an explicit permission/license decision; credentials are insufficient.
+- **Legally available sources:** SEC is the public baseline under fair-access and
+  content-retention constraints. Issuer/Bluesky/Mastodon use the reviewed policies in
+  §6 and remain disabled by public default. GDELT permits commercial use and
+  redistribution but requires a GDELT citation/link; it remains disabled until that
+  output contract is implemented. FMP, Finnhub, Reddit, Stocktwits, OCC, OHLC vendors,
+  and options vendors require an explicit permission/license decision; credentials are
+  insufficient.
 - **Options:** the zero-subscription local runtime reports
   `licensed_feed_required`; yfinance is private diagnostic only.
 - **Technical:** typed neutral missingness until a user-supplied/licensed OHLC

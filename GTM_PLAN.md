@@ -1,148 +1,168 @@
 # Catalyst Edge MCP — Go-to-Market Plan
 
-**Status**: Current monetization source of truth.
-**Scope**: Commercial positioning and delivery for the implemented Catalyst Edge MCP. This document does not select dynamic-universe research/audit runtimes, models, source permissions, or activation state.
+**Status:** Current monetization source of truth.
+**Decision date:** 2026-08-02.
+**Scope:** Product positioning, audience, distribution, and monetization for the
+implemented local Catalyst Edge MCP.
 
-The first commercial product is a customer-installed, local MCP delivered through founder-led, paid design partnerships. It is not a founder-operated monitoring service.
+## Decision
 
-Sell the research outcome, not the protocol:
+Catalyst Edge is a product-led, self-serve research tool for analysts and builders.
 
-> Catalyst Edge gives an investment-research agent a compact, source-linked catalyst dossier for one ticker, with explicit confidence limits and data gaps.
+**Builders explicitly include retail traders and technically capable individual
+investors who assemble their own Claude, Codex, Cursor, or other MCP research
+workflows.** The initial audience is defined by behavior and technical comfort—not by
+employer, assets under management, or professional title.
 
-Lead with faster evidence review, exact provenance, and reproducible integration. MCP is the delivery mechanism. Do not lead with AI, an “edge score,” predictive alpha, or a managed watchlist.
+The launch motion does not include customer interviews, no-demo problem interviews,
+counsel quote requests, prospect lists, boutique-fund targeting, founder-led demos, or
+design-partner sales.
 
-## Current product state
+## Product promise
 
-Implemented now:
+> Ask your AI research agent what changed for a ticker, why it matters, what contradicts
+> it, and show every source and missing-data warning.
+
+Lead with faster, auditable research. Do not lead with the protocol, an “edge score,” or
+institutional procurement language.
+
+Do not promise “make money,” alpha, predictive performance, buy/sell signals, investment
+advice, options flow, comprehensive market coverage, or execution. The user's desired
+outcome is better investing decisions; the product's supported promise is evidence
+organization, provenance, explicit uncertainty, and reduced research friction.
+
+## Current product
+
+Implemented:
 
 - Customer-run local MCP over stdio or loopback streamable HTTP.
 - `catalyst_edge_score` for one ticker per invocation.
-- Compact catalyst dossier with deterministic, unbacktested scoring, confidence limits, typed missingness, and no investment recommendation.
-- `catalyst_edge_claim_sources` for bounded pagination through every source supporting a grouped claim.
-- Source-policy configuration and fail-closed behavior for unsupported, unavailable, or rights-gated evidence.
+- Compact catalyst dossier with deterministic, unbacktested scoring, confidence limits,
+  contradictions, typed missingness, and no investment recommendation.
+- `catalyst_edge_claim_sources` for bounded pagination through every source supporting a
+  grouped claim.
+- Source-policy configuration and fail-closed behavior for unsupported, unavailable, or
+  rights-gated evidence.
+- Reproducible local `0.1.1` wheel and source distribution with clean-install, two-tool,
+  onboarding, rollback, and package-hygiene evidence.
 
-Not implemented or promised by the core product:
+Not implemented or promised:
 
-- Arbitrary document ingestion or ticker extraction.
+- A conventional retail UI.
 - MCP-owned ticker lists, batching, watchlists, universe selection, or scheduling.
 - `RESEARCH NOW`, `MONITOR`, or `IGNORE` classification.
-- Alert-channel delivery, cloud hosting, customer tenancy, metering, or billing.
+- Alerts, brokerage integration, trade execution, cloud hosting, customer tenancy,
+  metering, or billing.
 - Predictive alpha, calibrated returns, or investment advice.
 
-A customer’s agent may read a document or list, extract tickers, and invoke Catalyst Edge once per ticker. That orchestration remains outside the MCP contract.
+The absence of a UI means the initial retail audience is technical and AI-native. A
+user's agent may extract tickers from another source and invoke Catalyst Edge once per
+ticker; that orchestration remains outside the MCP contract.
 
-## Initial customer
+## Launch offer
 
-Target:
+### Catalyst Edge Local Beta
 
-- Agentic investment-research workflows, analysts/builders, and internal research tools that already have a ticker-selection process.
-- Small public-equity teams are an initial ICP hypothesis, not a product boundary.
-- Buyer: head of research, research-technology owner, portfolio manager, or technical founder responsible for the workflow.
-- User: analyst, research engineer, or agent builder who needs “what changed, what supports it, and what should be checked next?”
+Release the complete local product free and self-serve:
 
-Avoid retail traders, options-flow buyers, and anyone expecting proven alpha. Do not qualify customers by watchlist size; qualify them by a real need for source-linked, caveated catalyst evidence inside an agent workflow.
+- public GitHub repository;
+- PyPI wheel and source distribution;
+- signed Claude Desktop `.mcpb` for one-click installation;
+- one copy-paste Codex/PyPI installation path; and
+- MCP Registry listing after the permanent public artifacts are verified.
 
-## First offer
+No call, interview, demonstration, custom installation, application, or customer
+qualification is required.
 
-Call it the **Catalyst Edge MCP Design Partner** engagement.
+Public MIT distribution requires Ryan's explicit authorization. The repository, PyPI,
+MCP Registry, and package artifacts must not be published merely because this plan names
+them.
 
-- 30-day installation and integration engagement.
-- Install a versioned local release into one customer-controlled MCP environment.
-- Configure only customer-approved, deployment-specific evidence sources and credentials.
-- Integrate the two existing MCP tools into one customer agent or internal research workflow.
-- Demonstrate repeated on-demand calls on five customer-selected tickers.
-- Review one dossier, paginate one claim’s provenance, and inspect one explicit missing or rejected-data case.
-- Deliver a repeatable configuration, onboarding runbook, and defined support boundary.
-- No brokerage connection, execution, managed monitoring, alert delivery, arbitrary document input, or predictive-performance claim.
+### Hosted Pro paid-intent test
 
-The design-partner fee pays for installation, integration, configuration, validation, and agreed support—not exclusive ownership of the MIT-licensed code. Paid continuation may cover defined support, release updates, or further integration only after the customer validates value.
+Place one future paid option beside the free install:
 
-Pricing remains a hypothesis to validate against the revised scope. Do not carry forward the former `$5,000` pilot or `$3,000/month` managed-service assumptions. Set an upfront paid engagement price only after discovery establishes installation complexity, support load, customer environment, and deployment-specific rights; scope down before discounting.
+> Hosted Pro — $29/month, coming soon.
 
-## Sales motion
+The signup asks only for email, MCP client, and whether the user would pay $29/month for
+zero-install hosted access and managed updates. The price is a hypothesis, not established
+willingness to pay.
 
-1. Build a list of 40–50 named prospects with an existing or planned agentic research workflow.
-2. Prioritize warm introductions, research-technology owners, public-equity teams discussing agent adoption, and firms hiring research-automation talent.
-3. Qualify the MCP client/environment, current ticker-selection step, evidence-verification pain, source constraints, and owner of installation.
-4. Ask for five tickers before the demonstration.
-5. During the demonstration:
-   - Invoke the single-ticker tool once per selected ticker.
-   - Open one compact dossier.
-   - Trace one grouped claim through every provenance page.
-   - Show a rejected or missing-data case.
-   - Compare the on-demand evidence workflow with the prospect’s current manual process.
-6. Close directly into a paid installation/integration engagement with explicit acceptance criteria.
-7. Use the design-partner review to validate paid continuation for support, updates, or further integration.
+Do not build authentication, billing, tenancy, or hosted operations until the paid-intent
+signal is strong enough to justify the estimated build and operating cost. Set that
+threshold from the actual cost estimate; do not invent an interview or conversion quota.
 
-A concise outreach message:
+Counsel quote-shopping is not a launch action. Before accepting payment or enabling a
+paid securities-analysis experience, obtain one scoped legal decision on the exact paid
+output, marketing claims, and distribution model. That is a paid-launch gate, not market
+discovery.
 
-> I built a local MCP that turns a ticker into a compact catalyst-research dossier with exact source provenance and explicit missing-data warnings. It uses deterministic, unbacktested scoring and does not make trade recommendations. If you send me five tickers, I can demonstrate the output and how it fits into an existing research agent. I’m opening two paid design-partner engagements for teams that want help installing and integrating it in their own environment.
+## Release gate
 
-## What must exist before the first paid engagement
+Complete these steps before requesting public-release authorization:
 
-- Deployment-specific commercial-rights review for every enabled source and customer-visible output.
-- Versioned customer-installable release and a deliberate distribution channel.
-- Product validation CI covering the local MCP contract and release artifact.
-- Five-minute MCP-client onboarding target, repeatable customer configuration, installation runbook, and rollback procedure.
-- Customer-specific acceptance criteria, support boundary, source-outage behavior, and ownership of the customer-controlled runtime.
-- Order form/customer agreement, privacy and retention disclosure, acceptable-use policy, liability boundary, and support terms.
-- Counsel review of the actual offer and deployment. A disclaimer alone is insufficient: compensated reports or analyses concerning securities can implicate the Investment Advisers Act, and the publisher exclusion is fact-dependent. [SEC guidance](https://www.sec.gov/divisions/investment/noaction/2015/jonathon-hendricks-012615-202a.htm)
+1. Make the public default source set conservative and rights-cleared. Require a valid
+   SEC identity, disable conditional or unclear sources by default, keep GDELT disabled
+   until its required attribution/linking is implemented and tested, and align the rights
+   record with runtime configuration.
+2. Produce one clean reviewed `0.1.1` commit and tag, run the existing CI on GitHub, and
+   verify the released wheel, source distribution, hashes, rollback, and exact two-tool
+   discovery.
+3. Build and test one signed Claude `.mcpb` plus the copy-paste Codex/PyPI install path.
+4. Prepare one public page and one real, sanitized dossier/provenance example.
+5. Present the exact repository, package, Registry, and landing-page targets to Ryan for
+   explicit publication authorization.
 
-Hosted-service controls such as monitored delivery channels, service backups, incident ownership, tenancy, and service-level operations are not prerequisites for the customer-installed base offer. Add them only if a later hosted or managed product is selected.
+## One launch surface
 
-## Design-partner scorecard
+The page contains:
 
-Measure:
+- the product promise above;
+- a 60–90 second real dossier/provenance example;
+- `Install free` for Claude and Codex;
+- the `Hosted Pro — $29/month, coming soon` paid-intent signup;
+- explicit unbacktested, non-advisory, and bounded-coverage limitations; and
+- documentation, source policy, security notes, and issue reporting.
 
-- Time from access to a successful customer-controlled installation.
-- Time to first schema-valid invocation.
-- Percentage of grouped claims whose provenance the customer can independently verify.
-- Analyst-rated dossier usefulness and explicit missingness usefulness.
-- Repeat tool usage in the integrated workflow.
-- Integration friction, configuration failures, and support load.
-- Paid continuation or expansion—the controlling demand signal.
+Use public release content and package discovery to reach the audience. Measure package
+downloads, successful-install reports, support burden, and Hosted Pro signups. These are
+product-led signals; no interviews, calls, prospect spreadsheet, or outbound cohort is
+needed.
 
-Do not use returns, trading performance, missed monitored events, alert latency, or delivery cost per monitored customer as base-product success metrics.
+## Decision after launch
 
-## 30-day launch target
+- **Paid intent appears:** estimate the hosted build, set the minimum viable signup
+  threshold, obtain the single scoped paid-product legal decision, and build one remote
+  MCP tier if the economics and legal boundary hold.
+- **Paid intent does not appear:** keep Local Beta free, improve or stop based on actual
+  adoption and support evidence, and do not manufacture revenue through consulting or
+  founder-led services.
 
-- Days 1–5: finalize the revised offer, acceptance criteria, pricing test, five-ticker demo, sample dossier, rights matrix, customer agreement, and support boundary.
-- Days 6–10: establish the customer-installable release path, validation CI, repeatable configuration, and onboarding runbook; identify 40–50 qualified prospects.
-- Days 11–20: run six qualified demonstrations and validate the customer environment, integration owner, willingness to pay, and support expectations.
-- Days 21–30: close two paid design partners and complete the first customer-controlled installations/integrations that clear the agreed acceptance criteria.
+## Explicit exclusions
 
-The objective is paid, working customer integrations—not traffic, waitlist signups, a managed Watchlist, or an unsupported revenue claim.
+Do not:
 
-## Execution pack
+- run eight no-demo problem interviews or any substitute interview cohort;
+- request two or three counsel quotes or conduct counsel quote-shopping;
+- target small funds or boutique firms as the default audience;
+- assemble named-prospect or warm-introduction lists;
+- sell custom demonstrations, design partnerships, or bespoke integrations;
+- publish a proof-only repository instead of the actual product;
+- revive the historical `$199 for 90 days`, `$49/month`, or `$399/year` paid local beta;
+- build hosted infrastructure before paid intent;
+- build a mass-market UI, alerts, brokerage integration, institutional administration,
+  licensed options data, or predictive backtesting before the product-led path requires
+  it; or
+- market alpha, investment performance, trade signals, recommendations, or execution.
 
-The current local execution materials are:
+## Relationship to historical commercial documents
 
-- [`docs/commercial/design-partner-package.md`](docs/commercial/design-partner-package.md): fixed delivery, ownership, support, acceptance, rollback, and continuation boundary.
-- [`docs/commercial/release-readiness-plan.md`](docs/commercial/release-readiness-plan.md): versioned artifact, CI, configuration, onboarding, distribution, and rollback gates.
-- [`docs/commercial/source-rights-matrix.md`](docs/commercial/source-rights-matrix.md): fail-closed deployment rights decisions and per-customer sign-off record.
-- [`docs/commercial/customer-configuration-record.md`](docs/commercial/customer-configuration-record.md): secret-free environment, ownership, retention, source, and rollback record.
-- [`docs/commercial/design-partner-pricing-decision.md`](docs/commercial/design-partner-pricing-decision.md): bounded cost, break-even, buyer-evidence, and owner-decision sheet with no preset price.
-- [`docs/commercial/design-partner-order-form.md`](docs/commercial/design-partner-order-form.md): non-executable working draft for counsel and customer-specific completion.
-- [`docs/demo/five-ticker-demo-runbook.md`](docs/demo/five-ticker-demo-runbook.md): repeated single-ticker calls, dossier review, full claim-source pagination, and missing/rejected-data proof.
-- [`docs/demo/customer-installation-runbook.md`](docs/demo/customer-installation-runbook.md): timed artifact verification, clean install, actual client discovery, and state-preserving rollback.
+The documents under `docs/commercial/` that describe a customer-specific design-partner
+engagement are superseded and non-executable. Their release verification, source-rights,
+configuration, rollback, and security controls may be reused where they apply to a public
+local release. Their prospecting, discovery, customer acceptance, pricing, order-form,
+custom installation, and founder-support assumptions are not part of the current plan.
 
-These materials do not authorize a sale or deployment. A paid engagement still requires a completed rights record, counsel-approved terms, a release candidate that passes the release plan, an inserted price, and signatures.
-
-## Distribution path
-
-Customer installation is the initial commercial path, not a later fallback. Establish a versioned package/release channel, customer configuration contract, validation CI, and repeatable MCP-client onboarding before accepting the first engagement.
-
-Validate these later options only when buyer demand requires them:
-
-- Official MCP Registry discovery after a public distribution endpoint exists.
-- Authenticated remote MCP.
-- Hosted authentication, tenancy, metering, billing, and observability.
-- Managed monitoring or alert delivery with the associated operational obligations.
-
-The official registry hosts metadata, not packages or payments, and private-only servers are ineligible. It is a discovery channel after distribution exists—not the GTM itself. [Official MCP Registry documentation](https://modelcontextprotocol.io/registry/about)
-
-## Explicit scope boundary
-
-The personal Watchlist, static or dynamic universe selection, scheduling, `RESEARCH NOW`/`MONITOR`/`IGNORE`, Slack/Teams/private-channel alerts, and OpenClaw orchestration are optional downstream consumers or future add-ons. They are not core Catalyst Edge functionality, base-offer deliverables, pricing inputs, acceptance criteria, launch dependencies, code-readiness claims, or prerequisites for revenue.
-
-Do not buy options data, build multi-tenant SaaS, or implement predictive backtesting before customer evidence shows those capabilities affect willingness to pay. The supporting commercialization audit remains historical input in [the GTM research note](/Users/ryanmonroe/Desktop/dev/catalyst-edge-mcp/thoughts/unknown-ticket/research/2026-08-01-RESEARCH-monetization-readiness.md); its superseded managed-Watchlist recommendation is historical only.
+The PRD and TDD remain the product boundary. The personal Watchlist, dynamic universe,
+OpenClaw orchestration, and scheduled scanning remain separate downstream systems and are
+not GTM prerequisites.

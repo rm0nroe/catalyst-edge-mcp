@@ -60,19 +60,25 @@ async def test_fastmcp_registers_expected_tool():
     assert schema["properties"]["include_raw_signals"]["default"] is False
 
 
-def test_build_service_enables_sec_only_when_declared(monkeypatch):
+def test_build_service_defaults_to_sec_only_when_identity_is_declared(monkeypatch):
     from catalyst_edge_mcp.server import build_service
 
     monkeypatch.delenv("CATALYST_EDGE_SEC_USER_AGENT", raising=False)
-    assert [adapter.provider for adapter in build_service(Settings.from_env()).adapters] == [
-        "issuer_feed",
-        "gdelt",
-        "bluesky",
-    ]
+    assert build_service(Settings.from_env()).adapters == ()
 
     monkeypatch.setenv("CATALYST_EDGE_SEC_USER_AGENT", "Catalyst Edge ops@example.com")
     configured = build_service(Settings.from_env())
-    assert [adapter.provider for adapter in configured.adapters] == [
+    assert [adapter.provider for adapter in configured.adapters] == ["sec", "sec", "sec_funds"]
+    assert {adapter.family for adapter in configured.adapters} == {
+        "filings_news",
+        "insider_trading",
+    }
+
+    monkeypatch.setenv("CATALYST_EDGE_ISSUER_FEEDS", "enabled")
+    monkeypatch.setenv("CATALYST_EDGE_GDELT", "enabled")
+    monkeypatch.setenv("CATALYST_EDGE_BLUESKY", "enabled")
+    extensions_enabled = build_service(Settings.from_env())
+    assert [adapter.provider for adapter in extensions_enabled.adapters] == [
         "sec",
         "sec",
         "sec_funds",
@@ -80,12 +86,14 @@ def test_build_service_enables_sec_only_when_declared(monkeypatch):
         "gdelt",
         "bluesky",
     ]
-    assert {adapter.family for adapter in configured.adapters} == {
+    assert {adapter.family for adapter in extensions_enabled.adapters} == {
         "filings_news",
         "insider_trading",
         "social",
     }
-    gdelt = next(adapter for adapter in configured.adapters if adapter.provider == "gdelt")
+    gdelt = next(
+        adapter for adapter in extensions_enabled.adapters if adapter.provider == "gdelt"
+    )
     assert gdelt.live_refresh is False
 
     monkeypatch.setenv("CATALYST_EDGE_ISSUER_FEEDS", "disabled")

@@ -25,11 +25,14 @@ Retrofit the existing CCE endpoint concept from sibling repo `../analysis-api` i
 ## Current Implementation Status — 2026-07-21
 
 The free-source research and subsequent implementation established a sufficient
-zero-subscription dependency set for the current local-only product: direct SEC
-filings and insider records, reviewed issuer feeds, GDELT Web NGrams discovery,
-and Bluesky partial attention. Local stdio/HTTP MCP transports, strict contracts,
-provenance, typed missingness, the canonical event graph, and deterministic
-scoring are implemented.
+zero-subscription capability set for the current local-only product: direct SEC
+filings and insider records plus reviewed issuer-feed, GDELT Web NGrams, and
+Bluesky partial-attention adapters. Local stdio/HTTP MCP transports, strict
+contracts, provenance, typed missingness, the canonical event graph, and
+deterministic scoring are implemented. The public self-serve configuration is
+fail-closed: SEC is composed only when the user supplies a monitored identity,
+while issuer feeds, GDELT, and Bluesky are disabled unless explicitly enabled
+after the applicable source/output review.
 
 The zero-subscription implementation meets the current bounded local PRD
 acceptance corpus as of 2026-07-16. Evidence-specific synthesis, the automatic

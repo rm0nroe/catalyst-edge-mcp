@@ -1,6 +1,8 @@
 # Design-Partner Pricing Decision Sheet
 
-**Status:** Decision support only. No price is set and no willingness-to-pay evidence exists until named-buyer discovery is recorded.
+**Status:** Superseded historical design-partner pricing worksheet; non-executable. The
+current self-serve plan uses a free Local Beta and a `$29/month` Hosted Pro paid-intent
+test without interviews, named-buyer discovery, or counsel quote requests.
 
 ## Fixed package boundary
 
