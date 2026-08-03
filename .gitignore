@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 dist/
 build/
+node_modules/
 *.egg-info/
 *.sqlite3
 *.sqlite3-shm

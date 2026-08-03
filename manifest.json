@@ -1,0 +1,91 @@
+{
+  "manifest_version": "0.4",
+  "name": "catalyst-edge-mcp",
+  "display_name": "Catalyst Edge",
+  "version": "0.1.1",
+  "description": "Source-linked deterministic catalyst evidence scoring for public-company tickers.",
+  "long_description": "Catalyst Edge exposes exactly two read-only MCP tools for ticker-level evidence research. Scores are deterministic, unbacktested, and non-advisory. The public default uses official SEC data only; other providers remain disabled.",
+  "author": {
+    "name": "Ryan Monroe",
+    "url": "https://github.com/rm0nroe"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rm0nroe/catalyst-edge-mcp"
+  },
+  "homepage": "https://github.com/rm0nroe/catalyst-edge-mcp",
+  "documentation": "https://github.com/rm0nroe/catalyst-edge-mcp#readme",
+  "support": "https://github.com/rm0nroe/catalyst-edge-mcp/issues",
+  "server": {
+    "type": "uv",
+    "entry_point": "catalyst_edge_mcp/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${__dirname}",
+        "catalyst-edge-mcp"
+      ],
+      "env": {
+        "CATALYST_EDGE_SEC_USER_AGENT": "${user_config.sec_user_agent}",
+        "CATALYST_EDGE_EVIDENCE_STORE": "${user_config.evidence_store}",
+        "CATALYST_EDGE_TRANSPORT": "stdio",
+        "CATALYST_EDGE_ISSUER_FEEDS": "disabled",
+        "CATALYST_EDGE_GDELT": "disabled",
+        "CATALYST_EDGE_BLUESKY": "disabled",
+        "CATALYST_EDGE_OPTIONS_PROVIDER": "none",
+        "CATALYST_EDGE_SENTIMENT_MODEL": "disabled"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "catalyst_edge_score",
+      "description": "Assess recent catalyst evidence, provenance, confidence, and next checks for one ticker."
+    },
+    {
+      "name": "catalyst_edge_claim_sources",
+      "description": "Return one bounded page of immutable source records supporting a grouped claim."
+    }
+  ],
+  "tools_generated": false,
+  "keywords": [
+    "catalysts",
+    "evidence",
+    "sec",
+    "stocks",
+    "research"
+  ],
+  "license": "MIT",
+  "privacy_policies": [
+    "https://www.sec.gov/privacy.htm"
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ],
+    "runtimes": {
+      "python": ">=3.10,<4.0"
+    }
+  },
+  "user_config": {
+    "sec_user_agent": {
+      "type": "string",
+      "title": "SEC monitored identity",
+      "description": "Required SEC identity in Company email@example.com form. It is sent to sec.gov with requests.",
+      "sensitive": false,
+      "required": true
+    },
+    "evidence_store": {
+      "type": "string",
+      "title": "Local evidence-store path",
+      "description": "Optional absolute path for the local SQLite evidence store.",
+      "default": "${HOME}/.local/state/catalyst-edge-mcp/evidence.sqlite3",
+      "sensitive": false,
+      "required": false
+    }
+  }
+}
