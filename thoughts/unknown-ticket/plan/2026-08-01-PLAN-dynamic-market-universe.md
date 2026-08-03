@@ -2,10 +2,11 @@
 
 **Date**: 2026-08-01
 **Ticket**: None
-**Implementation repository**: `mini:/Users/axe/.openclaw/workspace-catalyst-watchlist`
+**Canonical repository**: `https://github.com/rm0nroe/catalyst-watchlist` (private)
+**Live checkout**: `mini:/Users/axe/.openclaw/workspace-catalyst-watchlist`
 **Implementation branch**: `codex/dynamic-market-universe-shadow`
-**Status**: Authoritative implementation scope; shadow-only and committed locally
-**Reconciled**: 2026-08-03 against the local documents, live Axe workspace, and commit `5c4c1e8`
+**Status**: Authoritative implementation scope; shadow-only and merged to the private source repository
+**Reconciled**: 2026-08-03 against the local documents, live Axe workspace, source commit `5c4c1e8`, and merge `6c1ae53`
 
 ## Overview
 
@@ -21,7 +22,7 @@ Implement the approved daily 900-name universe as a watchlist-owned, fixture-dri
 
 ## Validated State — 2026-08-03
 
-- The remote implementation branch starts from `0ca48d5439af176f264dc678ef8cbe757782d008`; the Phase 0–2 shadow implementation, standalone runtime-adapter proof module, static-path integration test, and discovery-resume fix are committed locally as `5c4c1e8`. The repository has no Git remote, so that commit is not pushed or merged elsewhere.
+- The implementation branch starts from `0ca48d5439af176f264dc678ef8cbe757782d008`; the Phase 0–2 shadow implementation, standalone runtime-adapter proof module, static-path integration test, and discovery-resume fix are committed as `5c4c1e8` and merged through private Watchlist PR #1 as `6c1ae53`.
 - The enabled scheduled path remains the no-argument static 300-name scan. `scripts/run_scan.sh` does not pass dynamic or runtime-adapter arguments; `--dynamic-shadow` remains explicit, fixture-backed, dry-run, delivery-disabled, and isolated beneath `data/runs/`.
 - Static membership, schedule, and delivery configuration are unchanged. A complete default `async_main` integration test now executes 300 fixed dossiers through live-state persistence with providers mocked. The 2026-08-03 11:30 ET scheduled run also exercised the modified default path and failed closed because IBOC's discovered SEC source timed out; an exact-run resume discarded and rescored the unreconciled discovery dossier, then failed closed again when SEC collection remained unavailable. No false success or delivery occurred, but a successful post-edit scheduled run is still absent.
 - No accepted production universe, active dynamic pointer, `data/dynamic_state.json`, or dynamic scan schedule exists.
@@ -36,7 +37,7 @@ Implement the approved daily 900-name universe as a watchlist-owned, fixture-dri
 - `data/calendars/us-equities.json` records an `exchange_calendars` 4.13.2 XNYS build. That package is available only through an on-demand `uv --with` environment; it is not declared or importable in the Catalyst service environment, and no calendar generation/refresh command is present in the watchlist workspace. The coordinator's dynamic-shadow path does not enable production-calendar loading; only tests call the loader with `allow_production=True`. Operational wiring and reproducible regeneration remain unimplemented.
 - The production calendar JSON also omits the design-required retrieval time, update owner, and review cadence, plus the session dates and session open/close values named in its source-policy record. The loader instead derives eligibility as weekday-minus-retained-holidays. The current 4.13.2 XNYS calendar reports coverage through 2027-08-02 while the artifact claims generation through 2027-08-31, so its final coverage month is not reproducible from the declared dependency state.
 - The isolated remote suite passes 64/64 and Ruff passes, including a 300-name default `async_main` integration test and the unreconciled-discovery resume regression.
-- Implementation edits, tests, and the local shadow commit were approved and completed. Push and merge remain unavailable because the watchlist repository has no Git remote. Deployment, cron changes, dynamic scheduling, activation, and external delivery remain separately gated and unperformed.
+- Implementation edits, tests, commit, push, and private-repository merge were approved and completed. Deployment, cron changes, dynamic scheduling, activation, and external delivery remain separately gated and unperformed.
 
 ## Desired End State
 
@@ -346,7 +347,7 @@ Cover `DU_COHORT_SCAN_BINDING`, `DU_RESUME_TTL`, `DU_SCAN_CONTRACT_MISMATCH`, `D
 #### Manual
 
 - [x] Review all source-family degradation, category mapping, selected/rejected sample, state transition, and recovery evidence from the isolated fixture run.
-- [x] Confirm dynamic activation, pre-market scheduling, external delivery, push, merge, and deployment remain disabled/unperformed; the authorized shadow implementation is preserved in local commit `5c4c1e8`.
+- [x] Confirm dynamic activation, pre-market scheduling, external delivery, and deployment remain disabled/unperformed; the authorized shadow implementation is preserved in source commit `5c4c1e8` and private-repository merge `6c1ae53`.
 
 ## Testing Strategy
 
