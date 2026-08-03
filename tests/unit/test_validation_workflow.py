@@ -33,6 +33,11 @@ def test_validation_workflow_contract():
         "pytest -q",
         "uv build --no-sources",
         "scripts/verify_release.py artifact",
+        "npm ci --ignore-scripts",
+        "npm audit --audit-level=low",
+        "npm run mcpb:validate",
+        "npm run mcpb:pack",
+        "scripts/verify_mcpb.py",
         'GITHUB_REF_TYPE" == "tag',
         "catalyst-edge-mcp-$version-SHA256SUMS.txt",
     ):
