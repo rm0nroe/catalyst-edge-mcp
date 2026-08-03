@@ -26,13 +26,18 @@ The product promise is bounded:
 The scorer is deterministic and unbacktested. Catalyst Edge does not promise alpha,
 investment performance, buy/sell signals, personalized advice, or execution.
 
-As of 2026-08-02, the self-serve release is prepared but not public: the GitHub repository
+As of 2026-08-03, the self-serve release is prepared but not public: the GitHub repository
 is private, and no git tag, GitHub release, PyPI project, MCP Registry entry, or
 release-signed Claude Desktop `.mcpb` exists. A reproducible unsigned MCPB release
 candidate passes inventory checks and local Codex/Claude QA; production-compatible
 signing remains an open release gate. The current direction is a complete free Local Beta
-plus a `Hosted Pro — $29/month` paid-intent test; publication and paid launch remain
-separately gated in [`GTM_PLAN.md`](GTM_PLAN.md).
+plus a `Hosted Pro — $29/month` paid-intent test. Research does not support building Hosted
+Pro now: only recent activation-linked, verified, price-aware signups count toward staged
+350 compatibility-spike, 1,350 scoped-review, and 11,100 safeguarded full-build
+reconsideration gates. None grants automatic implementation, payment, or deployment
+authority. Publication and paid launch remain separately gated in
+[`GTM_PLAN.md`](GTM_PLAN.md); the economics are documented in the
+[`Hosted Pro architecture research`](thoughts/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md).
 
 ## Current status and completion boundary
 
