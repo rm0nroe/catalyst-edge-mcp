@@ -1,6 +1,9 @@
 # Customer Configuration Record
 
-**Status:** Fail-closed template. Complete only from actual customer, environment, source, account, plan, terms, and counsel facts. Empty or unclear values remain disabled.
+**Status:** Superseded historical design-partner template; non-executable. The current
+self-serve motion is defined in `internal-plan`. Retain this only as a possible future paid
+deployment reference; it does not authorize interviews, prospecting, custom installation,
+or counsel quote requests.
 
 ## Release and ownership
 
