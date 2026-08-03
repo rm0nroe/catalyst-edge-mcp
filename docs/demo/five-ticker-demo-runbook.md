@@ -1,57 +1,100 @@
-# Five-Ticker Design-Partner Demo Runbook
+# Five-Ticker Release-Sample Runbook
 
-**Purpose:** Prove the implemented core contract only: five repeated one-ticker calls, one dossier review, complete bounded provenance pagination, and one explicit missing or rejected-data case.
+**Status:** Current internal QA procedure for the self-serve Local Beta. The legacy
+filename and `scripts/run_design_partner_demo.py` entry path are retained for release
+continuity; no design partner, customer interview, demo call, or customer acceptance is
+part of this procedure.
+
+## Purpose
+
+Prove the implemented contract with five repeated single-ticker calls, one dossier
+review, complete available provenance pagination, and one explicit missing or rejected
+data case. Produce only a sanitized example that is safe for release review.
+
+This proves product behavior, not alpha, returns, market-wide coverage, investment advice,
+or willingness to pay.
 
 ## Preconditions
 
-- Use the exact release candidate and customer configuration being evaluated.
-- Complete the deployment rights record first; disabled sources remain disabled.
-- Ask the customer for five public-company tickers. Do not request holdings, position sizes, cost basis, risk limits, or personal financial data.
-- Use `risk_mode=research`, `include_sources=true`, and `include_raw_signals=false` unless the signed scope says otherwise.
-- Create an empty customer-approved output directory. Dossiers may contain licensed or customer-restricted metadata; do not publish them.
+- Use the exact release candidate and public-default configuration being evaluated.
+- Use fixed public tickers: `AAPL NVDA TSLA RKLB BRK.B`.
+- Do not use holdings, positions, cost basis, risk limits, personal Watchlist data, or any
+  personal financial information.
+- Configure a monitored SEC identity.
+- Keep issuer feeds, GDELT, Bluesky, options, and sentiment disabled.
+- Use `risk_mode=research`, `include_sources=true`, and `include_raw_signals=false`.
+- Create a new empty local output directory outside the repository. Generated dossiers
+  must not be committed or published until separately sanitized and reviewed.
 
 ## Run
 
-From the installed release checkout or equivalent environment:
+The current neutral runner filename is a deferred cleanup; invoke it directly:
 
 ```bash
+CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com" \
+CATALYST_EDGE_ISSUER_FEEDS=disabled \
+CATALYST_EDGE_GDELT=disabled \
+CATALYST_EDGE_BLUESKY=disabled \
 uv run python scripts/run_design_partner_demo.py \
-  TICKER1 TICKER2 TICKER3 TICKER4 TICKER5 \
-  --output-dir /customer-approved/path/five-ticker-demo
+  AAPL NVDA TSLA RKLB BRK.B \
+  --output-dir /absolute/local/path/five-ticker-release-sample
 ```
 
-The runner calls `catalyst_edge_score` once per ticker through the real local composition root. It writes five full dossier JSON files plus `manifest.json`. If a returned evidence item contains a claim ID, it reads every `catalyst_edge_claim_sources` page from the same local evidence store with a page size of one, writes those pages, and verifies exact total/no duplicates. It also selects a typed missing family or retained rejection reason for A7.
+The runner invokes `catalyst_edge_score` once per ticker through the real local
+composition root and writes five dossier JSON files plus `manifest.json`. If an evidence
+item contains a claim ID, it reads every `catalyst_edge_claim_sources` page with a page
+size of one and verifies exact total/no duplicates. It also selects one typed missing
+family or retained rejection reason.
 
 Exit status:
 
-- `0`: five calls completed, complete claim pagination was verified, and a missing/rejected case was found.
-- `1`: all calls completed but A6 or A7 lacks proof; this is a failed demo gate, not a reason to invent evidence.
-- `2`: invalid inputs, configuration, output, or invocation failure.
+- `0`: five calls, complete available claim pagination, and a missing/rejected case pass.
+- `1`: calls completed but claim pagination or missing/rejected proof is absent; record
+  the bounded failure and do not invent evidence.
+- `2`: input, configuration, output, or invocation failure.
 
 ## Review one dossier
 
-Open the dossier named by `review_ticker` in `manifest.json` and have the customer identify:
+Open `review_ticker` from `manifest.json` and verify:
 
 1. `scoring_method=deterministic_v1` and `model_status=not_trained`.
-2. Direction, score, confidence, and why missing coverage limits interpretation.
-3. Each evidence family, timestamp, contribution, and visible source link.
-4. `data_quality.coverage`, missing/stale families, warnings, and retained reason records.
-5. The next checks and the absence of a buy/sell recommendation.
+2. Direction, score, confidence, and the effect of missing coverage.
+3. Evidence family, timestamp, contribution, and official source links.
+4. Coverage, missing/stale families, warnings, and retained reason records.
+5. Next checks and the explicit absence of a buy/sell recommendation.
 
 ## Review provenance
 
-Use `claim_pagination` in the manifest:
+When `claim_pagination` is present:
 
-- confirm the claim ID equals the claim ID in the selected evidence context;
-- open page files in order until `next_cursor` is null;
+- confirm its claim ID matches the selected evidence context;
+- open page files until `next_cursor` is null;
 - confirm `returned_source_count == total_sources`;
-- confirm every `source_reference_id` is unique;
-- inspect source ID/tier, accession or record ID, canonical URL, publication/observation/retrieval time, hash if present, parser version, and policy decision.
+- confirm every `source_reference_id` is unique; and
+- inspect source identity/tier, record/accession ID, canonical URL, times, hash, parser
+  version, and policy decision.
+
+If SEC-only evidence produces no grouped claim, record that bounded result. Do not enable
+an uncleared source solely to force pagination.
 
 ## Review missing or rejected data
 
-Use `missing_or_rejected_case` in the manifest. Confirm the named family/reason is displayed as data quality, contributes no fabricated evidence, and does not become a directional signal. Typical valid examples are `licensed_transaction_feed_required`, `licensed_ohlc_feed_required`, unsupported fund identity, rejected discovery entity, source outage, or no observation.
+Confirm `missing_or_rejected_case` is represented as data quality, contributes no
+fabricated evidence, and does not become a directional signal. Valid examples include
+licensed-source requirements, unsupported fund identity, source outage, or no observation.
+
+## Sanitize the launch example
+
+Before using any output publicly:
+
+- copy only the minimum dossier/provenance fields needed to demonstrate the product;
+- remove local paths, environment values, internal timestamps, and machine identifiers;
+- retain official source links, method/model status, missingness, and limitations;
+- verify every displayed source permits the shown fields and attribution; and
+- label the example historical, deterministic, unbacktested, and non-advisory.
 
 ## Record result
 
-Record release version/hash, configuration hash without secrets, five customer tickers, start/end time, runner exit status, output manifest hash, reviewer, A1-A8 result, and any explicit exception. A successful terminal command without the retained dossier/page evidence is not acceptance proof.
+Record release version/hash, secret-free configuration hash, fixed tickers, start/end
+time, exit status, manifest hash, reviewer, each check result, and any explicit exception.
+A successful command without retained dossier/page evidence is not release proof.

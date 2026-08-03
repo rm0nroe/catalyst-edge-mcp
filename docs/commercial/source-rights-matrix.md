@@ -1,61 +1,75 @@
-# Deployment Source and Output Rights Matrix
+# Public Self-Serve Source and Output Rights Matrix
 
-**Status:** Fail-closed commercial deployment record, refreshed 2026-08-02. This is an engineering control, not legal advice. Counsel must review the actual customer, jurisdiction, source terms, data flow, retention, and output before paid delivery.
+**Status:** Current fail-closed engineering decision for the Local Beta, refreshed
+2026-08-02 from official source terms. This is not legal advice and does not authorize a
+paid securities-analysis product.
 
-Public access, an API key, a client-library license, and an open protocol do not by themselves grant commercial collection, storage, transformation, or redistribution rights.
+Public access, an API key, an open protocol, or a package license does not automatically
+grant collection, storage, transformation, display, or redistribution rights. Unknown or
+scope-mismatched sources remain disabled.
 
-## Current baseline
+## Local Beta defaults
 
-| Source | Runtime capability | Retained/customer-visible material | Paid-deployment decision | Gate before enablement |
-| --- | --- | --- | --- | --- |
-| SEC EDGAR/API | Direct filings, ownership, Form 144, and reviewed fund records | Parsed facts, identifiers, hashes, timestamps, accession IDs, and SEC links; no indiscriminate full-text redistribution | **Candidate baseline, counsel sign-off required.** SEC says site information is public and may be copied/distributed, while automated access must follow fair-access and bot-identification rules. Filer-supplied content still requires bounded use and accurate attribution. | Customer-owned monitored identity; <=10 aggregate requests/second and this product's lower internal limit; official hosts only; privacy/security policy; retention/output review |
-| Apple Newsroom feed | Reviewed issuer metadata path | Titles, timestamps, identifiers, hashes, links, and short provider-generated factual extraction | **Disabled for paid deployment.** Apple's website terms restrict site information to personal, non-commercial informational use absent express permission; a public RSS endpoint is not enough. | Written commercial permission or counsel-approved narrower use for the exact feed/output |
-| NVIDIA issuer feed | Reviewed issuer metadata path | Same bounded metadata/link envelope | **Disabled for paid deployment.** The applicable terms and commercial output rights for the specific feed were not established by the refreshed review. | Identify governing feed terms and obtain written permission or counsel approval |
-| Other issuer feed | Registry supports reviewed hosts | Same bounded metadata/link envelope | **Disabled by default.** Registry review proves identity/host, not commercial rights. | Source-specific terms, robots/rate review, retention/output decision, and written/counsel approval |
-| GDELT Project/Web NGrams | Discovery metadata cached outside request path | Publisher metadata, derived entity decisions, hashes, and links; not article bodies | **Disabled for paid deployment pending clarification.** No official Project term located in the refreshed review clearly grants the required commercial collection/output rights; GDELT Cloud terms are a separate service and do not clear this implementation. | Written Project permission or counsel-approved official license/terms for exact endpoints and outputs; underlying publisher limits preserved |
-| Bluesky AppView | Partial public-attention windows | Minimal post metadata, derived counts/windows, hashes, and representative links; no post-body redistribution | **Disabled for paid deployment pending counsel.** Developer guidelines permit ecosystem access subject to platform rules, but user content remains user-owned and the reviewed terms do not establish a blanket downstream commercial content license. | Developer-guideline compliance, privacy/retention assessment, deletion handling, output limitation, and written/counsel approval |
-| Mastodon | Adapter/registry concept only; not composed | Would be instance-scoped metadata and derived buckets | **Disabled.** No reviewed instance is selected and each instance can have distinct terms. | Instance-specific terms, representativeness, rate, privacy, retention, and written/counsel approval |
-| FMP/Finnhub | Conditional adapters/credentials | Vendor-defined normalized evidence | **Disabled.** Credential presence is not entitlement. | Executed plan/license covering automation, commercial use, storage, derived outputs, customer display, and audit |
-| OPRA/options vendor, FlowAlgo, CheddarFlow | Conditional transaction-plus-quote adapter | Auditable transaction/quote-derived evidence | **Disabled.** Licensed feed required; no current provider clears the gate. | Executed agreement covering non-display use, derived data, storage, redistribution/customer access, symbols, and exchange fees |
-| Customer OHLC | Optional technical family | Derived indicators and transition evidence | **Disabled until customer supplies rights.** | Customer identifies provider/plan and warrants automation, storage, derived analysis, and use in this deployment; provider terms attached |
-| yfinance/Yahoo-backed data | Private diagnostic only | No production evidence or readiness credit | **Prohibited in paid output.** | No enablement path in this offer; replace with licensed source |
-| Customer documents, positions, or portfolio data | Not implemented by core MCP | None | **Out of scope.** | Separate product/security/legal design; do not accept through this engagement |
+| Source | Implemented capability | Public default | Current decision and gate |
+| --- | --- | --- | --- |
+| SEC EDGAR/API | Filings, ownership, Form 144, and reviewed fund records; parsed facts, identifiers, hashes, times, accession IDs, and official links | **Available when a valid identity is configured** | Baseline. SEC provides comprehensive public EDGAR access and permits copying/distribution of site information subject to stated restrictions. Require a monitored `Company email@example.com` identity, official hosts, efficient requests, and no more than 10 aggregate requests/second; retain bounded derived facts/links rather than indiscriminate full-text redistribution. |
+| Apple Newsroom feed | Reviewed issuer metadata path | **Disabled** | Apple's site terms restrict commercial reuse absent permission. Do not enable in the public package without written permission or a documented narrower rights decision for the exact feed/output. |
+| NVIDIA issuer feed | Reviewed issuer metadata path | **Disabled** | Exact governing feed terms and commercial output rights remain unverified. Require source-specific terms and a recorded release decision. |
+| Other issuer feeds | Registry supports reviewed hosts | **Disabled** | Registry review proves identity/host, not reuse rights. Require source terms, robots/rate review, retained/output fields, attribution, and a release decision. |
+| GDELT Project/Web NGrams | Cached discovery metadata, derived entity decisions, hashes, and publisher links; no article bodies | **Disabled** | GDELT officially permits unlimited academic/commercial/government use and redistribution without fee, but every use or redistribution must cite and link to GDELT. The current dossier exposes publisher links without the required GDELT citation/link. Keep disabled until that output requirement is implemented and tested; preserve underlying publisher limits. |
+| Bluesky AppView | Partial public-attention windows, derived counts, hashes, and representative links; no post-body redistribution | **Disabled** | Developer access does not create blanket downstream rights over user-owned content. Require documented output minimization, privacy/retention/deletion behavior, and a release decision. |
+| Mastodon | Adapter/registry concept only; not composed | **Disabled** | No reviewed instance set exists, and instance terms vary. |
+| FMP/Finnhub | Conditional credentialed adapters | **Disabled** | A key is not entitlement. Require an executed plan/license covering automation, storage, derived output, display, and audit. |
+| OPRA/options vendors, FlowAlgo, CheddarFlow | Conditional transaction-plus-quote adapter | **Disabled** | Licensed transaction/quote rights are required; no current provider clears the gate. |
+| User-supplied OHLC | Optional technical family | **Disabled** | Require the user to identify a provider/plan that permits automation, storage, and derived analysis; not part of Local Beta defaults. |
+| yfinance/Yahoo-backed data | Private diagnostic only | **Prohibited in public output** | No enablement path for Local Beta; replace with a rights-cleared source. |
+| User documents, holdings, positions, or portfolio data | Not implemented by the core MCP | **Out of scope** | Do not accept through the core product. |
 
-The MIT license covers Catalyst Edge code only. It does not license SEC filing content, issuer content, social posts, market data, customer data, or third-party APIs.
+The MIT license covers Catalyst Edge code only. It does not license filings, issuer
+content, social posts, market data, user data, or third-party APIs.
 
-## Official references used for the refreshed boundary
+## Official references
 
-- [SEC Developer Resources](https://www.sec.gov/about/developer-resources): automated access and 10-request-per-second aggregate fair-access ceiling.
-- [SEC Privacy Information](https://www.sec.gov/about/privacy-information): SEC.gov information is public and may be copied or further distributed, subject to stated restrictions.
-- [SEC EDGAR APIs](https://www.sec.gov/search-filings/edgar-application-programming-interfaces): API access remains subject to the SEC privacy/security policy.
-- [Apple Website Terms of Use](https://www.apple.com/legal/internet-services/terms/site.html): commercial copying/distribution restrictions block assumption-based feed use.
-- [Bluesky Developer Guidelines](https://docs.bsky.app/docs/support/developer-guidelines) and [Bluesky Terms](https://bsky.social/about/support/tos): developer obligations, user-content ownership, and absence of a blanket downstream content license.
-- [GDELT Cloud Terms](https://gdeltcloud.com/terms): relevant only to the separate GDELT Cloud service; not evidence that GDELT Project endpoints used here are commercially cleared.
+- [SEC Developer Resources](https://www.sec.gov/about/developer-resources): official API/
+  EDGAR access, classified-bot requirement, efficient downloading, and the 10-request-per-
+  second aggregate ceiling.
+- [SEC Privacy Information](https://www.sec.gov/about/privacy-information): SEC website
+  dissemination and fair-access/security policy.
+- [GDELT Terms of Use](https://www.gdeltproject.org/about.html#termsofuse): unlimited and
+  unrestricted academic, commercial, and governmental use; redistribution requires a
+  GDELT citation and link.
+- [Apple Website Terms of Use](https://www.apple.com/legal/internet-services/terms/site.html):
+  commercial copying/distribution restrictions.
+- [Bluesky Developer Guidelines](https://docs.bsky.app/docs/support/developer-guidelines)
+  and [Bluesky Terms](https://bsky.social/about/support/tos): developer obligations and
+  user-content ownership.
 
-## Per-deployment sign-off
+## Release decision record
 
-Copy one row per proposed source into the customer release record.
+Complete one row for every source proposed for a public version. This is an internal
+release record, not a customer interview or counsel quote request.
 
 | Field | Required value |
 | --- | --- |
-| Customer/legal entity and environment |  |
-| Source ID, endpoint, account, and plan |  |
-| Governing terms/license and effective date |  |
-| Automation and rate rights | allowed / prohibited / unclear |
-| Commercial internal use | allowed / prohibited / unclear |
-| Retained fields and retention duration |  |
+| Package version and source ID |  |
+| Exact endpoint and governing terms/effective date |  |
+| Automation/rate rights | allowed / prohibited / unclear |
+| Commercial use | allowed / prohibited / unclear |
+| Retained fields and duration |  |
 | Transformation/derived-analysis rights | allowed / prohibited / unclear |
-| Customer display/export/redistribution rights | allowed / prohibited / unclear |
-| Personal data/deletion obligations |  |
-| Credential owner and rotation owner |  |
-| Output attribution/notice |  |
+| Public display/export/redistribution rights | allowed / prohibited / unclear |
+| Attribution/notice required and implementation proof |  |
+| Personal-data/deletion obligations |  |
 | Geography/user restrictions |  |
-| Provider written confirmation | attached / not required / missing |
-| Counsel decision, reviewer, and date | approved / restricted / rejected |
-| Runtime policy decision and registry hash |  |
+| Runtime default and registry hash | enabled / disabled |
+| Reviewer, date, and evidence link |  |
 
-Any `unclear`, `missing`, expired, or scope-mismatched value means disabled. The deployed configuration and runtime composition must be checked against the signed rows before every release.
+Any `unclear`, expired, missing, or scope-mismatched value means disabled. Credentials do
+not change the decision.
 
-## Securities-law delivery gate
+## Paid-product boundary
 
-Compensation for reports or analyses concerning securities can fall within the Investment Advisers Act definition; whether an exclusion applies is fact-specific. The package therefore prohibits recommendations, personalized portfolio advice, performance promises, execution, and suitability decisions, but those product constraints do not replace counsel review. See the SEC's [Investment Management Staff Issues of Interest](https://www.sec.gov/rules-regulations/no-action-interpretive-exemptive-letters/division-investment-management-staff-no-action-interpretive-letters/investment-management-staff-issues-interest).
+Local Beta is free, impersonal, local research software. Before accepting payment or
+enabling a Hosted Pro securities-analysis experience, obtain one scoped legal decision on
+the exact output, claims, compensation model, jurisdictions, and distribution. This is a
+paid-launch gate—not discovery, an interview cohort, or counsel quote-shopping.

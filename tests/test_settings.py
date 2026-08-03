@@ -25,8 +25,13 @@ def _isolate_settings_environment(monkeypatch):
 
 
 def test_launch_configuration_identifies_exact_credential_requirements():
-    status = Settings.from_env().launch_configuration()
+    settings = Settings.from_env()
+    status = settings.launch_configuration()
 
+    assert settings.issuer_feeds_enabled is False
+    assert settings.gdelt_enabled is False
+    assert settings.bluesky_enabled is False
+    assert status["configured_providers"] == []
     assert status["configuration_ready"] is False
     assert status["missing_environment_variables"] == ["CATALYST_EDGE_SEC_USER_AGENT"]
     assert status["invalid_environment_variables"] == []
@@ -104,8 +109,8 @@ def test_transport_settings_reject_invalid_environment(monkeypatch, name, value,
 
 
 def test_issuer_feed_toggle_is_explicit(monkeypatch):
-    monkeypatch.setenv("CATALYST_EDGE_ISSUER_FEEDS", "disabled")
-    assert Settings.from_env().issuer_feeds_enabled is False
+    monkeypatch.setenv("CATALYST_EDGE_ISSUER_FEEDS", "enabled")
+    assert Settings.from_env().issuer_feeds_enabled is True
 
     monkeypatch.setenv("CATALYST_EDGE_ISSUER_FEEDS", "sometimes")
     with pytest.raises(ValueError, match="CATALYST_EDGE_ISSUER_FEEDS"):
@@ -113,8 +118,8 @@ def test_issuer_feed_toggle_is_explicit(monkeypatch):
 
 
 def test_gdelt_toggle_is_explicit(monkeypatch):
-    monkeypatch.setenv("CATALYST_EDGE_GDELT", "disabled")
-    assert Settings.from_env().gdelt_enabled is False
+    monkeypatch.setenv("CATALYST_EDGE_GDELT", "enabled")
+    assert Settings.from_env().gdelt_enabled is True
 
     monkeypatch.setenv("CATALYST_EDGE_GDELT", "sometimes")
     with pytest.raises(ValueError, match="CATALYST_EDGE_GDELT"):
@@ -157,8 +162,8 @@ def test_gdelt_max_age_cannot_be_shorter_than_refresh_interval(monkeypatch):
 
 
 def test_bluesky_toggle_is_explicit(monkeypatch):
-    monkeypatch.setenv("CATALYST_EDGE_BLUESKY", "disabled")
-    assert Settings.from_env().bluesky_enabled is False
+    monkeypatch.setenv("CATALYST_EDGE_BLUESKY", "enabled")
+    assert Settings.from_env().bluesky_enabled is True
 
     monkeypatch.setenv("CATALYST_EDGE_BLUESKY", "sometimes")
     with pytest.raises(ValueError, match="CATALYST_EDGE_BLUESKY"):
