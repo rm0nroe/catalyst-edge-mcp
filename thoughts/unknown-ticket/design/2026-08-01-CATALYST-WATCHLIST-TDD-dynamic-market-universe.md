@@ -3,8 +3,8 @@
 **Date**: 2026-08-01
 **Authors**: Ryan Monroe, Codex
 **Ticket**: None
-**Status**: Authoritative architecture; provider-neutral, shadow-only, and committed locally
-**Reconciled**: 2026-08-03 against the implementation plan, live Axe workspace, and commit `5c4c1e8`
+**Status**: Authoritative architecture; provider-neutral, shadow-only, and merged to the private source repository
+**Reconciled**: 2026-08-03 against the implementation plan, live Axe workspace, source commit `5c4c1e8`, and merge `6c1ae53`
 
 ## TL;DR
 
@@ -549,7 +549,7 @@ Research degradation remains typed. A missing source may remove a category or bl
 
 ### Repository Ownership
 
-The implementation belongs primarily in `mini:/Users/axe/.openclaw/workspace-catalyst-watchlist`. The local Catalyst Edge repository remains unchanged unless a reusable provider-neutral source-policy contract is intentionally extracted later. The MCP continues to accept one ticker and return one dossier.
+The implementation belongs in the private `rm0nroe/catalyst-watchlist` repository, with the live checkout at `mini:/Users/axe/.openclaw/workspace-catalyst-watchlist`. The Catalyst Edge repository remains the separate reusable ticker-in/evidence-out service unless a provider-neutral contract is intentionally extracted later. The MCP continues to accept one ticker and return one dossier.
 
 ### Out of Scope
 
@@ -778,7 +778,7 @@ Rollback never deletes dynamic universes, scan artifacts, or state history. Auto
 
 ## Current State
 
-The original baseline anchors below explain why the design was created. The reconciled operational state is maintained in the implementation plan: static 300-name membership and cron configuration remain live; the shadow implementation is preserved in local commit `5c4c1e8`; the modified default path has exercised fail-closed production and resume behavior but has not completed a successful post-edit scheduled run; Phase 0–2 dynamic code is fixture-only; the standalone provider proof is unscheduled; no accepted dynamic universe or dynamic state exists; and activation remains blocked. The `mini:` and local absolute-path anchors are live-only evidence, not portable repository links.
+The original baseline anchors below explain why the design was created. The reconciled operational state is maintained in the implementation plan: static 300-name membership and cron configuration remain live; the shadow implementation is preserved in private-repository merge `6c1ae53`; the modified default path has exercised fail-closed production and resume behavior but has not completed a successful post-edit scheduled run; Phase 0–2 dynamic code is fixture-only; the standalone provider proof is unscheduled; no accepted dynamic universe or dynamic state exists; and activation remains blocked. The `mini:` and local absolute-path anchors are live-only evidence, not portable repository links.
 
 ### Live Watchlist
 
