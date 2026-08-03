@@ -1,4 +1,4 @@
-"""Bounded Bluesky AppView attention collector with official-host fallback."""
+"""Forward-only Bluesky collector and cache-only partial-attention adapter."""
 
 from __future__ import annotations
 
@@ -31,9 +31,10 @@ APPVIEW_HOSTS = ("public.api.bsky.app", "api.bsky.app")
 SEARCH_PATH = "/xrpc/app.bsky.feed.searchPosts"
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_POSTS_PER_PAGE = 100
-MAX_PAGES_PER_WINDOW = 3
 MIN_POSTS_PER_WINDOW = 5
-PARSER_VERSION = "bluesky-attention-v1"
+MIN_AUTHORS_PER_WINDOW = 3
+COMPARISON_DAYS = 7
+PARSER_VERSION = "bluesky-forward-attention-v2"
 BLUESKY_GATE = ProviderGate(concurrency=1, requests_per_second=1.0)
 
 
@@ -50,6 +51,8 @@ class BlueskyAdapter:
         client: httpx.AsyncClient | None = None,
         gate: ProviderGate = BLUESKY_GATE,
         clock=None,
+        live_refresh: bool = True,
+        max_cache_age_seconds: int = 43_200,
     ) -> None:
         self.store = store or EvidenceStore(str(Path(store_path).expanduser()))
         self.registry = registry
@@ -57,8 +60,11 @@ class BlueskyAdapter:
         self._gate = gate
         self._clock = clock or (lambda: datetime.now(UTC))
         self._preferred_host = APPVIEW_HOSTS[0]
+        self.live_refresh = live_refresh
+        self.max_cache_age_seconds = max_cache_age_seconds
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
+        del lookback_days
         issuer = self.registry.get(ticker) or self.registry.get(ticker.replace(".", "-"))
         now = self._as_utc(self._clock())
         if issuer is None:
@@ -67,8 +73,10 @@ class BlueskyAdapter:
                 now=now,
                 warning=f"No reviewed Bluesky aliases are registered for {ticker}.",
             )
+        if not self.live_refresh:
+            return self._cache_only_result(issuer, now)
         if self._client is not None:
-            return await self._collect(self._client, issuer, lookback_days, now)
+            return await self._collect(self._client, issuer, now)
         headers = {
             "User-Agent": "CatalystEdgeMCP/0.1 bluesky-attention",
             "Accept": "application/json",
@@ -76,44 +84,57 @@ class BlueskyAdapter:
         async with httpx.AsyncClient(
             headers=headers, timeout=3.0, follow_redirects=True
         ) as client:
-            return await self._collect(client, issuer, lookback_days, now)
+            return await self._collect(client, issuer, now)
 
     async def _collect(
         self,
         client: httpx.AsyncClient,
         issuer: SocialIssuer,
-        lookback_days: int,
         now: datetime,
     ) -> AdapterResult:
-        window_days = min(lookback_days, 90)
-        split = now - timedelta(days=max(1, window_days / 2))
-        baseline_start = now - timedelta(days=window_days)
+        window_end = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        window_start = window_end - timedelta(days=1)
         try:
-            baseline, baseline_complete = await self._fetch_window(
-                client, issuer, baseline_start, split, now
+            metrics, adequate = await self._fetch_window(
+                client, issuer, window_start, window_end, now
             )
-            current, current_complete = await self._fetch_window(
-                client, issuer, split, now, now
+            previous = self._bucket_at(issuer, window_start)
+            previous_hashes = set(previous.get("uri_sha256s", [])) if previous else set()
+            current_hashes = set(metrics["uri_sha256s"])
+            deletion_uncertain = bool(previous_hashes - current_hashes)
+            coverage_state = (
+                "deletion_uncertain"
+                if deletion_uncertain
+                else "adequate"
+                if adequate
+                else "truncated"
             )
-            self._record_window(issuer, split, baseline_start, split, baseline, baseline_complete)
-            self._record_window(issuer, now, split, now, current, current_complete)
-            if not baseline_complete or not current_complete:
+            successful = adequate and not deletion_uncertain
+            self._record_window(
+                issuer,
+                window_start,
+                window_end,
+                metrics,
+                coverage_state=coverage_state,
+            )
+            status = SourceStatus.FRESH if successful else SourceStatus.STALE
+            self._record_state(issuer, now, status, succeeded=successful)
+            if not successful:
+                reason = (
+                    "previously observed URI hashes disappeared on recheck"
+                    if deletion_uncertain
+                    else "the ranked first page reported truncation"
+                )
                 return self._result(
-                    status=SourceStatus.STALE,
+                    status=status,
                     now=now,
                     warning=(
-                        "Bluesky search pagination did not complete both comparison windows; "
+                        f"Bluesky forward bucket failed closed because {reason}; "
                         "no attention trend was inferred."
                     ),
                     degraded=True,
                 )
-            return self._attention_result(
-                issuer,
-                now,
-                baseline,
-                current,
-                comparison_days=window_days / 2,
-            )
+            return self._cache_only_result(issuer, now)
         except httpx.HTTPStatusError as exc:
             status = (
                 SourceStatus.RATE_LIMITED
@@ -122,13 +143,19 @@ class BlueskyAdapter:
                 if exc.response.status_code in {401, 403}
                 else SourceStatus.UNAVAILABLE
             )
-            return self._failure(issuer, now, status, type(exc).__name__)
+            return self._failure(issuer, now, window_start, status, type(exc).__name__)
         except httpx.TimeoutException as exc:
-            return self._failure(issuer, now, SourceStatus.TIMEOUT, type(exc).__name__)
+            return self._failure(
+                issuer, now, window_start, SourceStatus.TIMEOUT, type(exc).__name__
+            )
         except (json.JSONDecodeError, ValueError, TypeError) as exc:
-            return self._failure(issuer, now, SourceStatus.SCHEMA_ERROR, type(exc).__name__)
+            return self._failure(
+                issuer, now, window_start, SourceStatus.SCHEMA_ERROR, type(exc).__name__
+            )
         except httpx.HTTPError as exc:
-            return self._failure(issuer, now, SourceStatus.UNAVAILABLE, type(exc).__name__)
+            return self._failure(
+                issuer, now, window_start, SourceStatus.UNAVAILABLE, type(exc).__name__
+            )
 
     async def _fetch_window(
         self,
@@ -138,46 +165,42 @@ class BlueskyAdapter:
         end: datetime,
         now: datetime,
     ) -> tuple[dict[str, Any], bool]:
-        posts: list[Any] = []
-        content_hashes: list[str] = []
-        cursor: str | None = None
-        hits_total: int | None = None
-        complete = False
-        for _ in range(MAX_PAGES_PER_WINDOW):
-            params = {
-                "q": issuer.bluesky_query,
-                "limit": str(MAX_POSTS_PER_PAGE),
-                "sort": "latest",
-                "since": start.isoformat(),
-                "until": end.isoformat(),
-            }
-            if cursor:
-                params["cursor"] = cursor
-            response = await self._request_with_fallback(client, params)
-            if response.status_code == 429:
-                retry_after = self._retry_delay(response, now)
-                if retry_after is not None:
-                    await self._gate.defer_for(min(retry_after, 300.0))
-            response.raise_for_status()
-            content = response.content
-            if len(content) > MAX_RESPONSE_BYTES:
-                raise ValueError("Bluesky response exceeded the bounded response size")
-            payload = json.loads(content)
-            page = payload.get("posts") if isinstance(payload, dict) else None
-            if not isinstance(page, list):
-                raise ValueError("Bluesky response did not contain a post list")
-            posts.extend(page)
-            content_hashes.append(hashlib.sha256(content).hexdigest())
-            raw_hits_total = payload.get("hitsTotal")
-            hits_total = raw_hits_total if isinstance(raw_hits_total, int) else hits_total
-            raw_cursor = payload.get("cursor")
-            cursor = raw_cursor if isinstance(raw_cursor, str) and raw_cursor else None
-            if not cursor or (hits_total is not None and hits_total <= len(posts)):
-                complete = True
-                break
+        params = {
+            "q": issuer.bluesky_query,
+            "limit": str(MAX_POSTS_PER_PAGE),
+            "sort": "latest",
+            "since": start.isoformat(),
+            "until": end.isoformat(),
+        }
+        response = await self._request_with_fallback(client, params)
+        if response.status_code == 429:
+            retry_after = self._retry_delay(response, now)
+            if retry_after is not None:
+                await self._gate.defer_for(min(retry_after, 300.0))
+        response.raise_for_status()
+        content = response.content
+        if len(content) > MAX_RESPONSE_BYTES:
+            raise ValueError("Bluesky response exceeded the bounded response size")
+        payload = json.loads(content)
+        posts = payload.get("posts") if isinstance(payload, dict) else None
+        if not isinstance(posts, list):
+            raise ValueError("Bluesky response did not contain a post list")
         metrics = self._metrics(posts, issuer, start=start, end=end)
-        metrics["raw_sha256"] = hashlib.sha256("".join(content_hashes).encode()).hexdigest()
-        return metrics, complete
+        metrics["raw_sha256"] = hashlib.sha256(content).hexdigest()
+        raw_hits_total = payload.get("hitsTotal")
+        hits_total = raw_hits_total if isinstance(raw_hits_total, int) else None
+        cursor = payload.get("cursor")
+        metrics["reported_hits_total"] = hits_total
+        metrics["cursor_present"] = bool(cursor)
+        # AppView currently emits a cursor even when hitsTotal equals the returned
+        # page. Treat only a reported overflow (or a full page without a total) as
+        # truncation; the collector still never follows the cursor.
+        truncated = (
+            hits_total > len(posts)
+            if hits_total is not None
+            else len(posts) >= MAX_POSTS_PER_PAGE
+        )
+        return metrics, not truncated
 
     async def _request_with_fallback(
         self, client: httpx.AsyncClient, params: dict[str, str]
@@ -257,6 +280,8 @@ class BlueskyAdapter:
         return {
             "post_count": len(seen_uris),
             "unique_authors": len(authors),
+            "uri_sha256s": sorted(self._sha256(value) for value in seen_uris),
+            "author_sha256s": sorted(self._sha256(value) for value in authors),
             "representative_urls": representative_urls,
             "newest_at": newest_at.isoformat() if newest_at else None,
         }
@@ -264,23 +289,137 @@ class BlueskyAdapter:
     def _record_window(
         self,
         issuer: SocialIssuer,
-        bucket_at: datetime,
         start: datetime,
         end: datetime,
         metrics: dict[str, Any],
-        complete: bool,
+        *,
+        coverage_state: str,
     ) -> None:
         self.store.record_social_bucket(
             issuer_key=issuer.issuer_key,
             source_id=self.provider,
-            bucket_at=bucket_at.replace(hour=0, minute=0, second=0, microsecond=0),
+            bucket_at=start,
             metrics={
                 **metrics,
-                "coverage": 1.0 if complete else 0.0,
+                "coverage": 1.0 if coverage_state == "adequate" else 0.0,
+                "coverage_state": coverage_state,
+                "partial_population": True,
+                "search_model": "ranked_incomplete",
                 "window_start": start.isoformat(),
                 "window_end": end.isoformat(),
             },
         )
+        self.store.prune_social_buckets(
+            issuer.issuer_key,
+            self.provider,
+            before=start - timedelta(days=13),
+        )
+
+    def _cache_only_result(self, issuer: SocialIssuer, now: datetime) -> AdapterResult:
+        state = self.store.collector_state(self.provider, issuer.issuer_key)
+        if state is None:
+            return self._warm_up_result(now, 0)
+        status = self._status(state.get("status"))
+        last_checked = self._parse_datetime(state.get("last_checked_at"))
+        if status not in {SourceStatus.FRESH, SourceStatus.NO_OBSERVATIONS}:
+            error_class = str(state.get("error_class") or "collector_failure")
+            return self._result(
+                status=status,
+                now=now,
+                warning=(
+                    f"Bluesky forward collection is unavailable: {error_class} "
+                    f"({status.value}); cached attention remains neutral."
+                ),
+                degraded=True,
+            )
+        if last_checked is None:
+            return self._warm_up_result(now, 0)
+        age_seconds = max(0, int((now - last_checked).total_seconds()))
+        if age_seconds > self.max_cache_age_seconds:
+            return self._result(
+                status=SourceStatus.STALE,
+                now=now,
+                warning=(
+                    f"Bluesky forward cache was last checked {age_seconds} seconds ago; "
+                    "cached attention remains neutral."
+                ),
+                degraded=True,
+            )
+
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        start = today - timedelta(days=COMPARISON_DAYS * 2)
+        buckets = self.store.social_buckets(issuer.issuer_key, self.provider, start)
+        by_day = {self._as_utc(bucket["bucket_at"]): bucket for bucket in buckets}
+        expected_days = [start + timedelta(days=index) for index in range(14)]
+        present = [by_day[day] for day in expected_days if day in by_day]
+        adequate = [
+            bucket
+            for bucket in present
+            if bucket.get("coverage_state") == "adequate"
+            and float(bucket.get("coverage", 0.0)) == 1.0
+        ]
+        if len(present) < 14:
+            oldest = min((bucket["bucket_at"] for bucket in buckets), default=None)
+            if oldest is not None and self._as_utc(oldest) <= start:
+                return self._coverage_gap_result(now, len(adequate))
+            return self._warm_up_result(now, len(adequate))
+        if len(adequate) < 14:
+            return self._coverage_gap_result(now, len(adequate))
+        baseline = self._combine_buckets(present[:COMPARISON_DAYS])
+        current = self._combine_buckets(present[COMPARISON_DAYS:])
+        return self._attention_result(issuer, now, baseline, current)
+
+    def _warm_up_result(self, now: datetime, adequate_days: int) -> AdapterResult:
+        return self._result(
+            status=SourceStatus.NO_OBSERVATIONS,
+            now=now,
+            warning=(
+                f"Bluesky partial public attention warm_up: {adequate_days} of 14 "
+                "adequate forward daily buckets; no trend was inferred."
+            ),
+        )
+
+    def _coverage_gap_result(self, now: datetime, adequate_days: int) -> AdapterResult:
+        return self._result(
+            status=SourceStatus.STALE,
+            now=now,
+            warning=(
+                f"Bluesky forward coverage gap: {adequate_days} of 14 daily buckets "
+                "were adequate; no trend was inferred."
+            ),
+            degraded=True,
+        )
+
+    @staticmethod
+    def _combine_buckets(buckets: list[dict[str, Any]]) -> dict[str, Any]:
+        author_hashes: set[str] = set()
+        representative_urls: list[str] = []
+        raw_hashes: list[str] = []
+        newest_at: datetime | None = None
+        post_count = 0
+        for bucket in reversed(buckets):
+            post_count += int(bucket.get("post_count", 0))
+            author_hashes.update(str(value) for value in bucket.get("author_sha256s", []))
+            raw_hash = str(bucket.get("raw_sha256") or "")
+            if raw_hash:
+                raw_hashes.append(raw_hash)
+            parsed = BlueskyAdapter._parse_datetime(bucket.get("newest_at"))
+            if parsed is not None and (newest_at is None or parsed > newest_at):
+                newest_at = parsed
+            for url in bucket.get("representative_urls", []):
+                if url not in representative_urls and len(representative_urls) < 3:
+                    representative_urls.append(str(url))
+        return {
+            "post_count": post_count,
+            "unique_authors": len(author_hashes),
+            "representative_urls": representative_urls,
+            "newest_at": newest_at.isoformat() if newest_at else None,
+            "raw_sha256": (
+                BlueskyAdapter._sha256("".join(sorted(raw_hashes)))
+                if raw_hashes
+                else None
+            ),
+        }
 
     def _attention_result(
         self,
@@ -288,18 +427,23 @@ class BlueskyAdapter:
         now: datetime,
         baseline: dict[str, Any],
         current: dict[str, Any],
-        *,
-        comparison_days: float,
     ) -> AdapterResult:
         baseline_count = int(baseline.get("post_count", 0))
         current_count = int(current.get("post_count", 0))
-        if baseline_count < MIN_POSTS_PER_WINDOW or current_count < MIN_POSTS_PER_WINDOW:
+        baseline_authors = int(baseline.get("unique_authors", 0))
+        current_authors = int(current.get("unique_authors", 0))
+        if (
+            baseline_count < MIN_POSTS_PER_WINDOW
+            or current_count < MIN_POSTS_PER_WINDOW
+            or baseline_authors < MIN_AUTHORS_PER_WINDOW
+            or current_authors < MIN_AUTHORS_PER_WINDOW
+        ):
             return self._result(
                 status=SourceStatus.NO_OBSERVATIONS,
                 now=now,
                 warning=(
-                    "Bluesky attention sample is insufficient for a 7-day comparison; "
-                    "collector outages remain in coverage."
+                    "Bluesky partial public attention sample_insufficient across the "
+                    "two locally observed 7-day windows; no trend was inferred."
                 ),
             )
         urls = [str(url) for url in current.get("representative_urls", [])[:3]]
@@ -315,14 +459,14 @@ class BlueskyAdapter:
             change=Change(
                 description=(
                     f"Bluesky exact-match posts changed from {baseline_count} to "
-                    f"{current_count} across complete {comparison_days:g}-day windows."
+                    f"{current_count} across adequate locally observed 7-day windows."
                 ),
                 current_value=float(current_count),
                 baseline_value=float(baseline_count),
                 delta=float(current_count - baseline_count),
                 unit="posts",
                 comparison_window=(
-                    f"current {comparison_days:g} days vs preceding equal window"
+                    "current 7 completed UTC days vs preceding equal window"
                 ),
             ),
             sources=[
@@ -341,13 +485,16 @@ class BlueskyAdapter:
                 for url in (urls or [None])
             ],
             notes=(
-                "Source-scoped partial attention only; no sentiment or market-wide "
-                "inference is made and post bodies are not retained."
+                "Ranked, incomplete partial public attention from locally observed "
+                "forward buckets only; no sentiment or market-wide inference is made "
+                "and post bodies are never retained."
             ),
             raw_signal={
                 "post_count": current_count,
                 "baseline_post_count": baseline_count,
-                "coverage_ratio": 1.0,
+                "unique_authors": current_authors,
+                "baseline_unique_authors": baseline_authors,
+                "adequate_daily_bucket_ratio": 1.0,
             },
         )
         return self._result(status=SourceStatus.FRESH, now=now, evidence=[evidence])
@@ -356,14 +503,39 @@ class BlueskyAdapter:
         self,
         issuer: SocialIssuer,
         now: datetime,
+        bucket_at: datetime,
         status: SourceStatus,
         error_class: str,
     ) -> AdapterResult:
         self.store.record_social_bucket(
             issuer_key=issuer.issuer_key,
             source_id=self.provider,
-            bucket_at=now,
-            metrics={"post_count": 0, "unique_authors": 0, "coverage": 0.0},
+            bucket_at=bucket_at,
+            metrics={
+                "post_count": 0,
+                "unique_authors": 0,
+                "uri_sha256s": [],
+                "author_sha256s": [],
+                "representative_urls": [],
+                "coverage": 0.0,
+                "coverage_state": status.value,
+                "partial_population": True,
+                "search_model": "ranked_incomplete",
+                "window_start": bucket_at.isoformat(),
+                "window_end": (bucket_at + timedelta(days=1)).isoformat(),
+            },
+        )
+        self.store.prune_social_buckets(
+            issuer.issuer_key,
+            self.provider,
+            before=bucket_at - timedelta(days=13),
+        )
+        self._record_state(
+            issuer,
+            now,
+            status,
+            succeeded=False,
+            error_class=error_class,
         )
         return self._result(
             status=status,
@@ -371,6 +543,35 @@ class BlueskyAdapter:
             warning=f"Bluesky refresh failed: {error_class} ({status.value}).",
             degraded=True,
         )
+
+    def _record_state(
+        self,
+        issuer: SocialIssuer,
+        now: datetime,
+        status: SourceStatus,
+        *,
+        succeeded: bool,
+        error_class: str | None = None,
+    ) -> None:
+        self.store.update_collector_state(
+            source_id=self.provider,
+            issuer_key=issuer.issuer_key,
+            feed_url=f"https://{self._preferred_host}{SEARCH_PATH}",
+            status=status.value,
+            checked_at=now,
+            succeeded=succeeded,
+            error_class=error_class,
+        )
+
+    def _bucket_at(
+        self, issuer: SocialIssuer, bucket_at: datetime
+    ) -> dict[str, Any] | None:
+        for bucket in self.store.social_buckets(
+            issuer.issuer_key, self.provider, bucket_at
+        ):
+            if self._as_utc(bucket["bucket_at"]) == self._as_utc(bucket_at):
+                return bucket
+        return None
 
     def _result(
         self,
@@ -444,6 +645,17 @@ class BlueskyAdapter:
         except ValueError:
             return None
         return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
+
+    @staticmethod
+    def _status(value: object) -> SourceStatus:
+        try:
+            return SourceStatus(str(value))
+        except ValueError:
+            return SourceStatus.UNAVAILABLE
+
+    @staticmethod
+    def _sha256(value: str) -> str:
+        return hashlib.sha256(value.encode()).hexdigest()
 
     @staticmethod
     def _as_utc(value: datetime) -> datetime:

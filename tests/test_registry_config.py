@@ -178,6 +178,8 @@ def test_custom_registry_composes_all_collectors_from_one_validated_file(tmp_pat
     assert set(registries["gdelt"]) == {"MSFT"}
     assert set(registries["bluesky"]) == {"MSFT"}
     assert registries["gdelt"]["MSFT"].issuer_key == "CIK0000789019"
+    bluesky = next(adapter for adapter in service.adapters if adapter.provider == "bluesky")
+    assert bluesky.live_refresh is False
 
     lifecycle = GdeltCollectionLifecycle(settings)
     try:

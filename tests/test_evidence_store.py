@@ -58,6 +58,40 @@ def test_event_store_creates_required_wal_schema(tmp_path):
     } <= store.table_names()
 
 
+def test_social_cache_retention_and_operator_deletion_are_bounded(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    issuer_key = "CIK0001045810"
+    for age in range(16):
+        store.record_social_bucket(
+            issuer_key=issuer_key,
+            source_id="bluesky",
+            bucket_at=AS_OF - timedelta(days=age),
+            metrics={"post_count": age, "coverage": 1.0},
+        )
+    store.update_collector_state(
+        source_id="bluesky",
+        issuer_key=issuer_key,
+        feed_url="https://api.bsky.app/xrpc/app.bsky.feed.searchPosts",
+        status="fresh",
+        checked_at=AS_OF,
+        succeeded=True,
+    )
+
+    assert store.prune_social_buckets(
+        issuer_key,
+        "bluesky",
+        before=AS_OF - timedelta(days=13),
+    ) == 2
+    assert len(
+        store.social_buckets(issuer_key, "bluesky", AS_OF - timedelta(days=30))
+    ) == 14
+
+    deleted = store.delete_social_cache(issuer_key, "bluesky")
+    assert deleted == {"buckets_deleted": 14, "collector_states_deleted": 1}
+    assert store.social_buckets(issuer_key, "bluesky", AS_OF - timedelta(days=30)) == []
+    assert store.collector_state("bluesky", issuer_key) is None
+
+
 def test_title_normalization_preserves_unicode_alphanumeric_text():
     assert normalize_title("Уход спонсоров Гейтса: последние новости") == (
         "уход спонсоров гейтса последние новости"
