@@ -19,6 +19,10 @@ dependencies = [
   "rapidfuzz>=3.14,<4",
 ]
 
+[project.urls]
+Repository = "https://github.com/rm0nroe/catalyst-edge-mcp"
+Issues = "https://github.com/rm0nroe/catalyst-edge-mcp/issues"
+
 [project.optional-dependencies]
 dev = [
   "jsonschema>=4.20,<5",
