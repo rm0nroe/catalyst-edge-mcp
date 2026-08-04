@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Catalyst Edge is a free, local, read-only MCP server for source-linked public-company catalyst research.">
+  <title>Catalyst Edge Local Beta — Source-linked research for AI agents</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Catalyst Edge home"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></a>
+    <nav aria-label="Primary navigation"><a href="#example">Example</a><a href="#install">Install</a><a href="#hosted-pro">Hosted Pro</a><a href="#limits">Limits</a></nav>
+    <a class="button button-small" href="#install">Install free</a>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">Free Local Beta · v0.1.1 · Read only</p>
+        <h1>Market-speed research.<br><span>Source-level proof.</span></h1>
+        <p class="lede">Ask your AI research agent what changed for a ticker, why it matters, what contradicts it—and show every source and missing-data warning.</p>
+        <div class="actions"><a class="button" href="#install">Install free</a><a class="button button-secondary" href="#example">Watch the 90-second example</a></div>
+        <ul class="trust-row" aria-label="Product boundaries"><li>Runs locally</li><li>Two read-only tools</li><li>SEC-only public default</li></ul>
+      </div>
+      <img class="hero-art" src="/assets/evidence-ledger-1920x800.png" alt="AAPL evidence terminal with two SEC filings, a neutral bounded dossier, and five explicit coverage states" width="1920" height="800">
+    </section>
+
+    <section class="section example" id="example">
+      <div class="section-heading"><p class="eyebrow">Fixed, sanitized AAPL example</p><h2>One request. Every boundary visible.</h2><p>This 90-second walkthrough uses the public SEC-only default and the approved August 3, 2026 example. It is a demonstration of provenance, not performance.</p></div>
+      <div class="example-grid">
+        <img src="/assets/aapl-evidence-flow-1600x1000.png" alt="AAPL request flowing through five evidence families into a bounded dossier and source readback" width="1600" height="1000" loading="lazy">
+        <ol class="walkthrough">
+          <li><span>00:00</span><div><strong>Ask one ticker</strong><p><code>catalyst_edge_score</code> gathers recent evidence without portfolio access or trading permissions.</p></div></li>
+          <li><span>00:20</span><div><strong>Retain primary records</strong><p>The fixed example found a July 31 Form 10-Q and July 30 Form 8-K, preserving their SEC provenance.</p></div></li>
+          <li><span>00:45</span><div><strong>Keep gaps typed</strong><p>Insider activity returned no qualifying observation; options and technical data require licensed sources; social is off by default.</p></div></li>
+          <li><span>01:05</span><div><strong>Return a bounded dossier</strong><p>The neutral 50 is deterministic and unbacktested—not a signal. Open the filings and inspect the facts.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section install" id="install">
+      <div class="section-heading"><p class="eyebrow">Local and self-serve</p><h2>Install free. Keep the evidence on your machine.</h2><p>Python 3.10+ and <a href="https://docs.astral.sh/uv/">uv</a> are required. Use a real monitored SEC identity and an absolute local evidence-store path.</p></div>
+      <div class="install-grid">
+        <article class="install-card"><div class="card-top"><span>Codex</span><a data-install="codex" href="https://github.com/rm0nroe/catalyst-edge-mcp#install">Full guide ↗</a></div><pre><code id="codex-command">codex mcp add catalyst-edge \
+  --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
+  --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
+  -- uvx --from 'catalyst-edge-mcp==0.1.1' catalyst-edge-mcp</code></pre><button class="copy" data-copy="codex-command">Copy command</button></article>
+        <article class="install-card"><div class="card-top"><span>Claude Desktop</span><a data-install="claude" href="https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/demo/customer-installation-runbook.md#add-to-claude-desktop-manually">Manual setup ↗</a></div><p>Use the same pinned PyPI package through Claude Desktop’s manual stdio configuration.</p><div class="notice"><strong>One-click bundle withheld</strong><span>The <code>.mcpb</code> is not distributed until publisher trust can be verified in production.</span></div></article>
+      </div>
+      <div class="activation"><div><strong>Installed and ran one tool?</strong><p>Report a successful local activation. It links only this browser’s random ID to paid-intent measurement; no ticker, prompt, portfolio, IP address, or local evidence is stored.</p></div><button class="button button-secondary" id="activation-button">I installed and ran one tool</button><p class="form-status" id="activation-status" role="status"></p></div>
+    </section>
+
+    <section class="section hosted" id="hosted-pro">
+      <div class="offer-copy"><p class="eyebrow">Measurement only · No payment</p><h2>Hosted Pro — <span>$29/month</span>, coming soon.</h2><p>Would you definitely pay $29/month for zero-install hosted access and managed updates? This exact offer is a demand test, not a product account, preorder, or promise to build.</p><ul><li>Email confirmation required</li><li>Duplicates, bots, staff, and QA excluded</li><li>Interest expires after 180 days</li></ul></div>
+      <form id="intent-form" novalidate>
+        <label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+        <label>MCP client<select name="client" required><option value="">Choose one</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="cursor">Cursor</option><option value="other">Other</option></select></label>
+        <label class="check"><input name="definitelyPay" type="checkbox" required><span>Yes, I would definitely pay $29/month for zero-install hosted access and managed updates.</span></label>
+        <label class="check"><input name="privacyConsent" type="checkbox" required><span>I agree to store my encrypted email and this response for up to 180 days for this demand test.</span></label>
+        <label class="honeypot" aria-hidden="true">Company<input name="company" tabindex="-1" autocomplete="off"></label>
+        <input type="hidden" name="offerVersion" value="hosted-pro-29-v1-2026-08-04">
+        <button class="button" type="submit">Email my confirmation link</button>
+        <p class="form-status" id="intent-status" role="status"></p>
+      </form>
+    </section>
+
+    <section class="section limits" id="limits">
+      <div><p class="eyebrow">Truthful by construction</p><h2>Unknown is a state.<br>Not a signal.</h2></div>
+      <div class="limits-grid"><article><strong>Unbacktested</strong><p><code>rules_v1</code> is deterministic; it has no demonstrated predictive edge.</p></article><article><strong>Bounded coverage</strong><p>Missing, disabled, unavailable, and rights-gated evidence stays explicit and contributes zero direction.</p></article><article><strong>Non-advisory</strong><p>No recommendations, execution, brokerage access, portfolio data, or promise of investment performance.</p></article><article><strong>Local privacy</strong><p>Tool inputs and evidence remain in your local process and SQLite store. Do not submit personal financial information.</p></article></div>
+    </section>
+  </main>
+
+  <section class="confirmation" id="confirmation" hidden aria-live="polite"><div><p class="eyebrow">Hosted Pro intent</p><h1 id="confirmation-title">Confirming…</h1><p id="confirmation-message">Checking this one-time link.</p><a class="button" href="/">Return to Catalyst Edge</a></div></section>
+
+  <footer><div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></div><nav aria-label="Project links"><a href="https://github.com/rm0nroe/catalyst-edge-mcp">Documentation</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/commercial/source-rights-matrix.md">Source policy</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/security">Security</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/issues">Report an issue</a></nav><p>Local Beta v0.1.1 · MIT · Read only · Not investment advice</p></footer>
+</body>
+</html>
