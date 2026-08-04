@@ -1,7 +1,7 @@
 # Public Self-Serve Source and Output Rights Matrix
 
 **Status:** Current fail-closed engineering decision for the Local Beta, refreshed
-2026-08-02 from official source terms. This is not legal advice and does not authorize a
+2026-08-03 from official source terms. This is not legal advice and does not authorize a
 paid securities-analysis product.
 
 Public access, an API key, an open protocol, or a package license does not automatically
@@ -73,3 +73,10 @@ Local Beta is free, impersonal, local research software. Before accepting paymen
 enabling a Hosted Pro securities-analysis experience, obtain one scoped legal decision on
 the exact output, claims, compensation model, jurisdictions, and distribution. This is a
 paid-launch gate—not discovery, an interview cohort, or counsel quote-shopping.
+
+The current GTM plan permits consideration of that scoped review only after 1,350 recent
+activation-linked, verified, price-aware signups and separate Ryan authorization. Clearing
+that threshold does not resolve any source row, authorize payment, or authorize the build.
+The full Hosted Pro architecture is not reconsidered before the safeguarded 11,100-signup
+gate and fresh re-costing. Unknown or scope-mismatched paid rights remain disabled regardless
+of demand.

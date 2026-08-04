@@ -26,16 +26,36 @@ integration, and managed support are outside this release.
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
 | R0 — scope freeze | PRD/TDD/GTM agree on two local read-only tools, one ticker per call, deterministic unbacktested scoring, typed missingness, and no recommendation | Met; recheck after documentation/config changes |
-| R1 — reproducible artifact | Clean reviewed commit; matching package version/tag; wheel, sdist, and MCPB install; SHA-256 manifest and release notes | Wheel/sdist proof passes; current deterministic unsigned MCPB SHA-256 `74ad4867e81e816f9a3d14fc30632351d809b2675769b9ecd5d34d90283e7b88` has 45 allowed files. Clean commit/tag and client-compatible production signature remain open. |
-| R2 — validation CI | Lock, lint, Python 3.10/3.14 tests, stdio/HTTP contracts, clean build, installed-artifact and MCPB verification | PR #9 passed Python 3.10, Python 3.14, and installed-artifact checks on current `main`; this MCPB diff adds a pinned read-only artifact lane and requires a new run. |
-| R3 — public configuration | SEC identity required; issuer/GDELT/Bluesky disabled by default; package metadata, `.env.example`, README, and runtime agree | Implemented; focused contracts and full 443-test suite pass locally |
-| R4 — self-serve onboarding | Clean local wheel install plus actual Codex and Claude Desktop tool discovery without package-code edits | Codex CLI and Claude Desktop both discovered the exact two tools and returned an AAPL SEC-only score. Claude installed the unsigned QA fallback; CLI-signed MCPB preview is blocked by an invalid ZIP-comment error. |
-| R5 — release sample | Five fixed public tickers produce five schema-valid dossiers, complete available claim pagination, and explicit missing/rejected evidence; one sanitized example is safe to publish | Fresh AAPL/NVDA/TSLA/RKLB/BRK.B SEC-only calls are schema-valid and contain typed missingness. No grouped claim was available, so claim pagination and launch-example review remain open. |
-| R6 — rollback | Prior artifact/configuration can be restored without deleting the local evidence store | MCPB uninstall completed in 7 seconds; unsigned reinstall/reconfiguration completed in 37 seconds and a fresh AAPL call matched. Evidence-store preservation was not demonstrated because the isolated store was not materialized. |
+| R1 — reproducible artifact | Clean reviewed commit; matching package version/tag; wheel, sdist, and MCPB install; SHA-256 manifest and release notes | Wheel/sdist proof passes; the current rebased deterministic unsigned MCPB SHA-256 `6d7424f73ea34082f22736e7c5446df7b756cb53f2e0fec1076e8b056365f3b0` has 47 allowed files. The two-pass compatibility signer produces a strict-ZIP-valid, exact-CMS-verified QA artifact, but matching tag and a production-trusted signature remain open. |
+| R2 — validation CI | Lock, lint, Python 3.10/3.14 tests, stdio/HTTP contracts, clean build, installed-artifact and MCPB verification | Lock, lint, 463 tests on Python 3.10 and 3.14, npm audit, MCPB validation, deterministic packing, and exact inventory verification pass locally on the rebased signing branch. A fresh remote PR run remains open. |
+| R3 — public configuration | SEC identity required; issuer/GDELT/Bluesky disabled by default; package metadata, `.env.example`, README, and runtime agree | Implemented; focused contracts and the full 463-test suite pass locally. |
+| R4 — self-serve onboarding | Clean local wheel install plus actual Codex and Claude Desktop tool discovery without package-code edits | Codex CLI and Claude Desktop both discovered the exact two tools from the prior exact self-signed QA artifact and returned an AAPL SEC-only score. Claude previewed, installed, configured, and enabled it; Codex invoked the same extracted member bytes from an isolated home. The rebased 47-member candidate still requires exact-byte client rerun after production-trusted signing; current Claude and MCPB CLI verification remains fail-closed upstream. |
+| R5 — release sample | Five fixed public tickers produce five schema-valid dossiers, complete available claim pagination, and explicit missing/rejected evidence; one sanitized example is safe to publish | Fresh AAPL/NVDA/TSLA/RKLB/BRK.B SEC-only calls are schema-valid and contain typed missingness. No grouped claim was available, so the explicit no-claim boundary remains. Ryan approved the Evidence Terminal visual system, sanitized AAPL source copy, three website heroes, two social crops, and explanatory infographic on 2026-08-03 for launch-package inclusion. Publication remains separately gated by R7. |
+| R6 — rollback | Prior artifact/configuration can be restored without deleting the local evidence store | Met for the QA path. The materialized isolated SQLite store retained its exact SHA-256, sentinel, 11-table schema, and `ok` integrity result across uninstall of the unsigned fallback, install/configuration of the self-signed QA artifact, and fresh Claude/Codex calls. |
 | R7 — publication authority | Public-source rights/defaults, package inventory, security notes, final target URLs, and exact publication actions are reviewed and explicitly approved by Ryan | Open; blocks publication |
 
 Passing R0–R6 does not authorize R7. A paid Hosted Pro experience has a separate legal,
 security, privacy, billing, and operating gate; it is not part of Local Beta readiness.
+
+## Hosted Pro measurement boundary
+
+The Local Beta page may include `Hosted Pro — $29/month, coming soon` only as a paid-intent
+measurement surface. It must separate raw verified intent from the activation-linked subset,
+use double opt-in and deduplication, retain offer version/source, exclude bots/staff/QA/
+duplicates/“maybe,” and keep successful Local Beta activation privacy-preserving.
+
+The current plan uses three recent activation-linked thresholds:
+
+- **350:** separately authorize at most a 56-hour disposable OAuth/client spike;
+- **1,350:** separately authorize one scoped legal/source/payment-provider review; and
+- **11,100:** re-cost and reconsider the complete build with observed data.
+
+The first two are heuristic risk-budget caps. The last is a safeguarded planning gate, not
+automatic implementation authority. Intent expires after 180 days unless voluntarily
+reconfirmed through the current self-serve offer. The raw verified intent rate must also
+retain a one-sided 95% Wilson lower bound of at least 3%; activation yield is reported
+separately. No auth, billing, tenancy, hosted operations, payment, or paid delivery belongs
+to R0–R7.
 
 ## Required CI lanes
 
@@ -117,6 +137,8 @@ willingness to pay.
 - [ ] Codex and Claude Desktop exact two-tool onboarding is measured.
 - [ ] Wheel, sdist, and signed `.mcpb` hashes match the final artifacts.
 - [ ] Public-safe sample and security/source limitations are reviewed.
+- [ ] Paid-intent measurement copy, double opt-in, deduplication, offer-version/source,
+      activation-link privacy, raw-intent denominator, and exclusion rules are reviewed.
 - [ ] Exact publication targets and actions receive explicit Ryan authorization.
 
 ## Prepared publication targets and order
