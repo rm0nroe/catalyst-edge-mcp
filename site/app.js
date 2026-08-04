@@ -1,4 +1,4 @@
-const OFFER_VERSION = "hosted-pro-29-v1-2026-08-04";
+const OFFER_VERSION = "hosted-pro-29-v1-2026-08-04-live";
 const params = new URLSearchParams(location.search);
 const qa = params.get("qa") === "1";
 const source = String(params.get("utm_source") || document.referrer || "direct").slice(0, 64);
