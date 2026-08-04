@@ -131,7 +131,6 @@ def _validate_source(repo: Path) -> dict[str, object]:
         raise ValueError("SEC monitored identity must be required")
     if sec_identity.get("sensitive") is not False:
         raise ValueError("SEC monitored identity must not be misrepresented as a secret")
-
     dev_dependencies = package.get("devDependencies")
     if (
         not isinstance(dev_dependencies, dict)
@@ -144,12 +143,18 @@ def _validate_source(repo: Path) -> dict[str, object]:
         or lock_package.get("integrity") != MCPB_CLI_INTEGRITY
     ):
         raise ValueError("package-lock.json MCPB CLI version or integrity differs")
+    scripts = package.get("scripts")
+    if not isinstance(scripts, dict) or scripts.get("mcpb:sign") != (
+        "uv run --frozen python scripts/sign_mcpb.py"
+    ):
+        raise ValueError("package.json does not use the reviewed MCPB compatibility signer")
 
     return {
         "package_version": PACKAGE_VERSION,
         "manifest_version": manifest["manifest_version"],
         "mcpb_cli_version": MCPB_CLI_VERSION,
         "mcpb_cli_integrity": MCPB_CLI_INTEGRITY,
+        "signer": "scripts/sign_mcpb.py",
         "tools": EXPECTED_TOOLS,
     }
 
