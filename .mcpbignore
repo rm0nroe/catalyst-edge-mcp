@@ -1,11 +1,15 @@
 .git/
 .github/
+.vercel/
+api/
 .venv/
 build/
 dist/
+dist-site/
 docs/
 node_modules/
 scripts/
+site/
 tests/
 notes/
 __pycache__/
@@ -25,3 +29,4 @@ package-lock.json
 internal-plan
 product specification
 technical specification
+vercel.json
