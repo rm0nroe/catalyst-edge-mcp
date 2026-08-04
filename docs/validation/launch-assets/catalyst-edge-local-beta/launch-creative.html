@@ -3,816 +3,391 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Catalyst Edge Local Beta — launch creative review</title>
+  <title>Catalyst Edge Local Beta — Evidence Terminal</title>
   <style>
     :root {
-      --ink: #080b0f;
-      --ink-soft: #0e141b;
-      --panel: #131b24;
-      --panel-high: #192531;
-      --line: #2b3b49;
-      --line-bright: #4d6577;
-      --paper: #eef4f2;
-      --paper-warm: #e8e2d6;
-      --muted: #9eacb5;
-      --muted-dark: #4f5a60;
-      --signal: #c8f65a;
-      --signal-dim: #4d6720;
-      --source: #7fa7ff;
-      --caution: #ffb563;
-      --caution-dark: #8a4700;
-      --danger: #a82e38;
-      --white: #ffffff;
-      --shadow: rgba(0, 0, 0, .34);
-      --grid: rgba(127, 167, 255, .11);
-      --glass: rgba(19, 27, 36, .82);
-      --display: "Baskerville", "Times New Roman", serif;
-      --body: "Avenir Next", "Avenir", sans-serif;
-      --mono: "Menlo", "SFMono-Regular", monospace;
-      --radius: 14px;
+      --void: #04070c;
+      --ink: #070b12;
+      --panel: #0b111b;
+      --panel-2: #101925;
+      --panel-3: #162232;
+      --line: #263446;
+      --line-soft: #172332;
+      --text: #f4f8fb;
+      --muted: #9fb0c1;
+      --dim: #718296;
+      --cyan: #58d8ff;
+      --cyan-deep: #158ab4;
+      --mint: #65f2bd;
+      --amber: #ffbe63;
+      --violet: #9f8cff;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
     }
 
     * { box-sizing: border-box; }
-    html { background: var(--ink); }
-    body {
-      margin: 0;
-      background: var(--ink);
-      color: var(--paper);
-      font-family: var(--body);
-      -webkit-font-smoothing: antialiased;
-    }
+    html { background: var(--void); scroll-behavior: smooth; }
+    body { margin: 0; overflow-x: hidden; background: var(--void); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    code, .mono { font-family: var(--mono); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
+    .review-header { max-width: 1380px; margin: 0 auto; padding: 64px 30px 34px; }
+    .review-kicker, .asset-label { font: 700 11px/1 var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+    .review-kicker { color: var(--cyan); }
+    .review-header h1 { max-width: 980px; margin: 18px 0 0; font-size: clamp(48px, 7vw, 98px); line-height: .91; letter-spacing: -.065em; }
+    .review-header h1 span { color: var(--mint); }
+    .review-header > p:last-of-type { max-width: 800px; margin: 22px 0 0; color: var(--muted); font-size: 17px; line-height: 1.65; }
+    .review-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+    .review-nav a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; font: 700 11px/1 var(--mono); letter-spacing: .06em; text-decoration: none; text-transform: uppercase; transition: border-color .2s ease, background .2s ease; }
+    .review-nav a:hover, .review-nav a:focus-visible { border-color: var(--cyan); background: rgba(88,216,255,.08); outline: 2px solid transparent; }
 
-    .gallery-header {
-      max-width: 1360px;
-      margin: 0 auto;
-      padding: 42px 32px 20px;
-      color: var(--paper);
-    }
-    .gallery-header h1 {
-      margin: 0 0 8px;
-      font-family: var(--display);
-      font-size: clamp(36px, 5vw, 64px);
-      font-weight: 400;
-    }
-    .gallery-header p {
-      max-width: 740px;
-      margin: 0;
-      color: var(--muted);
-      font-size: 16px;
-      line-height: 1.6;
-    }
+    .gallery { display: grid; gap: 68px; padding: 28px 24px 100px; }
+    .asset-shell { display: grid; justify-items: center; gap: 12px; min-width: 0; }
+    .asset-label { width: min(96vw, 1440px); color: var(--dim); }
+    .artboard { position: relative; isolation: isolate; width: min(96vw, 1440px); aspect-ratio: 12/5; overflow: clip; container-type: inline-size; background: var(--ink); box-shadow: 0 32px 100px rgba(0,0,0,.55); }
+    .artboard.social { aspect-ratio: 1200/628; }
+    .artboard.square { width: min(94vw, 900px); aspect-ratio: 1; }
+    .artboard.infographic { aspect-ratio: 8/5; }
 
-    .gallery {
-      display: grid;
-      gap: 54px;
-      padding: 28px 28px 80px;
-    }
-    .asset-shell {
-      display: grid;
-      gap: 12px;
-      justify-content: center;
-    }
-    .asset-label {
-      color: var(--muted);
-      font-family: var(--mono);
-      font-size: 12px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-
-    .artboard {
-      position: relative;
-      width: min(96vw, 1440px);
-      aspect-ratio: 12 / 5;
-      overflow: hidden;
-      background: var(--ink);
-      box-shadow: 0 28px 72px var(--shadow);
-      container-type: inline-size;
-    }
-    .artboard.social { aspect-ratio: 1200 / 628; }
-    .artboard.square { aspect-ratio: 1 / 1; max-width: 900px; }
-    .artboard.infographic { aspect-ratio: 8 / 5; background: var(--paper); color: var(--ink); }
-
-    body.asset-mode { overflow: hidden; }
-    body.asset-mode .gallery-header,
-    body.asset-mode .asset-label { display: none; }
+    body.asset-mode { overflow: hidden; background: var(--ink); }
+    body.asset-mode .review-header, body.asset-mode .asset-label { display: none; }
     body.asset-mode .gallery { display: block; padding: 0; }
     body.asset-mode .asset-shell { display: none; }
     body.asset-mode .asset-shell.active { display: block; }
-    body.asset-mode .artboard {
-      width: 100vw;
-      height: 100vh;
-      max-width: none;
-      aspect-ratio: auto;
-      box-shadow: none;
-    }
+    body.asset-mode .artboard { width: 100vw; height: 100vh; max-width: none; aspect-ratio: auto; box-shadow: none; }
 
-    .grid-field::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background-image:
-        linear-gradient(var(--grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: linear-gradient(90deg, transparent, var(--white) 30%, var(--white));
-      pointer-events: none;
-    }
+    .artboard::before { content: ""; position: absolute; inset: 0; z-index: -3; background-image: linear-gradient(rgba(88,216,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(88,216,255,.035) 1px, transparent 1px); background-size: 3.2cqw 3.2cqw; mask-image: linear-gradient(to bottom, #000, transparent 86%); }
+    .artboard::after { content: ""; position: absolute; z-index: -2; width: 44cqw; height: 44cqw; right: 0; top: -20cqw; border-radius: 50%; background: radial-gradient(circle, rgba(88,216,255,.14), rgba(159,140,255,.05) 38%, transparent 68%); filter: blur(1cqw); }
 
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      font-family: var(--mono);
-      font-size: clamp(10px, 1.15cqw, 17px);
-      font-weight: 700;
-      letter-spacing: .13em;
-      text-transform: uppercase;
-    }
-    .brand-mark {
-      position: relative;
-      width: 24px;
-      height: 24px;
-      border: 1px solid var(--signal);
-      transform: rotate(45deg);
-    }
-    .brand-mark::after {
-      content: "";
-      position: absolute;
-      inset: 6px;
-      background: var(--signal);
-    }
+    .brand { display: inline-flex; align-items: center; gap: .75cqw; font-size: .82cqw; font-weight: 760; letter-spacing: -.03em; }
+    .brand-mark { position: relative; width: 2.35cqw; height: 1.7cqw; border: .12cqw solid var(--line); border-radius: .34cqw; background: var(--panel); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.025); }
+    .brand-mark::before { content: ""; position: absolute; left: .28cqw; right: .28cqw; top: .76cqw; height: .14cqw; background: var(--line); }
+    .brand-mark::after { content: ""; position: absolute; left: .28cqw; top: .43cqw; width: 1.7cqw; height: .75cqw; background: var(--cyan); clip-path: polygon(0 62%,18% 62%,30% 18%,47% 80%,61% 38%,75% 38%,83% 5%,100% 5%,100% 23%,91% 23%,82% 58%,68% 58%,48% 100%,31% 42%,25% 80%,0 80%); }
+    .brand em { color: var(--cyan); font-style: normal; }
+    .eyebrow { display: inline-flex; align-items: center; gap: .55cqw; color: var(--cyan); font: 750 .58cqw/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: .46cqw; height: .46cqw; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 1.2cqw rgba(88,216,255,.55); }
+    .terminal { position: absolute; border: 1px solid var(--line); border-radius: 1cqw; background: linear-gradient(145deg, rgba(16,25,37,.96), rgba(7,11,18,.98)); box-shadow: 0 2.4cqw 6cqw rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.045); overflow: hidden; }
+    .terminal-top { height: 3.5cqw; display: flex; align-items: center; justify-content: space-between; padding: 0 1.25cqw; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.015); }
+    .terminal-title { display: flex; align-items: center; gap: .7cqw; font: 700 .57cqw/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .live-dot { width: .48cqw; height: .48cqw; border-radius: 50%; background: var(--mint); box-shadow: 0 0 1.2cqw rgba(101,242,189,.6); }
+    .terminal-meta { color: var(--dim); font: 650 .5cqw/1 var(--mono); }
+    .tag { display: inline-flex; align-items: center; gap: .38cqw; min-height: 1.65cqw; padding: 0 .62cqw; border: 1px solid var(--line); border-radius: .38cqw; color: var(--muted); font: 700 .5cqw/1 var(--mono); white-space: nowrap; }
+    .tag::before { content: ""; width: .38cqw; height: .38cqw; border-radius: 50%; background: currentColor; }
+    .tag.verified { color: var(--mint); border-color: rgba(101,242,189,.34); background: rgba(101,242,189,.055); }
+    .tag.boundary { color: var(--amber); border-color: rgba(255,190,99,.34); background: rgba(255,190,99,.055); }
+    .tag.neutral { color: var(--cyan); border-color: rgba(88,216,255,.34); background: rgba(88,216,255,.055); }
+    .section-label { color: var(--dim); font: 700 .5cqw/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; }
+    .ticker { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-    .eyebrow {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--signal);
-      font-family: var(--mono);
-      font-size: clamp(9px, 1cqw, 14px);
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    .eyebrow::before {
-      content: "";
-      width: 30px;
-      height: 1px;
-      background: currentColor;
-    }
+    /* shared evidence timeline */
+    .trace { position: relative; }
+    .trace::before { content: ""; position: absolute; left: .92cqw; top: 1.15cqw; bottom: 1.15cqw; width: 1px; background: linear-gradient(var(--cyan), rgba(88,216,255,.13)); }
+    .trace-row { position: relative; display: grid; grid-template-columns: 2.05cqw minmax(0,1fr) auto; gap: .7cqw; align-items: center; min-height: 4.55cqw; padding: .52cqw .75cqw .52cqw 0; border-bottom: 1px solid var(--line-soft); }
+    .trace-row:last-child { border-bottom: 0; }
+    .trace-node { z-index: 1; justify-self: center; width: .68cqw; height: .68cqw; border: .14cqw solid var(--cyan); border-radius: 50%; background: var(--panel); box-shadow: 0 0 1.1cqw rgba(88,216,255,.28); }
+    .trace-row h4 { margin: 0; font-size: .76cqw; letter-spacing: -.02em; }
+    .trace-row p { margin: .3cqw 0 0; color: var(--muted); font: 600 .49cqw/1.35 var(--mono); }
+    .trace-date { color: var(--dim); font: 650 .48cqw/1 var(--mono); font-variant-numeric: tabular-nums; }
 
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 32px;
-      padding: 6px 12px;
-      border: 1px solid var(--line-bright);
-      border-radius: 999px;
-      color: var(--muted);
-      font-family: var(--mono);
-      font-size: clamp(8px, .8cqw, 12px);
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
-    .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--signal); }
-    .pill.caution { border-color: var(--caution); color: var(--caution); }
+    /* 01 Hero */
+    .hero-primary { background: linear-gradient(115deg, #050a11 0%, #07101a 55%, #08101b 100%); }
+    .hero-primary .brand { position: absolute; left: 4.2cqw; top: 3.2cqw; }
+    .hero-copy { position: absolute; left: 4.2cqw; top: 8.8cqw; width: 39cqw; }
+    .hero-copy h2 { margin: 1cqw 0 0; font-size: 4.15cqw; line-height: .91; letter-spacing: -.065em; }
+    .hero-copy h2 span { color: var(--mint); }
+    .hero-copy p { max-width: 32cqw; margin: 1.4cqw 0 0; color: var(--muted); font-size: .9cqw; line-height: 1.46; }
+    .hero-copy p strong { color: var(--text); font-weight: 650; }
+    .hero-foot { position: absolute; left: 4.2cqw; bottom: 2.9cqw; display: flex; gap: .6cqw; }
+    .hero-primary .terminal { left: 46cqw; right: 3.2cqw; top: 3.1cqw; bottom: 3.1cqw; }
+    .market-head { display: grid; grid-template-columns: auto 1fr auto; gap: 1.1cqw; align-items: center; padding: 1.2cqw 1.3cqw 1.05cqw; border-bottom: 1px solid var(--line); }
+    .symbol { display: flex; align-items: baseline; gap: .65cqw; }
+    .symbol strong { font: 800 1.85cqw/1 var(--mono); letter-spacing: -.06em; }
+    .symbol span { color: var(--muted); font-size: .58cqw; }
+    .query-line { justify-self: stretch; display: flex; align-items: center; min-height: 2.25cqw; padding: 0 .8cqw; border: 1px solid var(--line); border-radius: .5cqw; background: #070c13; color: var(--muted); font: 600 .54cqw/1 var(--mono); }
+    .query-line b { color: var(--cyan); margin-right: .6cqw; }
+    .terminal-grid { display: grid; grid-template-columns: 1.28fr .82fr; height: calc(100% - 7.8cqw); }
+    .evidence-pane { padding: 1.1cqw 1.25cqw; border-right: 1px solid var(--line); }
+    .evidence-pane-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .3cqw; }
+    .dossier-pane { padding: 1.1cqw; }
+    .score-block { display: grid; grid-template-columns: auto 1fr; gap: .85cqw; align-items: center; padding: .85cqw; border: 1px solid rgba(88,216,255,.25); border-radius: .65cqw; background: linear-gradient(135deg, rgba(88,216,255,.08), rgba(159,140,255,.04)); }
+    .score-block strong { color: var(--text); font: 760 3.2cqw/.8 var(--mono); letter-spacing: -.08em; }
+    .score-block span { display: block; color: var(--cyan); font: 760 .74cqw/1.1 var(--mono); text-transform: uppercase; }
+    .score-block small { display: block; margin-top: .35cqw; color: var(--muted); font: 650 .48cqw/1.3 var(--mono); }
+    .dossier-list { display: grid; gap: .45cqw; margin-top: .8cqw; }
+    .dossier-item { padding: .62cqw .7cqw; border-left: 2px solid var(--line); background: rgba(255,255,255,.018); }
+    .dossier-item b { display: block; color: var(--muted); font: 700 .48cqw/1 var(--mono); text-transform: uppercase; }
+    .dossier-item span { display: block; margin-top: .28cqw; font-size: .56cqw; line-height: 1.28; }
+    .audit-strip { display: flex; justify-content: space-between; align-items: center; margin-top: .8cqw; padding-top: .65cqw; border-top: 1px solid var(--line); color: var(--dim); font: 650 .46cqw/1.3 var(--mono); }
+    .coverage-dock { position: absolute; z-index: 3; left: 1.25cqw; right: 1.1cqw; bottom: 1.05cqw; display: grid; grid-template-columns: 1.15fr repeat(4,1fr); gap: .45cqw; padding-top: .72cqw; border-top: 1px solid var(--line); }
+    .dock-item { min-height: 4.8cqw; padding: .65cqw; border: 1px solid var(--line-soft); border-radius: .45cqw; background: rgba(255,255,255,.014); }
+    .dock-item b { display: block; color: var(--muted); font: 700 .52cqw/1.15 var(--mono); }
+    .dock-item span { display: block; margin-top: .4cqw; color: var(--dim); font: 650 .48cqw/1.28 var(--mono); }
+    .dock-item.observed { border-color: rgba(101,242,189,.28); background: rgba(101,242,189,.035); }
+    .dock-item.observed b { color: var(--mint); }
+    .dock-item.boundary b { color: var(--amber); }
 
-    .cta {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 48px;
-      padding: 12px 19px;
-      border: 1px solid var(--signal);
-      color: var(--ink);
-      background: var(--signal);
-      font-family: var(--mono);
-      font-size: clamp(9px, .9cqw, 13px);
-      font-weight: 700;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-    }
+    /* 02 tools */
+    .hero-tools { background: radial-gradient(circle at 74% 18%, rgba(159,140,255,.11), transparent 32%), var(--ink); }
+    .hero-tools .brand { position: absolute; left: 4.1cqw; top: 3.1cqw; }
+    .tools-copy { position: absolute; left: 4.1cqw; top: 8.6cqw; width: 32cqw; }
+    .tools-copy h2 { margin: .9cqw 0 0; font-size: 4.1cqw; line-height: .91; letter-spacing: -.065em; }
+    .tools-copy h2 span { color: var(--violet); }
+    .tools-copy p { max-width: 27cqw; margin: 1.2cqw 0 0; color: var(--muted); font-size: .82cqw; line-height: 1.5; }
+    .path-console { position: absolute; left: 38cqw; right: 3.5cqw; top: 3.1cqw; bottom: 3.1cqw; display: grid; grid-template-rows: 1fr 1fr; gap: 1cqw; }
+    .tool-lane { position: relative; display: grid; grid-template-columns: 15.5cqw 1fr 12.5cqw; align-items: center; gap: 2cqw; padding: 1.35cqw; border: 1px solid var(--line); border-radius: .85cqw; background: linear-gradient(145deg, rgba(16,25,37,.98), rgba(7,11,18,.98)); box-shadow: 0 1.5cqw 4cqw rgba(0,0,0,.28); }
+    .tool-lane::before { content: ""; position: absolute; left: 17.6cqw; right: 14.6cqw; top: 50%; height: 1px; background: var(--cyan-deep); }
+    .tool-lane.reverse::before { background: rgba(159,140,255,.72); }
+    .tool-id { align-self: stretch; display: flex; flex-direction: column; justify-content: center; padding-right: 1.1cqw; border-right: 1px solid var(--line); }
+    .tool-id span { color: var(--cyan); font: 700 .48cqw/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .tool-id code { display: block; margin-top: .65cqw; color: var(--text); font: 700 .7cqw/1.3 var(--mono); overflow-wrap: anywhere; }
+    .reverse .tool-id span { color: var(--violet); }
+    .path-steps { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: .55cqw; }
+    .path-step { min-width: 5.2cqw; padding: .72cqw .62cqw; border: 1px solid var(--line); border-radius: .5cqw; background: var(--panel); text-align: center; }
+    .path-step b { display: block; font: 750 .54cqw/1.2 var(--mono); }
+    .path-step small { display: block; margin-top: .28cqw; color: var(--dim); font: 650 .48cqw/1.2 var(--mono); }
+    .path-step.active { border-color: rgba(88,216,255,.45); box-shadow: 0 0 1.6cqw rgba(88,216,255,.08); }
+    .reverse .path-step.active { border-color: rgba(159,140,255,.5); box-shadow: 0 0 1.6cqw rgba(159,140,255,.08); }
+    .path-output { justify-self: stretch; padding: .95cqw; border: 1px solid rgba(101,242,189,.34); border-radius: .6cqw; background: rgba(101,242,189,.055); }
+    .reverse .path-output { border-color: rgba(159,140,255,.34); background: rgba(159,140,255,.055); }
+    .path-output span { color: var(--muted); font: 700 .45cqw/1 var(--mono); text-transform: uppercase; }
+    .path-output b { display: block; margin-top: .42cqw; font-size: .68cqw; line-height: 1.2; }
+    .read-only-bar { position: absolute; left: 4.1cqw; bottom: 3.1cqw; width: 29cqw; display: flex; align-items: center; gap: .8cqw; padding: .85cqw 1cqw; border: 1px solid var(--line); border-radius: .6cqw; color: var(--muted); font: 650 .56cqw/1.35 var(--mono); }
+    .read-only-bar b { color: var(--mint); }
 
-    .hero-ledger {
-      display: grid;
-      grid-template-columns: 1.08fr .92fr;
-      padding: 5.6cqw 6cqw 4.8cqw;
-      background:
-        radial-gradient(circle at 78% 55%, var(--panel-high) 0, var(--ink) 42%),
-        var(--ink);
-    }
-    .hero-ledger .brand { position: absolute; top: 3.2cqw; left: 6cqw; }
-    .hero-ledger .version { position: absolute; top: 3.1cqw; right: 5cqw; }
-    .hero-copy {
-      position: relative;
-      z-index: 1;
-      align-self: center;
-      max-width: 760px;
-    }
-    .hero-copy h2 {
-      max-width: 850px;
-      margin: 1.4cqw 0 1.4cqw;
-      font-family: var(--display);
-      font-size: clamp(52px, 5.55cqw, 100px);
-      font-weight: 400;
-      line-height: .95;
-      letter-spacing: -.035em;
-    }
-    .hero-copy h2 em { color: var(--signal); font-style: italic; }
-    .hero-copy p {
-      max-width: 580px;
-      margin: 0 0 2cqw;
-      color: var(--muted);
-      font-size: clamp(14px, 1.18cqw, 20px);
-      line-height: 1.55;
-    }
-    .hero-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .microcopy {
-      color: var(--muted);
-      font-family: var(--mono);
-      font-size: clamp(8px, .72cqw, 11px);
-      line-height: 1.5;
-    }
+    /* 03 coverage */
+    .hero-coverage { background: linear-gradient(120deg, #070b12 0%, #07101a 100%); }
+    .hero-coverage .brand { position: absolute; left: 4.1cqw; top: 3.1cqw; }
+    .coverage-copy { position: absolute; left: 4.1cqw; top: 8.8cqw; width: 35cqw; }
+    .coverage-copy h2 { margin: .9cqw 0 0; font-size: 4.15cqw; line-height: .9; letter-spacing: -.068em; }
+    .coverage-copy h2 span { color: var(--amber); }
+    .coverage-copy p { max-width: 30cqw; margin: 1.25cqw 0 0; color: var(--muted); font-size: .83cqw; line-height: 1.5; }
+    .coverage-rule { position: absolute; left: 4.1cqw; bottom: 3cqw; width: 31cqw; padding: .9cqw 1cqw; border-left: .22cqw solid var(--amber); background: rgba(255,190,99,.055); font: 650 .6cqw/1.4 var(--mono); }
+    .coverage-rule b { color: var(--amber); }
+    .coverage-terminal { position: absolute; left: 41cqw; right: 3.4cqw; top: 3.1cqw; bottom: 3.1cqw; padding: 1.15cqw; border: 1px solid var(--line); border-radius: .9cqw; background: linear-gradient(145deg, var(--panel-2), var(--ink)); box-shadow: 0 2cqw 5cqw rgba(0,0,0,.35); }
+    .coverage-head { display: grid; grid-template-columns: 1.05fr 1.4fr .75fr; gap: .7cqw; padding: .65cqw .75cqw; border-bottom: 1px solid var(--line); color: var(--dim); font: 700 .48cqw/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .coverage-list { display: grid; }
+    .coverage-row { display: grid; grid-template-columns: 1.05fr 1.4fr .75fr; gap: .7cqw; align-items: center; min-height: 5.1cqw; padding: .6cqw .75cqw; border-bottom: 1px solid var(--line-soft); }
+    .coverage-row:last-child { border-bottom: 0; }
+    .family { display: flex; align-items: center; gap: .72cqw; }
+    .family-index { display: grid; place-items: center; width: 1.8cqw; height: 1.8cqw; border: 1px solid var(--line); border-radius: .45cqw; color: var(--dim); font: 700 .58cqw/1 var(--mono); }
+    .family b { font-size: .7cqw; }
+    .state-copy { color: var(--muted); font: 650 .54cqw/1.35 var(--mono); }
+    .contribution { display: flex; align-items: center; justify-content: flex-end; gap: .7cqw; }
+    .contribution strong { font: 800 .82cqw/1 var(--mono); font-variant-numeric: tabular-nums; }
+    .contribution .meter { width: 6cqw; height: .48cqw; border-radius: 9px; background: var(--line); overflow: hidden; }
+    .contribution .meter i { display: block; width: 0; height: 100%; background: var(--amber); }
+    .coverage-row.observed .family-index { color: var(--mint); border-color: rgba(101,242,189,.45); }
+    .coverage-row.observed .contribution strong { color: var(--mint); }
+    .coverage-row.observed .meter i { width: 0; background: var(--mint); }
 
-    .dossier {
-      position: relative;
-      z-index: 2;
-      align-self: center;
-      justify-self: end;
-      width: 92%;
-      padding: 2cqw;
-      border: 1px solid var(--line-bright);
-      background: var(--glass);
-      box-shadow: 0 24px 70px var(--shadow);
-      backdrop-filter: blur(14px);
-      transform: rotate(1.2deg);
-      animation: settle .7s ease-out both;
-    }
-    .dossier-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
-    .ticker {
-      font-family: var(--display);
-      font-size: clamp(30px, 3cqw, 52px);
-      line-height: 1;
-    }
-    .score-block { text-align: right; }
-    .score {
-      display: block;
-      color: var(--paper);
-      font-family: var(--mono);
-      font-size: clamp(34px, 4cqw, 70px);
-      line-height: .9;
-    }
-    .score-label { color: var(--caution); font-family: var(--mono); font-size: clamp(8px, .8cqw, 12px); text-transform: uppercase; }
-    .metric-strip {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1.25fr;
-      margin: 1.5cqw 0;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-    }
-    .metric { padding: 1cqw 1cqw 1cqw 0; }
-    .metric + .metric { padding-left: 1cqw; border-left: 1px solid var(--line); }
-    .metric strong { display: block; font-family: var(--mono); font-size: clamp(14px, 1.45cqw, 23px); }
-    .metric span { color: var(--muted); font-family: var(--mono); font-size: clamp(7px, .68cqw, 10px); text-transform: uppercase; }
-    .source-row {
-      display: grid;
-      grid-template-columns: 74px 1fr auto;
-      gap: 14px;
-      align-items: center;
-      padding: .85cqw 0;
-      border-bottom: 1px solid var(--line);
-      font-size: clamp(9px, .82cqw, 13px);
-    }
-    .source-form { color: var(--source); font-family: var(--mono); }
-    .source-date { color: var(--muted); font-family: var(--mono); font-size: .82em; }
-    .gap-row { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 1.25cqw; }
-    .gap {
-      padding: 5px 8px;
-      border: 1px solid var(--line);
-      color: var(--muted);
-      font-family: var(--mono);
-      font-size: clamp(6px, .55cqw, 9px);
-      text-transform: uppercase;
-    }
+    /* social wide */
+    .social-wide { background: radial-gradient(circle at 78% 30%, rgba(88,216,255,.14), transparent 34%), var(--ink); }
+    .social-wide .brand { position: absolute; left: 4.6cqw; top: 4.5cqw; font-size: 1cqw; }
+    .social-wide .brand-mark { width: 2.8cqw; height: 2.05cqw; }
+    .social-wide h2 { position: absolute; left: 4.6cqw; top: 12cqw; width: 47cqw; margin: 0; font-size: 5.6cqw; line-height: .88; letter-spacing: -.07em; }
+    .social-wide h2 span { color: var(--mint); }
+    .social-wide > p { position: absolute; left: 4.6cqw; bottom: 5.2cqw; color: var(--muted); font: 650 1.05cqw/1.45 var(--mono); }
+    .social-console { position: absolute; left: 55cqw; right: 3.4cqw; top: 4.2cqw; bottom: 4.2cqw; padding: 1.5cqw; border: 1px solid var(--line); border-radius: 1.4cqw; background: linear-gradient(145deg, var(--panel-2), var(--ink)); box-shadow: 0 2cqw 5cqw rgba(0,0,0,.4); }
+    .social-symbol { display: flex; align-items: center; justify-content: space-between; padding-bottom: 1.1cqw; border-bottom: 1px solid var(--line); }
+    .social-symbol strong { font: 800 3cqw/1 var(--mono); }
+    .social-symbol span { color: var(--cyan); font: 750 1cqw/1 var(--mono); }
+    .social-trace { display: grid; gap: .8cqw; margin-top: 1.2cqw; }
+    .social-event { display: grid; grid-template-columns: auto 1fr auto; gap: .9cqw; align-items: center; padding: 1cqw; border: 1px solid var(--line); border-radius: .7cqw; background: rgba(255,255,255,.018); }
+    .social-event i { width: .75cqw; height: .75cqw; border-radius: 50%; background: var(--mint); box-shadow: 0 0 1.3cqw rgba(101,242,189,.5); }
+    .social-event b { font-size: 1cqw; }
+    .social-event small { color: var(--muted); font: 650 .78cqw/1 var(--mono); }
+    .social-score { display: flex; align-items: baseline; gap: 1cqw; margin-top: 1.2cqw; padding: 1.1cqw; border: 1px solid rgba(88,216,255,.3); border-radius: .7cqw; background: rgba(88,216,255,.055); }
+    .social-score strong { font: 800 3.4cqw/.8 var(--mono); }
+    .social-score span { color: var(--cyan); font: 750 1cqw/1.3 var(--mono); text-transform: uppercase; }
+    .social-missing { display: grid; grid-template-columns: 1fr 1fr; gap: .55cqw; margin-top: .9cqw; }
+    .social-missing div { display: flex; align-items: center; justify-content: space-between; min-height: 3.3cqw; padding: 0 .8cqw; border: 1px solid var(--line-soft); border-radius: .5cqw; background: rgba(255,255,255,.014); }
+    .social-missing b { color: var(--muted); font: 700 .72cqw/1 var(--mono); }
+    .social-missing span { color: var(--amber); font: 650 .7cqw/1 var(--mono); }
 
-    .hero-map {
-      padding: 4.4cqw 5.8cqw;
-      background: var(--ink-soft);
-    }
-    .hero-map .topline { display: flex; align-items: center; justify-content: space-between; }
-    .map-layout {
-      display: grid;
-      grid-template-columns: .8fr 1.2fr;
-      gap: 4.5cqw;
-      align-items: center;
-      height: calc(100% - 42px);
-    }
-    .map-copy h2 {
-      margin: 1.3cqw 0 1.2cqw;
-      font-family: var(--display);
-      font-size: clamp(54px, 5.1cqw, 94px);
-      font-weight: 400;
-      line-height: .96;
-      letter-spacing: -.04em;
-    }
-    .map-copy p { color: var(--muted); font-size: clamp(14px, 1.1cqw, 19px); line-height: 1.55; }
-    .map-copy strong { color: var(--paper); font-weight: 600; }
-    .evidence-map { position: relative; height: 70%; min-height: 340px; }
-    .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-    .s-line { fill: none; stroke: var(--line-bright); stroke-width: 1.5; }
-    .s-source { fill: var(--source); }
-    .s-signal { fill: var(--signal); }
-    .s-caution { fill: var(--caution); }
-    .s-panel { fill: var(--panel); stroke: var(--line-bright); stroke-width: 1.2; }
-    .flow-line { stroke-dasharray: 8 12; animation: dash 1.8s linear infinite; }
-    .node-label {
-      position: absolute;
-      padding: 10px 12px;
-      border: 1px solid var(--line-bright);
-      background: var(--panel);
-      font-family: var(--mono);
-      font-size: clamp(7px, .72cqw, 11px);
-      letter-spacing: .04em;
-      text-transform: uppercase;
-      box-shadow: 0 12px 30px var(--shadow);
-    }
-    .node-a { top: 10%; left: 3%; color: var(--source); }
-    .node-b { bottom: 14%; left: 4%; color: var(--source); }
-    .node-c { top: 39%; left: 43%; color: var(--signal); }
-    .node-d { top: 35%; right: 2%; color: var(--caution); }
+    /* social square */
+    .social-square { background: radial-gradient(circle at 82% 18%, rgba(159,140,255,.18), transparent 32%), linear-gradient(145deg, #05080e, #09111c); }
+    .social-square .brand { position: absolute; left: 6.5cqw; top: 6cqw; font-size: 1.8cqw; }
+    .social-square .brand-mark { width: 5cqw; height: 3.65cqw; border-width: .2cqw; }
+    .social-square h2 { position: absolute; left: 6.5cqw; top: 14cqw; width: 84cqw; margin: 0; font-size: 9.2cqw; line-height: .88; letter-spacing: -.075em; }
+    .social-square h2 span { color: var(--mint); }
+    .square-console { position: absolute; left: 6.5cqw; right: 6.5cqw; top: 39cqw; height: 47cqw; padding: 3.2cqw; border: .16cqw solid var(--line); border-radius: 2.2cqw; background: linear-gradient(145deg, rgba(16,25,37,.97), rgba(7,11,18,.99)); box-shadow: 0 4cqw 10cqw rgba(0,0,0,.42); }
+    .square-query { display: flex; align-items: center; justify-content: space-between; padding-bottom: 2.5cqw; border-bottom: .16cqw solid var(--line); }
+    .square-query strong { font: 800 5.6cqw/1 var(--mono); }
+    .square-query span { color: var(--cyan); font: 750 1.8cqw/1 var(--mono); text-transform: uppercase; }
+    .square-events { display: grid; grid-template-columns: 1fr 1fr; gap: 2cqw; margin-top: 2.7cqw; }
+    .square-event { min-height: 15cqw; padding: 2.2cqw; border: .14cqw solid rgba(101,242,189,.3); border-radius: 1.3cqw; background: rgba(101,242,189,.045); }
+    .square-event span { color: var(--mint); font: 750 1.35cqw/1 var(--mono); text-transform: uppercase; }
+    .square-event b { display: block; margin-top: 1.2cqw; font-size: 2.5cqw; }
+    .square-event small { display: block; margin-top: .7cqw; color: var(--muted); font: 650 1.35cqw/1.3 var(--mono); }
+    .square-bottom { display: grid; grid-template-columns: 1fr auto; gap: 2cqw; align-items: center; margin-top: 2.6cqw; }
+    .square-bottom p { margin: 0; color: var(--muted); font: 650 1.45cqw/1.4 var(--mono); }
+    .square-result { display: flex; align-items: baseline; gap: 1.2cqw; padding: 1.7cqw 2cqw; border: .14cqw solid rgba(88,216,255,.34); border-radius: 1.2cqw; background: rgba(88,216,255,.055); }
+    .square-result strong { font: 800 4.6cqw/1 var(--mono); }
+    .square-result span { color: var(--cyan); font: 750 1.3cqw/1.2 var(--mono); text-transform: uppercase; }
+    .social-square footer { position: absolute; left: 6.5cqw; right: 6.5cqw; bottom: 5.2cqw; display: flex; justify-content: space-between; color: var(--dim); font: 700 1.25cqw/1 var(--mono); text-transform: uppercase; }
 
-    .hero-missing {
-      padding: 4.7cqw 5.4cqw;
-      background: var(--paper-warm);
-      color: var(--ink);
-    }
-    .hero-missing .brand-mark { border-color: var(--ink); }
-    .hero-missing .brand-mark::after { background: var(--ink); }
-    .hero-missing .pill.caution { border-color: var(--caution-dark); color: var(--caution-dark); }
-    .hero-missing .topline { display: flex; justify-content: space-between; }
-    .missing-layout {
-      display: grid;
-      grid-template-columns: 1.15fr .85fr;
-      align-items: end;
-      height: calc(100% - 36px);
-      gap: 5cqw;
-    }
-    .not-buy {
-      margin: 0;
-      font-family: var(--display);
-      font-size: clamp(74px, 8.8cqw, 160px);
-      font-weight: 400;
-      line-height: .78;
-      letter-spacing: -.065em;
-    }
-    .not-buy span { display: block; color: var(--danger); font-style: italic; }
-    .missing-note {
-      padding-left: 2.2cqw;
-      border-left: 5px solid var(--danger);
-    }
-    .missing-note h3 {
-      margin: 0 0 1cqw;
-      font-family: var(--mono);
-      font-size: clamp(18px, 2cqw, 34px);
-      line-height: 1.2;
-      text-transform: uppercase;
-    }
-    .missing-note p { margin: 0 0 1.4cqw; color: var(--muted-dark); font-size: clamp(13px, 1.08cqw, 18px); line-height: 1.55; }
-    .missing-note .pill { border-color: var(--ink); color: var(--ink); }
+    /* infographic */
+    .flow { padding: 3cqw; background: radial-gradient(circle at 80% 15%, rgba(88,216,255,.1), transparent 30%), var(--ink); }
+    .flow-head { height: 9.5cqw; display: grid; grid-template-columns: 1fr auto; align-items: start; }
+    .flow-head .brand { font-size: .85cqw; }
+    .flow-head h2 { margin: 1cqw 0 0; font-size: 2.55cqw; line-height: .95; letter-spacing: -.055em; }
+    .flow-head h2 span { color: var(--mint); }
+    .flow-meta { text-align: right; color: var(--muted); font: 650 .6cqw/1.55 var(--mono); }
+    .flow-grid { position: relative; display: grid; grid-template-columns: 21.5cqw 36.5cqw 34cqw; gap: 1.8cqw; height: 43.2cqw; }
+    .flow-grid::before, .flow-grid::after { content: ""; position: absolute; top: 20.7cqw; height: 1px; background: linear-gradient(90deg, var(--cyan), rgba(88,216,255,.25)); }
+    .flow-grid::before { left: 21.5cqw; width: 1.8cqw; }
+    .flow-grid::after { left: 59.8cqw; width: 1.8cqw; }
+    .flow-panel { position: relative; padding: 1.3cqw; border: 1px solid var(--line); border-radius: .85cqw; background: linear-gradient(145deg, rgba(16,25,37,.97), rgba(7,11,18,.99)); overflow: hidden; }
+    .flow-panel > h3 { margin: .75cqw 0 0; font-size: 1.25cqw; letter-spacing: -.035em; }
+    .request-code { margin-top: 1.25cqw; padding: 1.1cqw; border: 1px solid var(--line); border-radius: .55cqw; background: #05090f; color: var(--muted); font: 650 .68cqw/1.65 var(--mono); }
+    .request-code b { color: var(--violet); }
+    .request-code i { color: var(--mint); font-style: normal; }
+    .input-facts { display: grid; gap: .7cqw; margin-top: 1.2cqw; }
+    .input-fact { display: flex; align-items: center; justify-content: space-between; padding-bottom: .65cqw; border-bottom: 1px solid var(--line-soft); font: 650 .62cqw/1.2 var(--mono); }
+    .input-fact span { color: var(--dim); }
+    .input-fact b { font-weight: 700; }
+    .input-boundary { position: absolute; left: 1.3cqw; right: 1.3cqw; bottom: 1.3cqw; padding: .8cqw; border-left: .18cqw solid var(--mint); background: rgba(101,242,189,.045); color: var(--muted); font: 650 .6cqw/1.45 var(--mono); }
+    .family-stack { display: grid; gap: .58cqw; margin-top: 1.15cqw; }
+    .family-card { display: grid; grid-template-columns: 2cqw 1fr auto; gap: .75cqw; align-items: center; min-height: 5.45cqw; padding: .72cqw .85cqw; border: 1px solid var(--line); border-radius: .55cqw; background: rgba(255,255,255,.016); }
+    .family-card .family-index { width: 1.8cqw; height: 1.8cqw; }
+    .family-card h4 { margin: 0; font-size: .65cqw; }
+    .family-card p { margin: .26cqw 0 0; color: var(--muted); font: 650 .58cqw/1.25 var(--mono); }
+    .family-card.observed { border-color: rgba(101,242,189,.28); background: rgba(101,242,189,.035); }
+    .family-card.observed .family-index { color: var(--mint); border-color: rgba(101,242,189,.48); }
+    .family-card .tag { font-size: .58cqw; min-height: 1.45cqw; }
+    .dossier-card { margin-top: 1.15cqw; padding: 1cqw; border: 1px solid rgba(88,216,255,.3); border-radius: .6cqw; background: rgba(88,216,255,.045); }
+    .dossier-card-head { display: grid; grid-template-columns: auto 1fr; gap: .85cqw; align-items: center; padding-bottom: .85cqw; border-bottom: 1px solid rgba(88,216,255,.2); }
+    .dossier-card-head strong { font: 800 3.1cqw/.8 var(--mono); }
+    .dossier-card-head b { display: block; color: var(--cyan); font: 750 .78cqw/1.1 var(--mono); text-transform: uppercase; }
+    .dossier-card-head span { display: block; margin-top: .3cqw; color: var(--muted); font: 650 .58cqw/1.3 var(--mono); }
+    .result-sections { display: grid; grid-template-columns: 1fr 1fr; gap: .55cqw; margin-top: .75cqw; }
+    .result-section { min-height: 5cqw; padding: .7cqw; border: 1px solid var(--line); border-radius: .45cqw; background: rgba(0,0,0,.12); }
+    .result-section b { display: block; color: var(--dim); font: 700 .58cqw/1 var(--mono); text-transform: uppercase; }
+    .result-section span { display: block; margin-top: .35cqw; font-size: .6cqw; line-height: 1.32; }
+    .source-readback { margin-top: .7cqw; padding: .78cqw; border: 1px solid rgba(159,140,255,.3); border-radius: .48cqw; background: rgba(159,140,255,.045); }
+    .source-readback b { color: var(--violet); font: 700 .58cqw/1 var(--mono); }
+    .source-readback p { margin: .4cqw 0 0; color: var(--muted); font: 650 .58cqw/1.35 var(--mono); }
+    .flow-footer { height: 6.2cqw; display: grid; grid-template-columns: 1fr 1fr 1.5fr; margin-top: 1.3cqw; border: 1px solid var(--line); border-radius: .7cqw; background: rgba(255,255,255,.015); overflow: hidden; }
+    .flow-footer div { padding: 1cqw 1.15cqw; border-right: 1px solid var(--line); }
+    .flow-footer div:last-child { border-right: 0; }
+    .flow-footer span { display: block; color: var(--dim); font: 700 .58cqw/1 var(--mono); text-transform: uppercase; }
+    .flow-footer b { display: block; margin-top: .4cqw; font-size: .62cqw; line-height: 1.3; }
 
-    .social-map {
-      padding: 6.4cqw 6.8cqw;
-      background:
-        radial-gradient(circle at 90% 12%, var(--panel-high), transparent 45%),
-        var(--ink);
+    @media (prefers-reduced-motion: no-preference) {
+      body:not(.asset-mode) .terminal, body:not(.asset-mode) .flow-panel, body:not(.asset-mode) .tool-lane { animation: settle .32s ease-out both; }
+      body:not(.asset-mode) .trace-node, body:not(.asset-mode) .live-dot { animation: pulse 2.8s ease-in-out infinite; }
+      @keyframes settle { from { opacity: 0; transform: translateY(.8cqw); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes pulse { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
     }
-    .social-map .brand { position: absolute; top: 5cqw; left: 6.8cqw; }
-    .social-map .pill { position: absolute; top: 4.5cqw; right: 6.8cqw; }
-    .social-grid {
-      display: grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap: 4cqw;
-      align-items: center;
-      height: 100%;
-    }
-    .social-map h2 {
-      margin: 2cqw 0 1.8cqw;
-      font-family: var(--display);
-      font-size: clamp(54px, 6.3cqw, 96px);
-      font-weight: 400;
-      line-height: .9;
-      letter-spacing: -.045em;
-    }
-    .social-map h2 em { color: var(--signal); font-style: italic; }
-    .social-map p { max-width: 550px; margin: 0; color: var(--muted); font-size: clamp(14px, 1.35cqw, 20px); line-height: 1.5; }
-    .source-stack { display: grid; gap: 1.2cqw; }
-    .stack-card {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 1.4cqw;
-      align-items: center;
-      padding: 1.6cqw;
-      border: 1px solid var(--line-bright);
-      background: var(--panel);
-    }
-    .stack-card strong { font-family: var(--mono); font-size: clamp(12px, 1.35cqw, 20px); }
-    .stack-card span { color: var(--muted); font-size: clamp(9px, .85cqw, 13px); }
-    .stack-card .status { color: var(--source); font-family: var(--mono); font-size: clamp(8px, .8cqw, 12px); text-transform: uppercase; }
-    .stack-arrow { color: var(--signal); font-family: var(--mono); text-align: center; }
-    .stack-card.result { border-color: var(--signal); }
-    .stack-card.result .status { color: var(--caution); }
-
-    .square-map {
-      padding: 7cqw;
-      background: var(--ink-soft);
-    }
-    .square-map .topline { display: flex; justify-content: space-between; align-items: center; }
-    .square-map h2 {
-      max-width: 85%;
-      margin: 8cqw 0 5cqw;
-      font-family: var(--display);
-      font-size: clamp(56px, 9.2cqw, 100px);
-      font-weight: 400;
-      line-height: .9;
-      letter-spacing: -.05em;
-    }
-    .square-map h2 em { color: var(--signal); font-style: italic; }
-    .square-flow {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr auto 1fr;
-      gap: 2cqw;
-      align-items: center;
-      margin-top: 4cqw;
-    }
-    .square-step { min-height: 15cqw; padding: 2.4cqw; border: 1px solid var(--line-bright); background: var(--panel); }
-    .square-step b { display: block; margin-bottom: 1cqw; color: var(--source); font-family: var(--mono); font-size: clamp(10px, 1.4cqw, 16px); text-transform: uppercase; }
-    .square-step strong { font-size: clamp(15px, 2cqw, 24px); line-height: 1.25; }
-    .square-step.result { border-color: var(--signal); }
-    .square-step.result b { color: var(--caution); }
-    .square-arrow { color: var(--signal); font-family: var(--mono); font-size: 3cqw; }
-    .square-foot { position: absolute; left: 7cqw; right: 7cqw; bottom: 5cqw; display: flex; justify-content: space-between; color: var(--muted); font-family: var(--mono); font-size: clamp(8px, 1cqw, 12px); }
-
-    .info-board {
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      gap: 2cqw;
-      padding: 3.5cqw 4.2cqw 3cqw;
-      color: var(--ink);
-      background:
-        linear-gradient(90deg, transparent 49.94%, var(--muted-dark) 50%, transparent 50.06%),
-        var(--paper);
-    }
-    .info-head { display: grid; grid-template-columns: 1.2fr .8fr; gap: 3cqw; align-items: end; }
-    .info-head .brand-mark { border-color: var(--ink); }
-    .info-head .brand-mark::after { background: var(--ink); }
-    .info-head h2 {
-      margin: 1cqw 0 0;
-      font-family: var(--display);
-      font-size: clamp(54px, 5.4cqw, 90px);
-      font-weight: 400;
-      line-height: .9;
-      letter-spacing: -.05em;
-    }
-    .info-deck { padding-left: 2cqw; border-left: 4px solid var(--signal-dim); color: var(--muted-dark); font-size: clamp(12px, 1.05cqw, 17px); line-height: 1.55; }
-    .info-flow {
-      display: grid;
-      grid-template-columns: .8fr .78fr 1.22fr;
-      gap: 2.3cqw;
-      align-items: stretch;
-    }
-    .info-section { position: relative; padding-top: 2cqw; border-top: 2px solid var(--ink); }
-    .section-index { position: absolute; top: -1.1cqw; right: 0; padding-left: 8px; background: var(--paper); color: var(--muted-dark); font-family: var(--mono); font-size: clamp(8px, .72cqw, 11px); }
-    .info-section h3 { margin: 0 0 1.1cqw; font-family: var(--mono); font-size: clamp(12px, 1.25cqw, 20px); text-transform: uppercase; }
-    .filing {
-      margin-bottom: 1cqw;
-      padding: 1.2cqw;
-      border: 1px solid var(--ink);
-      background: var(--white);
-    }
-    .filing b { display: flex; justify-content: space-between; gap: 12px; color: var(--source); font-family: var(--mono); font-size: clamp(9px, .95cqw, 14px); }
-    .filing strong { display: block; margin: .6cqw 0; font-size: clamp(11px, 1.05cqw, 16px); }
-    .filing span { color: var(--muted-dark); font-family: var(--mono); font-size: clamp(7px, .7cqw, 10px); }
-    .transform-list { display: grid; gap: .7cqw; }
-    .transform-step {
-      display: grid;
-      grid-template-columns: 27px 1fr;
-      gap: 10px;
-      align-items: center;
-      padding: 1cqw 0;
-      border-bottom: 1px solid var(--muted-dark);
-      font-size: clamp(10px, 1cqw, 15px);
-    }
-    .transform-step i { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--signal-dim); font-family: var(--mono); font-size: 10px; font-style: normal; }
-    .result-frame { display: grid; grid-template-columns: .62fr 1.38fr; gap: 1.3cqw; height: calc(100% - 2.5cqw); }
-    .result-score { display: flex; flex-direction: column; justify-content: space-between; padding: 1.4cqw; background: var(--ink); color: var(--paper); }
-    .result-score strong { font-family: var(--mono); font-size: clamp(52px, 6cqw, 96px); line-height: .9; }
-    .result-score span { color: var(--caution); font-family: var(--mono); font-size: clamp(8px, .8cqw, 12px); text-transform: uppercase; }
-    .result-score small { color: var(--muted); font-size: clamp(8px, .75cqw, 11px); line-height: 1.5; }
-    .gap-panel { padding: 1.4cqw; border: 1px solid var(--ink); }
-    .gap-panel h4 { margin: 0 0 1cqw; font-family: var(--mono); font-size: clamp(10px, 1cqw, 15px); text-transform: uppercase; }
-    .coverage-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: .62cqw 0; border-bottom: 1px solid var(--muted-dark); font-size: clamp(9px, .9cqw, 13px); }
-    .coverage-row b { font-family: var(--mono); font-size: .8em; text-transform: uppercase; }
-    .coverage-row.available b { color: var(--signal-dim); }
-    .coverage-row.missing b { color: var(--danger); }
-    .info-foot {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 2cqw;
-      align-items: center;
-      padding-top: 1.2cqw;
-      border-top: 1px solid var(--muted-dark);
-      color: var(--muted-dark);
-      font-family: var(--mono);
-      font-size: clamp(7px, .72cqw, 11px);
-      text-transform: uppercase;
-    }
-    .guardrails { display: flex; gap: 1.5cqw; flex-wrap: wrap; }
-    .guardrails span::before { content: "□ "; color: var(--danger); }
-    .info-cta { color: var(--ink); font-weight: 700; }
-
-    @keyframes settle {
-      from { opacity: 0; transform: translateY(24px) rotate(1.2deg); }
-      to { opacity: 1; transform: translateY(0) rotate(1.2deg); }
-    }
-    @keyframes dash { to { stroke-dashoffset: -40; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
     @media (max-width: 700px) {
-      .gallery { padding: 16px 12px 60px; gap: 28px; }
-      .gallery-header { padding: 28px 18px 10px; }
-      body.asset-mode { overflow: auto; }
-      body.asset-mode .artboard { height: auto; min-height: 100dvh; }
-      .hero-ledger,
-      .map-layout,
-      .missing-layout,
-      .social-grid,
-      .info-head,
-      .info-flow { grid-template-columns: 1fr; }
-      .artboard { aspect-ratio: 3 / 4; }
-      .artboard.social,
-      .artboard.square,
-      .artboard.infographic { aspect-ratio: 3 / 4; }
-      .hero-ledger,
-      .hero-map,
-      .hero-missing,
-      .social-map,
-      .square-map,
-      .info-board { padding: 28px 22px; }
-      .hero-ledger .brand,
-      .social-map .brand { top: 28px; left: 22px; }
-      .hero-ledger .version,
-      .social-map .pill { top: 22px; right: 22px; }
-      .hero-ledger { gap: 24px; padding-top: 96px; }
-      .hero-copy h2,
-      .map-copy h2 { font-size: 48px; }
-      .dossier { width: 100%; padding: 18px; }
-      .evidence-map { min-height: 320px; }
-      .not-buy { font-size: 72px; }
-      .missing-layout { align-content: center; }
-      .social-grid { padding-top: 70px; }
-      .social-map h2 { font-size: 50px; }
-      .square-map h2 { max-width: 100%; font-size: 52px; }
-      .square-flow { grid-template-columns: 1fr; }
-      .square-arrow { transform: rotate(90deg); justify-self: center; }
-      .square-step { min-height: 96px; }
-      .square-foot { position: static; margin-top: 30px; gap: 18px; }
-      .info-board { display: block; background: var(--paper); }
-      .info-head h2 { font-size: 50px; }
-      .info-deck { margin: 20px 0 28px; }
-      .info-section { margin-bottom: 28px; padding-top: 22px; }
-      .section-index { top: -12px; }
-      .result-frame { grid-template-columns: 1fr; }
-      .result-score { min-height: 220px; }
-      .info-foot { grid-template-columns: 1fr; margin-top: 12px; padding: 18px 0 10px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: .01ms !important;
-        animation-iteration-count: 1 !important;
-        scroll-behavior: auto !important;
-      }
+      .review-header { padding: 42px 20px 24px; }
+      .review-header h1 { font-size: 48px; }
+      .review-header > p:last-of-type { font-size: 16px; }
+      .gallery { gap: 36px; padding: 24px 10px 64px; }
+      .asset-label, .artboard { width: 96vw; }
     }
   </style>
 </head>
 <body>
-  <header class="gallery-header">
-    <h1>Launch creative review</h1>
-    <p>Three banner directions, two social crops, and one explanatory infographic. All facts use the retained August 3, 2026 AAPL SEC-only QA output. Nothing here is publication-approved.</p>
+  <header class="review-header">
+    <p class="review-kicker">Fresh creative direction · August 3, 2026</p>
+    <h1>Evidence <span>Terminal</span></h1>
+    <p>A finance-native visual system built around the actual Catalyst Edge workflow: one ticker request, five exact coverage states, a bounded deterministic dossier, and source-level readback. Connectors stay in gutters; the data surface carries the story.</p>
+    <nav class="review-nav" aria-label="Artifact links"><a href="#hero-primary">01 Evidence terminal</a><a href="#hero-tools">02 Two tools</a><a href="#hero-coverage">03 Coverage states</a><a href="#social-wide">Social wide</a><a href="#social-square">Social square</a><a href="#infographic">AAPL explainer</a></nav>
   </header>
 
   <main class="gallery">
-    <section class="asset-shell" data-asset="hero-ledger">
-      <div class="asset-label">Option 01 · Evidence ledger · website hero · 1920 × 800</div>
-      <article class="artboard hero-ledger grid-field" aria-label="Catalyst Edge evidence-ledger website hero">
-        <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
-        <div class="pill version"><span class="dot"></span> Local Beta · 0.1.1</div>
-        <div class="hero-copy">
-          <div class="eyebrow">Primary-source research</div>
-          <h2>Know what changed.<br><em>Trace why.</em></h2>
-          <p>Turn public-company evidence into a source-linked dossier—with missing data shown, not guessed away.</p>
-          <div class="hero-actions">
-            <span class="cta">Inspect every source</span>
-            <span class="microcopy">Free local MCP · Claude + Codex<br>Deterministic · unbacktested · non-advisory</span>
+    <section class="asset-shell" data-asset="hero-primary" id="hero-primary"><p class="asset-label">01 / Evidence terminal / 1920 × 800</p>
+      <article class="artboard hero-primary" aria-label="Catalyst Edge evidence terminal showing two observed SEC filings and a neutral bounded dossier">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></div>
+        <div class="hero-copy"><span class="eyebrow">Local AI research infrastructure</span><h2>Market-speed research.<br><span>Source-level proof.</span></h2><p>Ask your AI agent what changed for a ticker, why it matters, what contradicts it—and <strong>show every source and missing-data warning.</strong></p></div>
+        <div class="hero-foot"><span class="tag verified">Read only</span><span class="tag neutral">Deterministic</span><span class="tag boundary">Non-advisory</span></div>
+        <section class="terminal" aria-label="AAPL research result">
+          <header class="terminal-top"><div class="terminal-title"><span class="live-dot"></span>Evidence terminal / local beta</div><div class="terminal-meta">rules_v1 · deterministic_v1</div></header>
+          <div class="market-head"><div class="symbol"><strong>AAPL</strong><span>Apple Inc.</span></div><div class="query-line"><b>ASK</b> what changed in the last 14 days?</div><span class="tag verified">SEC-only</span></div>
+          <div class="terminal-grid">
+            <section class="evidence-pane"><div class="evidence-pane-head"><span class="section-label">Observed evidence</span><span class="tag verified">2 primary records</span></div><div class="trace">
+              <div class="trace-row"><span class="trace-node"></span><div><h4>Quarterly report filed</h4><p>SEC · Form 10-Q · primary source retained</p></div><time class="trace-date">JUL 31</time></div>
+              <div class="trace-row"><span class="trace-node"></span><div><h4>Results and financial condition filed</h4><p>SEC · Form 8-K · primary source retained</p></div><time class="trace-date">JUL 30</time></div>
+            </div><div class="audit-strip"><span>14 DAYS ENDING AUG 03, 2026</span><span>PROVENANCE ATTACHED ↗</span></div></section>
+            <aside class="dossier-pane"><span class="section-label">Bounded dossier</span><div class="score-block"><strong>50</strong><div><span>Neutral</span><small>not a signal · partial coverage</small></div></div><div class="dossier-list"><div class="dossier-item"><b>What changed</b><span>Two recent SEC filing events.</span></div><div class="dossier-item"><b>Contradictions</b><span>No directional contradiction established.</span></div><div class="dossier-item"><b>Next checks</b><span>Open filings · inspect filed facts · verify gaps.</span></div></div></aside>
           </div>
-        </div>
-        <div class="dossier" aria-label="AAPL example dossier: neutral score 50, partial coverage, two SEC sources">
-          <div class="dossier-top">
-            <div><div class="eyebrow">SEC-only · 14 days</div><div class="ticker">AAPL</div></div>
-            <div class="score-block"><span class="score">50</span><span class="score-label">Neutral ≠ signal</span></div>
-          </div>
-          <div class="metric-strip">
-            <div class="metric"><strong>2</strong><span>primary sources</span></div>
-            <div class="metric"><strong>partial</strong><span>coverage</span></div>
-            <div class="metric"><strong>rules_v1</strong><span>scoring method</span></div>
-          </div>
-          <div class="source-row"><span class="source-form">10-Q</span><span>Quarterly report observed</span><span class="source-date">JUL 31</span></div>
-          <div class="source-row"><span class="source-form">8-K</span><span>Results + exhibits reported</span><span class="source-date">JUL 30</span></div>
-          <div class="gap-row" aria-label="Evidence families without fresh scored evidence">
-            <span class="gap">Insider trading</span><span class="gap">Options flow</span><span class="gap">Social</span><span class="gap">Technical</span>
-          </div>
+          <div class="coverage-dock" aria-label="Five-family coverage snapshot"><div class="dock-item observed"><b>01 · FILINGS + NEWS</b><span>Observed · 2 SEC records</span></div><div class="dock-item boundary"><b>02 · INSIDER</b><span>Queried · none</span></div><div class="dock-item boundary"><b>03 · OPTIONS</b><span>License required</span></div><div class="dock-item boundary"><b>04 · TECHNICAL</b><span>License required</span></div><div class="dock-item boundary"><b>05 · SOCIAL</b><span>Public default off</span></div></div>
+        </section>
+      </article>
+    </section>
+
+    <section class="asset-shell" data-asset="hero-tools" id="hero-tools"><p class="asset-label">02 / Exact two-tool surface / 1920 × 800</p>
+      <article class="artboard hero-tools" aria-label="Catalyst Edge's two exact read-only MCP tool paths">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></div>
+        <div class="tools-copy"><span class="eyebrow">Two exact MCP tools</span><h2>Assess forward.<br><span>Trace backward.</span></h2><p>One tool builds the bounded research dossier. The other pages through immutable source records behind a grouped claim.</p></div>
+        <div class="read-only-bar"><b>READ-ONLY BOUNDARY</b><span>No orders. No portfolio access. No rescoring during source readback.</span></div>
+        <div class="path-console">
+          <section class="tool-lane" aria-label="catalyst_edge_score forward path"><div class="tool-id"><span>01 / Assess</span><code>catalyst_edge_score</code></div><div class="path-steps"><div class="path-step active"><b>AAPL</b><small>ticker</small></div><div class="path-step"><b>5 families</b><small>concurrent</small></div><div class="path-step"><b>rules_v1</b><small>deterministic</small></div></div><div class="path-output"><span>Returns</span><b>Compact evidence dossier</b></div></section>
+          <section class="tool-lane reverse" aria-label="catalyst_edge_claim_sources reverse path"><div class="tool-id"><span>02 / Trace</span><code>catalyst_edge_claim_sources</code></div><div class="path-steps"><div class="path-step active"><b>claim_id</b><small>observed only</small></div><div class="path-step"><b>cursor</b><small>bounded page</small></div><div class="path-step"><b>immutable</b><small>no recollect</small></div></div><div class="path-output"><span>Returns</span><b>Source records + provenance</b></div></section>
         </div>
       </article>
     </section>
 
-    <section class="asset-shell" data-asset="hero-map">
-      <div class="asset-label">Option 02 · Source map · website hero · 1920 × 800</div>
-      <article class="artboard hero-map grid-field" aria-label="Catalyst Edge source-map website hero">
-        <div class="topline">
-          <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
-          <div class="pill"><span class="dot"></span> Evidence first</div>
-        </div>
-        <div class="map-layout">
-          <div class="map-copy">
-            <div class="eyebrow">From filing to fact pattern</div>
-            <h2>Follow the evidence,<br>not the noise.</h2>
-            <p><strong>Every observation keeps its source.</strong> Every coverage gap stays visible. Your agent gets a research state—not a buy/sell instruction.</p>
-          </div>
-          <div class="evidence-map" aria-label="Two SEC filings flow through deterministic evidence processing to a neutral partial-coverage dossier">
-            <svg class="map-svg" viewBox="0 0 760 430" role="img" aria-label="SEC filings flowing into a source-linked AAPL dossier">
-              <path class="s-line flow-line" d="M100 95 C260 95 260 215 365 215"></path>
-              <path class="s-line flow-line" d="M100 335 C260 335 260 215 365 215"></path>
-              <path class="s-line flow-line" d="M405 215 C510 215 520 210 670 210"></path>
-              <circle class="s-source" cx="80" cy="95" r="10"></circle>
-              <circle class="s-source" cx="80" cy="335" r="10"></circle>
-              <rect class="s-panel" x="350" y="200" width="40" height="30"></rect>
-              <circle class="s-signal" cx="370" cy="215" r="7"></circle>
-              <rect class="s-panel" x="640" y="175" width="75" height="70"></rect>
-              <circle class="s-caution" cx="677" cy="210" r="12"></circle>
-            </svg>
-            <div class="node-label node-a">SEC · Form 10-Q · Jul 31</div>
-            <div class="node-label node-b">SEC · Form 8-K · Jul 30</div>
-            <div class="node-label node-c">Source-linked evidence</div>
-            <div class="node-label node-d">AAPL · 50 neutral<br>partial coverage</div>
-          </div>
-        </div>
+    <section class="asset-shell" data-asset="hero-coverage" id="hero-coverage"><p class="asset-label">03 / Typed coverage states / 1920 × 800</p>
+      <article class="artboard hero-coverage" aria-label="Five Catalyst Edge evidence families with exact coverage states and zero contribution from unavailable data">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></div>
+        <div class="coverage-copy"><span class="eyebrow">Truthful by construction</span><h2>Unknown is a state.<br><span>Not a signal.</span></h2><p>Every evidence family resolves to an exact status. Missing, disabled, and rights-gated data stays visible without becoming bearish evidence.</p></div>
+        <div class="coverage-rule"><b>SCORING RULE</b><br>Only observed evidence may contribute direction. All unavailable states contribute exactly zero.</div>
+        <section class="coverage-terminal"><div class="terminal-top" style="margin:-1.15cqw -1.15cqw 0"><div class="terminal-title"><span class="live-dot"></span>AAPL coverage matrix</div><div class="terminal-meta">PUBLIC DEFAULT · AUG 03, 2026</div></div><div class="coverage-head"><span>Evidence family</span><span>Resolved state</span><span style="text-align:right">Direction</span></div><div class="coverage-list">
+          <div class="coverage-row observed"><div class="family"><span class="family-index">01</span><b>Filings + news</b></div><div class="state-copy"><span class="tag verified">Observed · 2 SEC records</span></div><div class="contribution"><div class="meter"><i></i></div><strong>0</strong></div></div>
+          <div class="coverage-row"><div class="family"><span class="family-index">02</span><b>Insider</b></div><div class="state-copy"><span class="tag boundary">Queried · none</span></div><div class="contribution"><div class="meter"><i></i></div><strong>0</strong></div></div>
+          <div class="coverage-row"><div class="family"><span class="family-index">03</span><b>Options</b></div><div class="state-copy"><span class="tag boundary">Licensed feed required</span></div><div class="contribution"><div class="meter"><i></i></div><strong>0</strong></div></div>
+          <div class="coverage-row"><div class="family"><span class="family-index">04</span><b>Technical</b></div><div class="state-copy"><span class="tag boundary">Licensed feed required</span></div><div class="contribution"><div class="meter"><i></i></div><strong>0</strong></div></div>
+          <div class="coverage-row"><div class="family"><span class="family-index">05</span><b>Social</b></div><div class="state-copy"><span class="tag boundary">Disabled by public default</span></div><div class="contribution"><div class="meter"><i></i></div><strong>0</strong></div></div>
+        </div></section>
       </article>
     </section>
 
-    <section class="asset-shell" data-asset="hero-missingness">
-      <div class="asset-label">Option 03 · Missingness first · website hero · 1920 × 800</div>
-      <article class="artboard hero-missing" aria-label="Catalyst Edge missingness-first website hero">
-        <div class="topline">
-          <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
-          <div class="pill caution">AAPL · partial coverage</div>
-        </div>
-        <div class="missing-layout">
-          <h2 class="not-buy">50 is <span>not a buy.</span></h2>
-          <div class="missing-note">
-            <h3>It is a research state.</h3>
-            <p>Two SEC filings observed. Insider activity returned none; Bluesky partial public attention was off; options and technical data require licensed sources.</p>
-            <div class="pill">Deterministic rules · unbacktested · non-advisory</div>
-          </div>
-        </div>
+    <section class="asset-shell" data-asset="social-wide" id="social-wide"><p class="asset-label">04 / Social landscape / 1200 × 628</p>
+      <article class="artboard social social-wide" aria-label="Catalyst Edge social launch graphic with AAPL evidence and source-level proof">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></div><h2>See what changed.<br><span>See the proof.</span></h2><p>LOCAL · READ ONLY · SOURCE LINKED</p>
+        <section class="social-console"><div class="social-symbol"><strong>AAPL</strong><span>14D EVIDENCE TRACE</span></div><div class="social-trace"><div class="social-event"><i></i><b>Form 10-Q</b><small>JUL 31 · SEC</small></div><div class="social-event"><i></i><b>Form 8-K</b><small>JUL 30 · SEC</small></div></div><div class="social-score"><strong>50</strong><span>Neutral<br><small style="color:var(--muted)">not a signal</small></span></div><div class="social-missing" aria-label="Coverage boundaries"><div><b>INSIDER</b><span>NONE</span></div><div><b>OPTIONS</b><span>LICENSE</span></div><div><b>TECHNICAL</b><span>LICENSE</span></div><div><b>SOCIAL</b><span>OFF</span></div></div></section>
       </article>
     </section>
 
-    <section class="asset-shell" data-asset="social-wide">
-      <div class="asset-label">Recommended direction · social wide · 1200 × 628</div>
-      <article class="artboard social social-map grid-field" aria-label="Catalyst Edge social launch banner">
-        <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
-        <div class="pill"><span class="dot"></span> Local Beta</div>
-        <div class="social-grid">
-          <div>
-            <div class="eyebrow">Primary sources in. Research state out.</div>
-            <h2>Evidence first.<br><em>Gaps included.</em></h2>
-            <p>Source-linked catalyst dossiers for Claude and Codex.</p>
-          </div>
-          <div class="source-stack">
-            <div class="stack-card"><strong>10-Q</strong><span>Quarterly report · Jul 31</span><span class="status">SEC</span></div>
-            <div class="stack-card"><strong>8-K</strong><span>Results + exhibits · Jul 30</span><span class="status">SEC</span></div>
-            <div class="stack-arrow" aria-hidden="true">↓</div>
-            <div class="stack-card result"><strong>AAPL · 50</strong><span>2 sources · 4 explicit gaps</span><span class="status">neutral</span></div>
-          </div>
-        </div>
+    <section class="asset-shell" data-asset="social-square" id="social-square"><p class="asset-label" style="width:min(94vw,900px)">05 / Social square / 1080 × 1080</p>
+      <article class="artboard square social-square" aria-label="Catalyst Edge social square showing two source-backed AAPL filings">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></div><h2>Your AI found a catalyst.<br><span>Now audit it.</span></h2>
+        <section class="square-console"><div class="square-query"><strong>AAPL</strong><span>Evidence trace · 14D</span></div><div class="square-events"><div class="square-event"><span>Observed / SEC</span><b>Form 10-Q</b><small>Filed Jul 31, 2026</small></div><div class="square-event"><span>Observed / SEC</span><b>Form 8-K</b><small>Filed Jul 30, 2026</small></div></div><div class="square-bottom"><p>Every source retained.<br>Every coverage gap typed.</p><div class="square-result"><strong>50</strong><span>Neutral<br>not a signal</span></div></div></section>
+        <footer><span>Local · read only</span><span>Deterministic · unbacktested</span></footer>
       </article>
     </section>
 
-    <section class="asset-shell" data-asset="social-square">
-      <div class="asset-label">Recommended direction · social square · 1080 × 1080</div>
-      <article class="artboard square square-map grid-field" aria-label="Catalyst Edge square social launch graphic">
-        <div class="topline">
-          <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge</div>
-          <div class="pill"><span class="dot"></span> Local Beta</div>
+    <section class="asset-shell" data-asset="infographic" id="infographic"><p class="asset-label">06 / AAPL code-to-dossier explainer / 1600 × 1000</p>
+      <article class="artboard infographic flow" aria-label="AAPL code-to-dossier flow from MCP request through five evidence families to bounded result and provenance readback">
+        <header class="flow-head"><div><div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Catalyst <em>Edge</em></strong></div><h2>One request. Five coverage states.<br><span>One auditable dossier.</span></h2></div><p class="flow-meta">FIXED AAPL EXAMPLE<br>14 DAYS ENDING AUG 03, 2026<br>PUBLIC SEC-ONLY DEFAULT</p></header>
+        <div class="flow-grid">
+          <section class="flow-panel"><span class="eyebrow">01 / Request</span><h3>Ask the agent</h3><div class="request-code"><b>catalyst_edge_score</b>({<br>&nbsp;&nbsp;ticker: <i>"AAPL"</i>,<br>&nbsp;&nbsp;lookback_days: <i>14</i><br>})</div><div class="input-facts"><div class="input-fact"><span>Transport</span><b>Local MCP</b></div><div class="input-fact"><span>Access</span><b>Read only</b></div><div class="input-fact"><span>Scope</span><b>One ticker</b></div></div><div class="input-boundary">The call gathers recent evidence; it cannot place orders, access a portfolio, or produce advice.</div></section>
+          <section class="flow-panel"><span class="eyebrow">02 / Resolve</span><h3>Collect evidence + preserve gaps</h3><div class="family-stack">
+            <div class="family-card observed"><span class="family-index">01</span><div><h4>Filings + news</h4><p>Form 10-Q · Jul 31<br>Form 8-K · Jul 30</p></div><span class="tag verified">Observed · 2</span></div>
+            <div class="family-card"><span class="family-index">02</span><div><h4>Insider</h4><p>Direct SEC ownership lane</p></div><span class="tag boundary">Queried · none</span></div>
+            <div class="family-card"><span class="family-index">03</span><div><h4>Options</h4><p>No rights-cleared feed</p></div><span class="tag boundary">License required</span></div>
+            <div class="family-card"><span class="family-index">04</span><div><h4>Technical</h4><p>No rights-cleared OHLC</p></div><span class="tag boundary">License required</span></div>
+            <div class="family-card"><span class="family-index">05</span><div><h4>Social</h4><p>Partial attention lane</p></div><span class="tag boundary">Default off</span></div>
+          </div></section>
+          <section class="flow-panel"><span class="eyebrow">03 / Return</span><h3>Bounded evidence dossier</h3><div class="dossier-card"><div class="dossier-card-head"><strong>50</strong><div><b>Neutral · not a signal</b><span>partial coverage · 2 evidence items</span></div></div><div class="result-sections"><div class="result-section"><b>What changed</b><span>Two SEC filing events were observed.</span></div><div class="result-section"><b>Why it matters</b><span>Primary records make the event auditable.</span></div><div class="result-section"><b>Contradictions</b><span>No directional contradiction established.</span></div><div class="result-section"><b>Next checks</b><span>Open filings and inspect filed facts.</span></div></div></div><div class="source-readback"><b>↳ catalyst_edge_claim_sources</b><p>For grouped observed claims: bounded pages of immutable source IDs, canonical URLs, timestamps, hashes, parser, and policy decision. No recollection or rescoring.</p></div></section>
         </div>
-        <h2>Evidence first.<br><em>Gaps included.</em></h2>
-        <div class="square-flow">
-          <div class="square-step"><b>01 · Observe</b><strong>10-Q + 8-K</strong></div>
-          <div class="square-arrow" aria-hidden="true">→</div>
-          <div class="square-step"><b>02 · Trace</b><strong>2 SEC sources</strong></div>
-          <div class="square-arrow" aria-hidden="true">→</div>
-          <div class="square-step result"><b>03 · Bound</b><strong>50 neutral<br>partial</strong></div>
-        </div>
-        <div class="square-foot"><span>Claude + Codex · local MCP</span><span>Unbacktested · non-advisory</span></div>
-      </article>
-    </section>
-
-    <section class="asset-shell" data-asset="infographic">
-      <div class="asset-label">Explanatory one-pager · 1600 × 1000</div>
-      <article class="artboard infographic info-board" aria-label="AAPL evidence-flow infographic">
-        <header class="info-head">
-          <div>
-            <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Catalyst Edge · Example 001</div>
-            <h2>AAPL, traced end to end.</h2>
-          </div>
-          <div class="info-deck">A real SEC-only example for the 14 days ending August 3, 2026. The score is a bounded research summary—not a trading signal.</div>
-        </header>
-
-        <div class="info-flow">
-          <section class="info-section">
-            <span class="section-index">01 / public inputs</span>
-            <h3>Two primary records</h3>
-            <div class="filing">
-              <b><span>FORM 10-Q</span><span>JUL 31</span></b>
-              <strong>Quarterly report observed</strong>
-              <span>SEC accession 0000320193-26-000020</span>
-            </div>
-            <div class="filing">
-              <b><span>FORM 8-K</span><span>JUL 30</span></b>
-              <strong>Results + exhibits reported</strong>
-              <span>SEC accession 0000320193-26-000018</span>
-            </div>
-          </section>
-
-          <section class="info-section">
-            <span class="section-index">02 / evidence loop</span>
-            <h3>Facts stay attached</h3>
-            <div class="transform-list">
-              <div class="transform-step"><i>1</i><span>Collect official metadata</span></div>
-              <div class="transform-step"><i>2</i><span>Preserve source + accession</span></div>
-              <div class="transform-step"><i>3</i><span>Classify the event</span></div>
-              <div class="transform-step"><i>4</i><span>Score deterministically</span></div>
-              <div class="transform-step"><i>5</i><span>Expose missing coverage</span></div>
-            </div>
-          </section>
-
-          <section class="info-section">
-            <span class="section-index">03 / bounded output</span>
-            <h3>Research state, not advice</h3>
-            <div class="result-frame">
-              <div class="result-score">
-                <div><strong>50</strong><span>neutral</span></div>
-                <small>2 evidence items<br>partial coverage<br>rules_v1 scorer</small>
-              </div>
-              <div class="gap-panel">
-                <h4>Coverage readout</h4>
-                <div class="coverage-row available"><span>Filings + news</span><b>2 fresh SEC</b></div>
-                <div class="coverage-row missing"><span>Insider trading</span><b>queried · none</b></div>
-                <div class="coverage-row missing"><span>Options flow</span><b>license required</b></div>
-                <div class="coverage-row missing"><span>Bluesky partial attention</span><b>public default off</b></div>
-                <div class="coverage-row missing"><span>Technical data</span><b>license required</b></div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <footer class="info-foot">
-          <div class="guardrails"><span>deterministic</span><span>unbacktested</span><span>non-advisory</span><span>bounded coverage</span></div>
-          <div class="info-cta">Open the filings. Verify the facts. →</div>
-        </footer>
+        <footer class="flow-footer"><div><span>Method</span><b>rules_v1 · deterministic_v1</b></div><div><span>Model state</span><b>not_trained · unbacktested</b></div><div><span>Trust boundary</span><b>Typed missingness contributes zero directional evidence · non-advisory</b></div></footer>
       </article>
     </section>
   </main>
-
   <script>
-    const asset = new URLSearchParams(window.location.search).get("asset");
+    const params = new URLSearchParams(location.search);
+    const asset = params.get('asset');
     if (asset) {
+      document.body.classList.add('asset-mode');
       const shell = document.querySelector(`[data-asset="${CSS.escape(asset)}"]`);
-      if (shell) {
-        document.body.classList.add("asset-mode");
-        shell.classList.add("active");
-      }
+      if (shell) shell.classList.add('active');
+      else document.body.textContent = `Unknown asset: ${asset}`;
     }
   </script>
 </body>
