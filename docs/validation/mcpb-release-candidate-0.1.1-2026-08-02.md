@@ -6,8 +6,11 @@ is authorized or represented by this record.
 
 ## Candidate provenance
 
-- Base: local `main` at `1bbbb12187b9ef70a7b28129214b2331c53795e1`.
-- Branch: `codex/mcpb-signing` in an isolated worktree.
+- Merged baseline: exact private `main` commit
+  `d78dbe216b0cf63bdb8f906d25c4404729f622ef` from PR #14.
+- Working branch: `codex/release-closeout-0.1.1` in the isolated release worktree.
+  It contains an uncommitted SEC grouped-claim persistence fix; those bytes are not a
+  final clean release commit.
 - Package and manifest version: `0.1.1`.
 - MCPB CLI: `@anthropic-ai/mcpb@2.1.2`, exact npm integrity pinned in
   `package-lock.json`.
@@ -18,7 +21,8 @@ is authorized or represented by this record.
 
 ## Artifact proof
 
-Two independent pack-and-normalize runs produced the same unsigned artifact:
+Two independent clean `git archive` builds of exact merged commit `d78dbe2` produced
+the same wheel, sdist, and unsigned artifact:
 
 - filename: `catalyst-edge-mcp-0.1.1.mcpb`;
 - current SHA-256 after rebasing onto the 2026-08-03 `main` baseline:
@@ -38,6 +42,20 @@ The rebased installed-artifact proof produced:
 - 51 allowed sdist members and no prohibited paths; and
 - first-attempt wheel onboarding in 2.854 seconds with exact two-tool stdio and HTTP
   discovery plus schema-valid typed-missingness probes.
+
+The 2026-08-04 merged-main rebuild repeated those hashes and completed first-attempt
+wheel onboarding in 3.948 seconds. A later uncommitted candidate containing the SEC
+grouped-claim persistence fix also reproduced byte-for-byte in two builds:
+
+- wheel SHA-256 `0a9ef93f821a8961eee6d721ad2933c27bf93b5b1e97810d37756a73b8f90fb0`;
+- sdist SHA-256 `18379336635dd637edce2aede6a4079d5a94fe350b661d2605b748f7a6249f4e`;
+- 47-member unsigned MCPB SHA-256
+  `811fc00ffe1a4fe408132d564461ba2b2dcd2d48d93459fde9037cdb138da346`; and
+- first-attempt wheel onboarding in 4.214 seconds with exact two-tool stdio/HTTP
+  discovery and schema-valid typed missingness.
+
+These later hashes are QA evidence only. Review, commit, fresh remote CI, and a clean
+post-merge rebuild are still required before any artifact can be called final.
 
 The pre-documentation unsigned payload used for client/signing QA had SHA-256
 `ed3a473733202556355a8e0e69193b50dbfe97fead98bd4e13bfce18a97e347e`; only the
@@ -105,20 +123,46 @@ publication source.
 The five dossier files contain no personal identity, local path, or enabled non-SEC
 provider marker. The sample manifest SHA-256 is
 `830baa1b4ba9a3f434fe84e80b44cef94509fc74dc9b82b04f9168835bcc4919`.
-No available grouped claim existed, so claim-pagination proof remains open. A public
-60-90 second example also remains subject to human review.
+That fixed-set run contained no grouped claim; it remains valid historical bounded
+evidence and is superseded for pagination by the 2026-08-04 HOOD run below. Ryan
+approved the Evidence Terminal launch example on 2026-08-03.
+
+### 2026-08-04 SEC grouped-claim proof
+
+The earlier no-claim result exposed one shared gap: direct SEC ownership aggregation did
+not route its real multi-filing sources into the existing event/claim store. The narrow
+working-tree fix now persists a grouped claim once and reuses the existing bounded
+`claim_sources` pagination path.
+
+A clean Python 3.14 environment installed candidate wheel SHA-256 `0a9ef93f...`, then a
+live SEC-only `HOOD AAPL NVDA TSLA RKLB` run at
+`/tmp/catalyst-edge-final-wheel-proof.CNaPye/proof` passed all runner acceptance checks:
+
+- five schema-valid, one-call-per-ticker dossiers;
+- HOOD claim `clm_962c9b2da2d4d23df22f445d7266429f82b045f7f53591bdee0a15bc3bad28d8`;
+- two pages at page size one, terminal `next_cursor=null`;
+- `total_sources=2`, `returned_source_count=2`, `unique_source_count=2`;
+- both sources are real SEC `primary_regulator` records with `approved` policy; and
+- manifest SHA-256
+  `f91e356ca16b02c3fd343c9a0e27499e357b45b1f3545d494a9856eebe6a2abc`.
+
+The focused regression, lock check, Ruff, and all 463 tests pass on Python 3.10 and
+3.14. This closes the local pagination behavior gap but remains uncommitted evidence.
 
 ## Gate boundary
 
 - R0/R3: the rebased scope/configuration contracts and full local suite pass.
-- R1: unsigned reproducibility and a clean preparatory commit pass; matching tag and
+- R1: exact merged-main unsigned artifacts reproduce, and the uncommitted post-fix
+  artifacts reproduce separately; the next clean reviewed commit, matching tag, and
   compatible production signing remain open.
-- R2: local Python 3.10/3.14, lint, npm audit, MCPB, and inventory checks pass; fresh PR CI
-  remains required.
+- R2: PR #14 fresh CI passed before merge. The uncommitted SEC fix passes local Python
+  3.10/3.14, lint, npm audit, MCPB, inventory, and installed-artifact checks; fresh PR CI
+  remains required for that diff.
 - R4: Codex and Claude invocation pass against the prior exact self-signed QA member bytes;
   the rebased candidate still needs production-trusted exact-byte client proof.
-- R5: five fixed calls and typed missingness pass; the explicit no-claim boundary remains,
-  and the visual launch-example package still requires Ryan's human approval.
+- R5: five live SEC-only calls, typed missingness, and full two-page HOOD claim
+  reconciliation pass on the uncommitted fix. Ryan approved the Evidence Terminal visual
+  launch package on 2026-08-03.
 - R6: extension/config rollback and exact SQLite hash/sentinel preservation pass for the
   prior unsigned-to-self-signed QA reinstall path; repeat against the final signed bytes.
 - R7: publication authority remains open and blocks every public action.
@@ -158,6 +202,22 @@ was destroyed after artifact creation. The signed QA bytes were then installed, 
 enabled, and invoked only after explicit action-time confirmation. No production
 certificate, trusted-client readback, release-signed artifact, or distribution proof
 exists; production signing therefore remains fail-closed.
+
+The 2026-08-04 readback is unchanged: npm and the official repository still report
+`@anthropic-ai/mcpb`/MCPB `2.1.2` as latest; upstream issue #260 and verifier PR #255
+remain open; and local Claude Desktop remains `1.24012.9`. No production certificate,
+trusted publisher readback, or production-signed exact bytes exist.
+
+## 2026-08-04 publication readback
+
+- `rm0nroe/catalyst-edge-mcp` remains private at merged commit `d78dbe2`.
+- No GitHub tag or release exists.
+- PyPI project `catalyst-edge-mcp` returns HTTP 404.
+- MCP Registry search for `io.github.rm0nroe/catalyst-edge-mcp` returns zero servers.
+- No landing-page URL is resolved or deployed.
+
+R7 remains closed. No visibility change, tag, release, upload, Registry submission,
+landing-page deployment, customer delivery, payment, or production signing occurred.
 
 ## Post-merge exact-byte client and rollback proof
 

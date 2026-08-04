@@ -11,6 +11,7 @@ import httpx
 from lxml import etree
 
 from catalyst_edge_mcp.compat import UTC
+from catalyst_edge_mcp.evidence_store import EventObservation, EvidenceStore
 from catalyst_edge_mcp.models import (
     AdapterResult,
     Change,
@@ -235,6 +236,7 @@ class SecInsiderAdapter:
         client: httpx.AsyncClient | None = None,
         clock=None,
         fund_tickers: frozenset[str] = frozenset(),
+        store_path: str | None = None,
     ) -> None:
         if "@" not in user_agent:
             raise ValueError("SEC User-Agent must include a contact email address")
@@ -243,6 +245,7 @@ class SecInsiderAdapter:
         self._clock = clock or (lambda: datetime.now(UTC))
         self._ticker_to_cik: dict[str, str] | None = None
         self._fund_tickers = fund_tickers
+        self.store = EvidenceStore(store_path) if store_path else None
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
         if self._client is not None:
@@ -344,9 +347,62 @@ class SecInsiderAdapter:
                     }
                 )
         evidence = self._normalize_transactions(records, proposed_sales, now, lookback_days)
+        self._record_grouped_claims(ticker, evidence)
         if not evidence:
             warnings.append(f"No qualifying direct SEC insider activity found for {ticker}.")
         return self._result(evidence, warnings, now)
+
+    def _record_grouped_claims(self, ticker: str, evidence: list[Evidence]) -> None:
+        if self.store is None:
+            return
+        for item in evidence:
+            context = item.context
+            sources = item.sources
+            if context is None or len(sources) < 2 or any(
+                source.source_id is None
+                or source.source_tier is None
+                or source.canonical_url is None
+                or source.accession_or_record_id is None
+                or source.published_at is None
+                or source.retrieved_at is None
+                or source.parser_version is None
+                or source.policy_decision is None
+                for source in sources
+            ):
+                continue
+            fingerprint = hashlib.sha256(
+                "\x1f".join(
+                    sorted(str(source.accession_or_record_id) for source in sources)
+                ).encode()
+            ).hexdigest()
+            event = None
+            for source in sources:
+                event = self.store.ingest_event(
+                    EventObservation(
+                        source_id=str(source.source_id),
+                        source_name=source.name,
+                        source_tier=str(source.source_tier),
+                        issuer_key=ticker,
+                        record_id=str(source.accession_or_record_id),
+                        canonical_url=str(source.canonical_url),
+                        title=f"sec-ownership-group-{fingerprint}",
+                        published_at=source.published_at,
+                        observed_at=source.observed_at,
+                        retrieved_at=source.retrieved_at,
+                        raw_sha256=source.raw_sha256,
+                        parser_version=str(source.parser_version),
+                        policy_decision=source.policy_decision,
+                    ),
+                    group_event_id=event.event_id if event else None,
+                )
+            context.claim_id = event.claim_id
+            context.source_record_count = event.source_count
+            context.corroborating_source_count = max(0, event.source_count - 1)
+            context.source_tiers = list(event.source_tiers)
+            context.supporting_source_ids = list(event.supporting_source_ids)
+            context.supporting_sources_truncated = (
+                event.source_count > len(event.supporting_source_ids)
+            )
 
     @classmethod
     def _normalize_transactions(
