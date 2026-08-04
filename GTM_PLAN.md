@@ -1,7 +1,7 @@
 # Catalyst Edge MCP — Go-to-Market Plan
 
 **Status:** Current monetization source of truth.
-**Decision date:** 2026-08-02.
+**Decision date:** 2026-08-03.
 **Scope:** Product positioning, audience, distribution, and monetization for the
 implemented local Catalyst Edge MCP.
 
@@ -84,13 +84,38 @@ Place one future paid option beside the free install:
 
 > Hosted Pro — $29/month, coming soon.
 
-The signup asks only for email, MCP client, and whether the user would pay $29/month for
-zero-install hosted access and managed updates. The price is a hypothesis, not established
-willingness to pay.
+The signup asks for email, MCP client, and whether the user would definitely pay $29/month
+for zero-install hosted access and managed updates. It uses double opt-in, deduplication, the
+exact offer/version shown before response, and—when available—a privacy-preserving link to
+successful Local Beta activation. Raw page views, downloads, unverified emails, “maybe,”
+staff, bots, QA, and duplicate responses do not count as activation-linked paid intent. The
+price remains a hypothesis, not established willingness to pay.
 
-Do not build authentication, billing, tenancy, or hosted operations until the paid-intent
-signal is strong enough to justify the estimated build and operating cost. Set that
-threshold from the actual cost estimate; do not invent an interview or conversion quota.
+The current research-backed decision gates are:
+
+1. **350 recent activation-linked, verified, price-aware signups:** Ryan may separately
+   authorize at most a 56-hour disposable OAuth/client compatibility spike. This does not
+   authorize a hosted product build.
+2. **1,350 recent activation-linked, verified, price-aware signups:** Ryan may separately
+   authorize one scoped legal/source/payment-provider review. This does not authorize
+   payment, customer delivery, or the full build.
+3. **11,100 recent activation-linked, verified, price-aware signups:** the complete Hosted
+   Pro build may be reconsidered and re-costed. This is not automatic build authority.
+
+“Recent” means within 180 days or voluntarily reconfirmed through the current self-serve
+offer. Separately, the raw verified “definitely yes” intent rate must maintain a one-sided
+95% Wilson lower bound of at least 3% among unique qualified visitors shown the full offer.
+The activation-link yield is reported separately; no activation floor is invented.
+
+The first two thresholds are heuristic risk-budget caps, not ROI claims. The full-build gate
+uses a six-month conversion lag, 10% economic reserve, and a one-sided conversion allowance
+on the base 5% proxy. Recompute from actual workload, conversion, retention, support, legal,
+and provider data before every authorized expense. The supporting calculations and source
+limits are in
+[`thoughts/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md`](thoughts/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md).
+
+Do not build authentication, billing, tenancy, or hosted operations before the safeguarded
+full-build gate clears and Ryan explicitly authorizes the exact implementation.
 
 Counsel quote-shopping is not a launch action. Before accepting payment or enabling a
 paid securities-analysis experience, obtain one scoped legal decision on the exact paid
@@ -125,15 +150,22 @@ The page contains:
 - documentation, source policy, security notes, and issue reporting.
 
 Use public release content and package discovery to reach the audience. Measure package
-downloads, successful-install reports, support burden, and Hosted Pro signups. These are
+downloads, successful-install reports, support burden, raw verified Hosted Pro intent, the
+activation-linked subset, unique qualified offer exposures, and acquisition source. Read the
+Wilson bound after at least 250 qualified exposures and four weeks; 12 qualifying raw intent
+responses at `n=250` produce an approximately 3.02% one-sided lower bound. These are
 product-led signals; no interviews, calls, prospect spreadsheet, or outbound cohort is
 needed.
 
 ## Decision after launch
 
-- **Paid intent appears:** estimate the hosted build, set the minimum viable signup
-  threshold, obtain the single scoped paid-product legal decision, and build one remote
-  MCP tier if the economics and legal boundary hold.
+- **Paid intent clears 350:** re-cost and request separate authorization only for the capped
+  compatibility spike.
+- **Paid intent clears 1,350:** re-cost and request separate authorization only for the
+  scoped legal/source/payment-provider decision.
+- **Paid intent clears 11,100:** re-estimate the complete economics using observed cohorts;
+  consider a remote MCP build only if every legal, rights, payment, OAuth, tenant, billing,
+  transport, operations, recovery, and explicit-authorization gate still passes.
 - **Paid intent does not appear:** keep Local Beta free, improve or stop based on actual
   adoption and support evidence, and do not manufacture revenue through consulting or
   founder-led services.
@@ -149,7 +181,8 @@ Do not:
 - sell custom demonstrations, design partnerships, or bespoke integrations;
 - publish a proof-only repository instead of the actual product;
 - revive the historical `$199 for 90 days`, `$49/month`, or `$399/year` paid local beta;
-- build hosted infrastructure before paid intent;
+- build hosted infrastructure before the safeguarded 11,100-signup gate, re-costing, and
+  explicit implementation authorization;
 - build a mass-market UI, alerts, brokerage integration, institutional administration,
   licensed options data, or predictive backtesting before the product-led path requires
   it; or

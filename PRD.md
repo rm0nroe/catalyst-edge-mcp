@@ -76,8 +76,12 @@ calibration.
 For the current owner-operated local build, paid options flow, licensed OHLC,
 sentiment, hosted deployment, packaging, CI, consumer distribution, broader SEC
 semantic extraction, and the sibling Flask migration are optional future
-extensions rather than blockers for this acceptance boundary. Their absence
-must remain explicit typed missingness and must never be fabricated as evidence.
+extensions rather than blockers for this acceptance boundary. Hosted Pro is separately
+gated by the current GTM plan: 350 recent activation-linked, verified, price-aware signups
+may justify only a capped compatibility spike, 1,350 only a scoped review, and 11,100 only
+full-build reconsideration and re-costing. These future extensions remain outside the local
+acceptance boundary; their absence must remain explicit typed missingness and must never be
+fabricated as evidence.
 
 ## Problem
 
@@ -361,7 +365,8 @@ Create small deterministic fixtures for:
 ## Open Questions
 
 - Which MCP Python SDK/version should this repository standardize on?
-- Should the first tool be read-only local-only, or exposed through a hosted service wrapper?
+- The first product is decided as read-only Local Beta. A hosted wrapper is a separate,
+  conditional product and is not implementation-authorized by this PRD.
 - Which existing collectors are reliable enough to wrap in v1?
 - Should the existing `/api/cce/<ticker>` route be migrated in the same PR or kept separate?
 - What data vendors are legally available in the deployment environment?

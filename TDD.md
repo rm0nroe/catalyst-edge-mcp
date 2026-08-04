@@ -1,6 +1,6 @@
 # Catalyst Edge MCP — Technical Design
 
-**Revision:** Public self-serve source defaults aligned, 2026-08-02
+**Revision:** Public self-serve and Hosted Pro GTM gates aligned, 2026-08-03
 
 ## 1. Scope, outcome, and fixed decisions
 
@@ -600,6 +600,14 @@ size limits, TLS, structured secret-free logs, `/health/live` and
 `/health/ready` checks, provider circuit-breaker metrics, and an allowlist for
 origins/network exposure. These controls are deployment prerequisites, not
 silent defaults in the local server.
+
+The hosted-service architecture remains conditional and outside this TDD's implementation
+authority. The current GTM plan permits only a separately authorized compatibility spike at
+350 recent activation-linked, verified, price-aware signups; a separately authorized scoped
+legal/source/payment review at 1,350; and full-build reconsideration—after fresh re-costing—
+at the safeguarded 11,100-signup gate. None of those counts authorizes deployment or payment.
+The conditional architecture and complete acceptance surface are documented in
+`thoughts/unknown-ticket/design/2026-08-03-ADR-hosted-pro-architecture.md`.
 
 ## 13. Implementation sequence
 
