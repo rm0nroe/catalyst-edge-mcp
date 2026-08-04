@@ -10,12 +10,17 @@
   "scripts": {
     "mcpb:validate": "mcpb validate manifest.json",
     "mcpb:pack": "mcpb pack . dist/catalyst-edge-mcp-0.1.1.mcpb && uv run --frozen python scripts/normalize_mcpb.py dist/catalyst-edge-mcp-0.1.1.mcpb",
-    "mcpb:sign": "uv run --frozen python scripts/sign_mcpb.py"
+    "mcpb:sign": "uv run --frozen python scripts/sign_mcpb.py",
+    "site:build": "mkdir -p dist-site/assets && cp site/index.html site/styles.css site/app.js dist-site/ && cp docs/validation/launch-assets/catalyst-edge-local-beta/evidence-ledger-1920x800.png docs/validation/launch-assets/catalyst-edge-local-beta/aapl-evidence-flow-1600x1000.png dist-site/assets/",
+    "site:test": "node --test tests/site_intent.test.cjs"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2"
   },
   "overrides": {
     "tmp": "0.2.7"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.6.1"
   }
 }
