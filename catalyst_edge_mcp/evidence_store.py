@@ -358,9 +358,20 @@ class EvidenceStore:
             )
             connection.commit()
 
-    def ingest_event(self, observation: EventObservation) -> StoredEvent:
+    def ingest_event(
+        self, observation: EventObservation, *, group_event_id: int | None = None
+    ) -> StoredEvent:
         with self._lock:
             connection = self._connect()
+            if group_event_id is not None:
+                grouped_event = connection.execute(
+                    "SELECT issuer_key FROM canonical_event WHERE id=?", (group_event_id,)
+                ).fetchone()
+                if (
+                    grouped_event is None
+                    or str(grouped_event["issuer_key"]) != observation.issuer_key
+                ):
+                    raise ValueError("Grouped source must reference an event for the same issuer")
             canonical_url = canonicalize_url(observation.canonical_url)
             normalized = normalize_title(observation.title)
             if not normalized:
@@ -399,49 +410,53 @@ class EvidenceStore:
                     (observation_fingerprint,),
                 ).fetchone()[0]
             )
-            exact_fingerprint = self._hash(observation.issuer_key, normalized, canonical_url)
-            event = connection.execute(
-                "SELECT * FROM canonical_event WHERE exact_fingerprint=?",
-                (exact_fingerprint,),
-            ).fetchone()
-            if event is None:
-                event = self._fuzzy_candidate(
-                    connection,
-                    observation.issuer_key,
-                    normalized,
-                    observation.published_at,
-                )
-                correction = event is not None and self._is_correction(
-                    normalized, str(event["normalized_title"])
-                )
-                if event is None or correction:
-                    now = self._iso(observation.retrieved_at)
-                    correction_of = int(event["id"]) if correction else None
-                    version = int(event["version"]) + 1 if correction else 1
-                    cursor = connection.execute(
-                        """
-                        INSERT INTO canonical_event(
-                            issuer_key, exact_fingerprint, normalized_title, display_title,
-                            published_at, correction_of_event_id, version, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            observation.issuer_key,
-                            exact_fingerprint,
-                            normalized,
-                            observation.title,
-                            self._iso(observation.published_at),
-                            correction_of,
-                            version,
-                            now,
-                            now,
-                        ),
+            if group_event_id is not None:
+                event_id = group_event_id
+            else:
+                exact_fingerprint = self._hash(observation.issuer_key, normalized, canonical_url)
+                event = connection.execute(
+                    "SELECT * FROM canonical_event WHERE exact_fingerprint=?",
+                    (exact_fingerprint,),
+                ).fetchone()
+                if event is None:
+                    event = self._fuzzy_candidate(
+                        connection,
+                        observation.issuer_key,
+                        normalized,
+                        observation.published_at,
                     )
-                    event_id = int(cursor.lastrowid)
+                    correction = event is not None and self._is_correction(
+                        normalized, str(event["normalized_title"])
+                    )
+                    if event is None or correction:
+                        now = self._iso(observation.retrieved_at)
+                        correction_of = int(event["id"]) if correction else None
+                        version = int(event["version"]) + 1 if correction else 1
+                        cursor = connection.execute(
+                            """
+                            INSERT INTO canonical_event(
+                                issuer_key, exact_fingerprint, normalized_title, display_title,
+                                published_at, correction_of_event_id, version,
+                                created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                observation.issuer_key,
+                                exact_fingerprint,
+                                normalized,
+                                observation.title,
+                                self._iso(observation.published_at),
+                                correction_of,
+                                version,
+                                now,
+                                now,
+                            ),
+                        )
+                        event_id = int(cursor.lastrowid)
+                    else:
+                        event_id = int(event["id"])
                 else:
                     event_id = int(event["id"])
-            else:
-                event_id = int(event["id"])
             rank = SOURCE_RANKS.get(observation.source_tier, 10)
             connection.execute(
                 """
