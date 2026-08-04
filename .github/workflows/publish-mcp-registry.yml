@@ -1,0 +1,44 @@
+name: Publish to MCP Registry
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish server metadata
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install verified MCP publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/mcp-publisher.tar.gz"
+          curl --fail --location --silent --show-error \
+            --output "$archive" \
+            https://github.com/modelcontextprotocol/registry/releases/download/v1.8.0/mcp-publisher_linux_amd64.tar.gz
+          test "$(sha256sum "$archive" | cut -d' ' -f1)" = \
+            "1370446bbe74d562608e8005a6ccce02d146a661fbd78674e11cc70b9618d6cf"
+          tar -xzf "$archive" -C "$RUNNER_TEMP" mcp-publisher
+
+      - name: Validate server metadata
+        run: |
+          "$RUNNER_TEMP/mcp-publisher" validate server.json
+
+      - name: Authenticate with GitHub OIDC
+        run: |
+          "$RUNNER_TEMP/mcp-publisher" login github-oidc
+
+      - name: Publish server metadata
+        run: |
+          "$RUNNER_TEMP/mcp-publisher" publish server.json
