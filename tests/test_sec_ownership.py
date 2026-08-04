@@ -114,10 +114,13 @@ def _transport(request: httpx.Request) -> httpx.Response:
 
 
 @pytest.mark.asyncio
-async def test_PT_SEC_INSIDER_NORMALIZATION_builds_strong_cluster_and_neutral_form144():
+async def test_PT_SEC_INSIDER_NORMALIZATION_builds_strong_cluster_and_neutral_form144(tmp_path):
     async with httpx.AsyncClient(transport=httpx.MockTransport(_transport)) as client:
         result = await SecInsiderAdapter(
-            "Catalyst Edge test@example.com", client=client, clock=lambda: AS_OF
+            "Catalyst Edge test@example.com",
+            client=client,
+            clock=lambda: AS_OF,
+            store_path=str(tmp_path / "evidence.sqlite3"),
         ).collect("NVDA", 14)
 
     assert result.status == SourceStatus.FRESH
@@ -140,6 +143,20 @@ async def test_PT_SEC_INSIDER_NORMALIZATION_builds_strong_cluster_and_neutral_fo
     assert all(source.raw_sha256 for source in cluster.sources)
     assert all(source.accession_or_record_id for source in cluster.sources)
     assert len(cluster.raw_signal) == 3
+    assert cluster.context.claim_id
+    store = SecInsiderAdapter(
+        "Catalyst Edge test@example.com",
+        store_path=str(tmp_path / "evidence.sqlite3"),
+    ).store
+    page = store.claim_sources(cluster.context.claim_id, limit=2)
+    second_page = store.claim_sources(
+        cluster.context.claim_id, cursor=page.next_cursor, limit=2
+    )
+    assert page.total_sources == 3
+    source_ids = {
+        source.source_reference_id for source in [*page.sources, *second_page.sources]
+    }
+    assert len(source_ids) == 3
     assert proposed.direction == Direction.NEUTRAL
     assert proposed.context.event_type == "proposed_insider_sale"
     assert proposed.raw_signal["completed_execution"] is False
