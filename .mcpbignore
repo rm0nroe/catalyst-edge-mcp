@@ -1,11 +1,15 @@
 .git/
 .github/
+.vercel/
+api/
 .venv/
 build/
 dist/
+dist-site/
 docs/
 node_modules/
 scripts/
+site/
 tests/
 thoughts/
 __pycache__/
@@ -25,3 +29,4 @@ package-lock.json
 GTM_PLAN.md
 PRD.md
 TDD.md
+vercel.json
