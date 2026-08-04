@@ -1,8 +1,8 @@
 # Public Local Beta Release Readiness Plan
 
-**Status:** Current execution plan for the builder-first self-serve GTM. This document
-does not authorize publication. Ryan must approve the exact repository, release, PyPI,
-MCP Registry, `.mcpb`, and landing-page targets before any public action.
+**Status:** Authorized 2026-08-04 for the GitHub/PyPI/Codex/MCP Registry Local Beta
+sequence. The Claude one-click `.mcpb` is excluded until production-trusted signing is
+verifiable. The landing-page target remains unresolved and must not be invented.
 
 ## Release target
 
@@ -15,7 +15,8 @@ Required channels:
 - public GitHub repository and versioned GitHub release;
 - PyPI wheel and source distribution;
 - one copy-paste Codex stdio configuration path;
-- one signed Claude Desktop `.mcpb` for the public Claude installation path; and
+- one manual Claude Desktop stdio path using the pinned PyPI package while the trusted
+  one-click `.mcpb` channel is withheld; and
 - MCP Registry metadata only after the permanent public package endpoint works.
 
 Hosted access, authentication, billing, tenancy, dashboards, alerts, brokerage
@@ -26,16 +27,16 @@ integration, and managed support are outside this release.
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
 | R0 — scope freeze | PRD/TDD/GTM agree on two local read-only tools, one ticker per call, deterministic unbacktested scoring, typed missingness, and no recommendation | Met; recheck after documentation/config changes |
-| R1 — reproducible artifact | Clean reviewed commit; matching package version/tag; wheel, sdist, and MCPB install; SHA-256 manifest and release notes | Exact merged `main` commit `d78dbe2` reproduced wheel `d4484ab...`, sdist `ec8a4505...`, and 47-member unsigned MCPB `6d7424f...` byte-for-byte in two clean archives. The required SEC claim-persistence fix is now an uncommitted deterministic candidate, so no final clean/tagged artifacts exist. Production-trusted signing remains open. |
-| R2 — validation CI | Lock, lint, Python 3.10/3.14 tests, stdio/HTTP contracts, clean build, installed-artifact and MCPB verification | PR #14 merged only after fresh Python 3.10, Python 3.14, and Installed artifact checks passed. The new SEC claim-persistence diff passes lock, Ruff, all 463 tests on both Python versions, npm audit, MCPB validation, deterministic packing, exact inventory, and installed stdio/HTTP probes locally; it still requires review, commit, and fresh remote CI. |
-| R3 — public configuration | SEC identity required; issuer/GDELT/Bluesky disabled by default; package metadata, `.env.example`, README, and runtime agree | Implemented; focused contracts and the full 463-test suite pass locally. |
-| R4 — self-serve onboarding | Clean local wheel install plus actual Codex and Claude Desktop tool discovery without package-code edits | Codex CLI and Claude Desktop both discovered the exact two tools from the prior exact self-signed QA artifact and returned an AAPL SEC-only score. Claude previewed, installed, configured, and enabled it; Codex invoked the same extracted member bytes from an isolated home. The rebased 47-member candidate still requires exact-byte client rerun after production-trusted signing; current Claude and MCPB CLI verification remains fail-closed upstream. |
-| R5 — release sample | Five fixed public tickers produce five schema-valid dossiers, complete available claim pagination, and explicit missing/rejected evidence; one sanitized example is safe to publish | A live SEC-only HOOD/AAPL/NVDA/TSLA/RKLB run produced five schema-valid dossiers and typed missingness. HOOD returned one real two-filing claim; two one-source pages reconciled `2 returned = 2 unique = total_sources`, with terminal `next_cursor=null`, SEC-only `primary_regulator` sources, and `approved` policy decisions. This proof depends on the uncommitted claim-persistence diff. Ryan approved the Evidence Terminal launch package on 2026-08-03; publication remains separately gated by R7. |
+| R1 — reproducible artifact | Clean reviewed commit; matching package version/tag; wheel, sdist, and MCPB install; SHA-256 manifest and release notes | PR #15 merged the SEC claim fix at `f387d1c`. The public-readiness candidate reproduces byte-for-byte: wheel `6a9d0910...`, sdist `5383f14a...`, and 47-member unsigned MCPB `53cd8a77...`. The wheel/sdist are release candidates; the unsigned MCPB is compatibility QA only and is excluded from distribution. |
+| R2 — validation CI | Lock, lint, Python 3.10/3.14 tests, stdio/HTTP contracts, clean build, installed-artifact and MCPB verification | PR #15 passed Python 3.10, Python 3.14, and Installed artifact CI. The subsequent security refresh updates locked `cryptography` from vulnerable `49.0.0` to fixed `50.0.0`; Python dependency audit, npm audit, Ruff, all 463 tests on both Python versions, deterministic builds, inventory, and installed stdio/HTTP probes pass locally. Fresh PR CI remains required. |
+| R3 — public configuration | SEC identity required; issuer/GDELT/Bluesky disabled by default; package metadata, `.env.example`, README, and runtime agree | Implemented. Public PyPI URLs and pinned Codex/Claude manual stdio instructions now agree with the loopback-only runtime and disabled-by-default sources. |
+| R4 — self-serve onboarding | Clean local wheel install plus actual Codex and Claude Desktop tool discovery without package-code edits | Installed wheel/sdist probes discover exactly the two tools over stdio and HTTP. Prior Codex and Claude manual stdio QA also discovered both tools. The public PyPI endpoint still requires post-upload clean-install proof; the trusted Claude one-click channel remains withheld. |
+| R5 — release sample | Five fixed public tickers produce five schema-valid dossiers, complete available claim pagination, and explicit missing/rejected evidence; one sanitized example is safe to publish | The public-readiness wheel produced five schema-valid SEC-only HOOD/AAPL/NVDA/TSLA/RKLB dossiers and typed missingness. HOOD returned one real two-filing claim; two one-source pages reconciled `2 returned = 2 unique = total_sources`, with terminal `next_cursor=null`, SEC-only `primary_regulator` sources, and `approved` policy decisions. Ryan approved the Evidence Terminal launch package on 2026-08-03. |
 | R6 — rollback | Prior artifact/configuration can be restored without deleting the local evidence store | Met for the QA path. The materialized isolated SQLite store retained its exact SHA-256, sentinel, 11-table schema, and `ok` integrity result across uninstall of the unsigned fallback, install/configuration of the self-signed QA artifact, and fresh Claude/Codex calls. |
-| R7 — publication authority | Public-source rights/defaults, package inventory, security notes, final target URLs, and exact publication actions are reviewed and explicitly approved by Ryan | Open; blocks publication |
+| R7 — publication authority | Public-source rights/defaults, package inventory, security notes, final target URLs, and exact publication actions are reviewed and explicitly approved by Ryan | Met for public GitHub, `v0.1.1`, PyPI, Codex, and MCP Registry on 2026-08-04. Claude `.mcpb` and unresolved landing-page deployment are excluded. |
 
-Passing R0–R6 does not authorize R7. A paid Hosted Pro experience has a separate legal,
-security, privacy, billing, and operating gate; it is not part of Local Beta readiness.
+The paid Hosted Pro experience retains a separate legal, security, privacy, billing, and
+operating gate; it is not part of Local Beta readiness.
 
 ## Hosted Pro measurement boundary
 
@@ -81,7 +82,7 @@ success never replaces offline contract validation.
 - Build from a clean reviewed commit after required CI passes.
 - Include `LICENSE`, `README.md`, the packaged reviewed registry, public installation
   runbook, and release-sample runbook.
-- Publish hashes for the wheel, sdist, and signed `.mcpb`.
+- Publish hashes for the wheel and sdist. Do not attach the unsigned or self-signed MCPB.
 - Retain the prior accepted artifacts/configuration for rollback.
 - Do not publish customer data, personal Watchlist data, credentials, `.env`, local state,
   generated dossiers, or raw provider payloads.
@@ -107,8 +108,7 @@ Measure from artifact verification to exact two-tool discovery in each supported
 
 1. Install the pinned wheel into a clean supported Python environment.
 2. Configure a monitored SEC identity and absolute local evidence-store path.
-3. Add the installed `catalyst-edge-mcp` executable to Codex, or install the reviewed
-   MCPB in Claude Desktop.
+3. Add the pinned PyPI executable to Codex or Claude Desktop over stdio.
 4. Confirm exact discovery of `catalyst_edge_score` and
    `catalyst_edge_claim_sources`.
 5. Invoke one ticker and inspect the unbacktested/no-recommendation warning.
@@ -132,31 +132,26 @@ willingness to pay.
 ## Exit checklist
 
 - [ ] Current diff is reviewed and committed without unrelated files.
-- [ ] R0–R6 evidence is attached to the final release record.
-- [ ] Runtime, `.env.example`, README, runbooks, rights matrix, and `server.json` agree.
-- [ ] Codex and Claude Desktop exact two-tool onboarding is measured.
-- [ ] Wheel, sdist, and signed `.mcpb` hashes match the final artifacts.
-- [ ] Public-safe sample and security/source limitations are reviewed.
-- [ ] Paid-intent measurement copy, double opt-in, deduplication, offer-version/source,
+- [x] R0–R6 evidence is attached to the release record.
+- [x] Runtime, `.env.example`, README, runbooks, rights matrix, and `server.json` agree.
+- [x] Codex and Claude Desktop manual stdio exact two-tool onboarding is measured.
+- [ ] Wheel and sdist hashes match the final tagged artifacts; MCPB is excluded.
+- [x] Public-safe sample and security/source limitations are reviewed.
+- [x] Paid-intent measurement copy, double opt-in, deduplication, offer-version/source,
       activation-link privacy, raw-intent denominator, and exclusion rules are reviewed.
-- [ ] Exact publication targets and actions receive explicit Ryan authorization.
+- [x] Exact feasible publication targets and actions received Ryan authorization.
 
 ## Prepared publication targets and order
 
-These are proposed targets only; none has been created, made public, tagged, uploaded,
-or submitted by this plan:
+Authorized execution order:
 
-1. PR #14 is merged into the private `rm0nroe/catalyst-edge-mcp` repository at
-   `d78dbe2`; repository visibility remains private.
-2. Review and land the SEC grouped-claim persistence diff, rerun fresh CI, then rebuild
-   wheel, sdist, and `catalyst-edge-mcp-0.1.1.mcpb` from the resulting clean `main`
-   commit and record their final hashes.
-3. Resolve the Claude-compatible production signature and repeat Codex/Claude install,
-   invocation, and rollback proof against those exact bytes.
-4. After explicit publication approval, make the existing repository public and create
-   GitHub tag/release `v0.1.1`.
-5. Publish PyPI project `catalyst-edge-mcp` and verify a clean install from the permanent
+1. Land the security/readiness follow-up in the private repository after fresh CI.
+2. Rebuild and verify the exact final `main` wheel and sdist.
+3. Make the existing repository public and create GitHub tag/release `v0.1.1`; attach the
+   reviewed wheel, sdist, and checksum manifest, but no MCPB.
+4. Publish PyPI project `catalyst-edge-mcp` and verify a clean install from the permanent
    public endpoint.
-6. Submit MCP Registry name `io.github.rm0nroe/catalyst-edge-mcp` only after the public
+5. Submit MCP Registry name `io.github.rm0nroe/catalyst-edge-mcp` only after the public
    package endpoint is verified.
-7. Publish the approved landing page and sample last; its exact URL remains unresolved.
+6. Record the landing-page blocker unless an existing authorized production target is
+   discovered. Do not invent a domain or deploy into an unrelated site.
