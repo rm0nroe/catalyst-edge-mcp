@@ -1,0 +1,48 @@
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: GitHub release tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish exact GitHub release artifacts
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/catalyst-edge-mcp
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download and verify release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir dist
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir dist \
+            --pattern 'catalyst_edge_mcp-*.whl' \
+            --pattern 'catalyst_edge_mcp-*.tar.gz' \
+            --pattern 'catalyst-edge-mcp-*-SHA256SUMS.txt'
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" -eq 1
+          test "$(find dist -maxdepth 1 -name '*.tar.gz' | wc -l)" -eq 1
+          test "$(find dist -maxdepth 1 -name '*-SHA256SUMS.txt' | wc -l)" -eq 1
+          (cd dist && sha256sum --check ./*-SHA256SUMS.txt)
+          rm ./dist/*-SHA256SUMS.txt
+
+      - name: Publish package distributions
+        uses: pypa/gh-action-pypi-publish@a892a5a61159132606e93a2fa6f4358831b04d26 # v1.14.2
+        with:
+          packages-dir: dist
