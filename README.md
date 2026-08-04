@@ -26,16 +26,15 @@ The product promise is bounded:
 The scorer is deterministic and unbacktested. Catalyst Edge does not promise alpha,
 investment performance, buy/sell signals, personalized advice, or execution.
 
-As of 2026-08-03, the self-serve release is prepared but not public: the GitHub repository
-is private, and no git tag, GitHub release, PyPI project, MCP Registry entry, or
-release-signed Claude Desktop `.mcpb` exists. A reproducible unsigned MCPB release
-candidate passes inventory checks and local Codex/Claude QA; production-compatible
-signing remains an open release gate. The current direction is a complete free Local Beta
-plus a `Hosted Pro — $29/month` paid-intent test. Research does not support building Hosted
-Pro now: only recent activation-linked, verified, price-aware signups count toward staged
-350 compatibility-spike, 1,350 scoped-review, and 11,100 safeguarded full-build
-reconsideration gates. None grants automatic implementation, payment, or deployment
-authority. Publication and paid launch remain separately gated in
+Version 0.1.1 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
+Registry. Claude Desktop can use the same PyPI package through a manual stdio
+configuration, but the one-click `.mcpb` is intentionally withheld until its publisher
+can be verified by a production-trusted signing path. The current direction also includes
+a `Hosted Pro — $29/month` paid-intent test. Research does not support building Hosted Pro
+now: only recent activation-linked, verified, price-aware signups count toward staged 350
+compatibility-spike, 1,350 scoped-review, and 11,100 safeguarded full-build reconsideration
+gates. None grants automatic implementation, payment, or deployment authority. Paid
+launch remains separately gated in
 [`GTM_PLAN.md`](GTM_PLAN.md); the economics are documented in the
 [`Hosted Pro architecture research`](thoughts/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md).
 
@@ -110,21 +109,38 @@ or filing structures remain `other_material_event` and require human review.
 No numeric scorer change was justified because the real corpus contains no
 forward-return labels. The scorer remains deterministic and explicitly
 unbacktested. Paid options flow, licensed OHLC, sentiment, hosted deployment, and
-broader SEC semantic extraction are future capabilities. Public self-serve distribution
-is the selected GTM but is not yet authorized or released.
+broader SEC semantic extraction are future capabilities. Version 0.1.1 ships only the
+local, self-serve surface.
 
 In older implementation notes and runtime messages, “production” means the
 real non-fixture composition path used by the local MCP. It does not imply a
 hosted service, third-party provider role, paid account, or consumer rollout.
 
-## Build and verify from the private source checkout
+## Install
 
-Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required.
+Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required. Register the pinned PyPI
+package with Codex:
 
 ```bash
-uv sync --extra dev
-uv run pytest
-uv run ruff check .
+codex mcp add catalyst-edge \
+  --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
+  --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
+  -- uvx --from 'catalyst-edge-mcp==0.1.1' catalyst-edge-mcp
+```
+
+Open a fresh task and confirm discovery of exactly `catalyst_edge_score` and
+`catalyst_edge_claim_sources`. The complete Codex, Claude Desktop, privacy, and rollback
+procedure is in
+[`docs/demo/customer-installation-runbook.md`](docs/demo/customer-installation-runbook.md).
+
+## Build and verify from source
+
+Maintainers can verify the source checkout with the locked toolchain:
+
+```bash
+uv sync --frozen --extra dev
+uv run --frozen pytest
+uv run --frozen ruff check .
 uv build --no-sources --out-dir dist
 ```
 
@@ -144,7 +160,7 @@ and contains no package publish, release creation, registry, credential, or arti
 The same workflow validates the MCPB release candidate with pinned Node/npm and
 `@anthropic-ai/mcpb` versions, a locked dependency integrity, zero known npm audit
 findings, a fail-closed file inventory, and deterministic ZIP metadata. Maintainers can
-run the identical packaging lane from a private checkout:
+run the identical packaging lane from a source checkout:
 
 ```bash
 npm ci --ignore-scripts
@@ -155,16 +171,8 @@ uv run --frozen python scripts/verify_mcpb.py \
   --bundle dist/catalyst-edge-mcp-0.1.1.mcpb
 ```
 
-This produces an **unsigned private release candidate**, not an authorized public
-download. Signing, publication, registry submission, and client distribution require
-separate approval and a client-compatible production signing path.
-
-These are maintainer/source-checkout commands, not a public installation path. For the
-current wheel installation, Codex/Claude configuration, exact two-tool readback, and
-rollback procedure, follow
-[`docs/demo/customer-installation-runbook.md`](docs/demo/customer-installation-runbook.md).
-The filename is retained for release continuity; the document now describes generic
-self-serve local installation.
+This produces an unsigned compatibility artifact for maintainer QA. It is not distributed
+as a production-trusted Claude one-click package.
 
 The live Web NGrams replacement evidence is recorded in
 [`docs/validation/gdelt-web-ngrams-live-2026-07-14.md`](docs/validation/gdelt-web-ngrams-live-2026-07-14.md).
