@@ -1,16 +1,15 @@
 # Catalyst Edge MCPB Release Candidate 0.1.1
 
-**Status:** Private preparatory evidence only. No repository visibility change, tag,
-release, package upload, registry submission, landing-page change, or customer delivery
-is authorized or represented by this record.
+**Status:** Public GitHub/PyPI/Codex/MCP Registry release is authorized. This record does
+not authorize or represent a production-trusted Claude `.mcpb`; that channel is withheld.
 
 ## Candidate provenance
 
 - Merged baseline: exact private `main` commit
-  `d78dbe216b0cf63bdb8f906d25c4404729f622ef` from PR #14.
-- Working branch: `codex/release-closeout-0.1.1` in the isolated release worktree.
-  It contains an uncommitted SEC grouped-claim persistence fix; those bytes are not a
-  final clean release commit.
+  `f387d1cdf27a141a1aa104a3b65e6d61ec9dfcbb` from PR #15.
+- Working branch: `codex/public-release-readiness` in the isolated release worktree.
+  It updates the locked vulnerable `cryptography==49.0.0` dependency to fixed `50.0.0`
+  and prepares public package metadata and installation instructions.
 - Package and manifest version: `0.1.1`.
 - MCPB CLI: `@anthropic-ai/mcpb@2.1.2`, exact npm integrity pinned in
   `package-lock.json`.
@@ -54,8 +53,18 @@ grouped-claim persistence fix also reproduced byte-for-byte in two builds:
 - first-attempt wheel onboarding in 4.214 seconds with exact two-tool stdio/HTTP
   discovery and schema-valid typed missingness.
 
-These later hashes are QA evidence only. Review, commit, fresh remote CI, and a clean
-post-merge rebuild are still required before any artifact can be called final.
+The public-readiness candidate then reproduced byte-for-byte in two builds:
+
+- wheel SHA-256 `6a9d091094afb7e665652d5c1c95b5b82bf36d6e83d2ab11b5abc40973a1d1bc`;
+- sdist SHA-256 `5383f14ad0f3a97995d384c468f83143d49289330920579dcfe8e03589bc4d36`;
+- 47-member unsigned MCPB SHA-256
+  `53cd8a774d82182d898aaf73ad261e1466af92f24eceede16c5959f3dcd51831`; and
+- first-attempt wheel onboarding in 2.991 seconds with exact two-tool stdio/HTTP
+  discovery and schema-valid typed missingness.
+
+The Python dependency audit reports no known vulnerabilities and npm reports zero. The
+wheel and sdist remain candidates until fresh PR CI and a clean post-merge rebuild. The
+unsigned MCPB is compatibility QA only and must not be distributed.
 
 The pre-documentation unsigned payload used for client/signing QA had SHA-256
 `ed3a473733202556355a8e0e69193b50dbfe97fead98bd4e13bfce18a97e347e`; only the
@@ -134,9 +143,9 @@ not route its real multi-filing sources into the existing event/claim store. The
 working-tree fix now persists a grouped claim once and reuses the existing bounded
 `claim_sources` pagination path.
 
-A clean Python 3.14 environment installed candidate wheel SHA-256 `0a9ef93f...`, then a
+A clean Python 3.14 environment installed public-readiness wheel SHA-256 `6a9d0910...`, then a
 live SEC-only `HOOD AAPL NVDA TSLA RKLB` run at
-`/tmp/catalyst-edge-final-wheel-proof.CNaPye/proof` passed all runner acceptance checks:
+`/tmp/catalyst-edge-public-ready-wheel-proof.3azGQS/proof` passed all runner acceptance checks:
 
 - five schema-valid, one-call-per-ticker dossiers;
 - HOOD claim `clm_962c9b2da2d4d23df22f445d7266429f82b045f7f53591bdee0a15bc3bad28d8`;
@@ -147,32 +156,32 @@ live SEC-only `HOOD AAPL NVDA TSLA RKLB` run at
   `f91e356ca16b02c3fd343c9a0e27499e357b45b1f3545d494a9856eebe6a2abc`.
 
 The focused regression, lock check, Ruff, and all 463 tests pass on Python 3.10 and
-3.14. This closes the local pagination behavior gap but remains uncommitted evidence.
+3.14. PR #15 merged the pagination fix at `f387d1c` after all three CI jobs passed.
 
 ## Gate boundary
 
-- R0/R3: the rebased scope/configuration contracts and full local suite pass.
-- R1: exact merged-main unsigned artifacts reproduce, and the uncommitted post-fix
-  artifacts reproduce separately; the next clean reviewed commit, matching tag, and
-  compatible production signing remain open.
-- R2: PR #14 fresh CI passed before merge. The uncommitted SEC fix passes local Python
-  3.10/3.14, lint, npm audit, MCPB, inventory, and installed-artifact checks; fresh PR CI
-  remains required for that diff.
-- R4: Codex and Claude invocation pass against the prior exact self-signed QA member bytes;
-  the rebased candidate still needs production-trusted exact-byte client proof.
+- R0/R3: the scope/configuration contracts, public metadata, and full local suite pass.
+- R1: the public-readiness artifacts reproduce; fresh PR CI, merge, clean-main rebuild,
+  and matching tag remain open. MCPB distribution is excluded.
+- R2: PR #15 fresh CI passed. The dependency/security refresh passes local Python
+  3.10/3.14, lint, Python/npm audit, MCPB, inventory, and installed-artifact checks; its
+  fresh PR CI remains required.
+- R4: installed wheel/sdist and prior Codex/Claude manual stdio QA discover both tools;
+  clean PyPI endpoint proof remains open.
 - R5: five live SEC-only calls, typed missingness, and full two-page HOOD claim
-  reconciliation pass on the uncommitted fix. Ryan approved the Evidence Terminal visual
-  launch package on 2026-08-03.
+  reconciliation pass on the merged fix and public-readiness wheel. Ryan approved the
+  Evidence Terminal visual launch package on 2026-08-03.
 - R6: extension/config rollback and exact SQLite hash/sentinel preservation pass for the
-  prior unsigned-to-self-signed QA reinstall path; repeat against the final signed bytes.
-- R7: publication authority remains open and blocks every public action.
+  prior QA reinstall path; MCPB distribution is excluded.
+- R7: public GitHub/PyPI/Codex/MCP Registry publication is authorized; Claude MCPB and
+  unresolved landing-page deployment are excluded.
 
 ## Post-merge signing investigation
 
-The rebased unsigned candidate is deterministic at SHA-256
-`6d7424f73ea34082f22736e7c5446df7b756cb53f2e0fec1076e8b056365f3b0` with 47 allowed
-members. The earlier 45-member exact-byte client proof remains historical QA evidence; the
-rebased bytes require a new production-signed client and rollback run before release.
+The public-readiness unsigned candidate is deterministic at SHA-256
+`53cd8a774d82182d898aaf73ad261e1466af92f24eceede16c5959f3dcd51831` with 47 allowed
+members. The earlier 45-member exact-byte client proof remains historical QA evidence;
+no MCPB bytes will be distributed without genuine production-trusted client proof.
 
 The released MCPB CLI `2.1.2` is still the latest published version and still appends a
 detached CMS block without updating the ZIP end-of-central-directory comment length.
@@ -210,14 +219,15 @@ trusted publisher readback, or production-signed exact bytes exist.
 
 ## 2026-08-04 publication readback
 
-- `rm0nroe/catalyst-edge-mcp` remains private at merged commit `d78dbe2`.
+- `rm0nroe/catalyst-edge-mcp` remains private at merged commit `f387d1c`.
 - No GitHub tag or release exists.
 - PyPI project `catalyst-edge-mcp` returns HTTP 404.
 - MCP Registry search for `io.github.rm0nroe/catalyst-edge-mcp` returns zero servers.
 - No landing-page URL is resolved or deployed.
 
-R7 remains closed. No visibility change, tag, release, upload, Registry submission,
-landing-page deployment, customer delivery, payment, or production signing occurred.
+R7 is authorized for the feasible GitHub/PyPI/Codex/MCP Registry sequence, but no
+visibility change, tag, release, upload, Registry submission, landing-page deployment,
+customer delivery, payment, or production signing had occurred at this readback.
 
 ## Post-merge exact-byte client and rollback proof
 

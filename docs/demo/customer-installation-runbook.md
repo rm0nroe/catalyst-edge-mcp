@@ -1,14 +1,13 @@
 # Local Self-Serve Installation and Rollback Runbook
 
-**Status:** Current local-user procedure. The legacy filename is retained for release
-continuity. No public artifact is available yet; use this with a locally built or future
-authorized release wheel. It does not authorize publication or source enablement.
+**Status:** Current Local Beta procedure for the pinned PyPI package. The legacy filename
+is retained for release continuity. It does not authorize additional source enablement.
 
 ## Prerequisites
 
 - Python 3.10+ and `uv`.
 - Claude Desktop, Codex, or another local stdio MCP client.
-- A pinned wheel plus SHA-256 manifest from the exact release candidate.
+- The pinned `catalyst-edge-mcp==0.1.1` PyPI package.
 - A monitored SEC identity in `Company email@example.com` form.
 - An absolute user-owned local evidence-store path.
 - The prior pinned wheel/configuration when testing rollback.
@@ -16,20 +15,11 @@ authorized release wheel. It does not authorize publication or source enablement
 Issuer feeds, GDELT, Bluesky, options, and sentiment are disabled by default. Do not
 enable them merely to obtain more output; follow the current source-rights matrix.
 
-## Verify and install the wheel
+## Install from PyPI
 
 ```bash
-sha256sum -c catalyst-edge-mcp-VERSION-SHA256SUMS.txt
-uv venv --python 3.10 /absolute/local/path/catalyst-edge-venv
-uv pip install \
-  --python /absolute/local/path/catalyst-edge-venv/bin/python \
-  /absolute/path/catalyst_edge_mcp-VERSION-py3-none-any.whl
-```
-
-The installed executable is:
-
-```text
-/absolute/local/path/catalyst-edge-venv/bin/catalyst-edge-mcp
+uv tool install 'catalyst-edge-mcp==0.1.1'
+uv tool list
 ```
 
 Keep credentials out of chat, committed files, and shell history. The SEC identity is a
@@ -56,7 +46,7 @@ The installed Codex CLI supports stdio MCP registration with `codex mcp add`:
 codex mcp add catalyst-edge \
   --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- /absolute/local/path/catalyst-edge-venv/bin/catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.1' catalyst-edge-mcp
 codex mcp get catalyst-edge
 ```
 
@@ -66,15 +56,15 @@ calling one public ticker.
 
 ## Add to Claude Desktop manually
 
-For pre-release QA only, configure the installed executable directly until the signed
-`.mcpb` is built and authorized. This manual path does not satisfy the public Claude
-release requirement:
+Configure the pinned PyPI package manually while the production-trusted one-click `.mcpb`
+channel remains withheld:
 
 ```json
 {
   "mcpServers": {
     "catalyst-edge": {
-      "command": "/absolute/local/path/catalyst-edge-venv/bin/catalyst-edge-mcp",
+      "command": "uvx",
+      "args": ["--from", "catalyst-edge-mcp==0.1.1", "catalyst-edge-mcp"],
       "env": {
         "CATALYST_EDGE_SEC_USER_AGENT": "Company ops@example.com",
         "CATALYST_EDGE_EVIDENCE_STORE": "/absolute/local/path/evidence.sqlite3"
