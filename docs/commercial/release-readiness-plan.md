@@ -26,11 +26,11 @@ integration, and managed support are outside this release.
 | Gate | Required evidence | Current state |
 | --- | --- | --- |
 | R0 — scope freeze | PRD/TDD/GTM agree on two local read-only tools, one ticker per call, deterministic unbacktested scoring, typed missingness, and no recommendation | Met; recheck after documentation/config changes |
-| R1 — reproducible artifact | Clean reviewed commit; matching package version/tag; wheel, sdist, and MCPB install; SHA-256 manifest and release notes | Wheel/sdist proof passes; the current rebased deterministic unsigned MCPB SHA-256 `6d7424f73ea34082f22736e7c5446df7b756cb53f2e0fec1076e8b056365f3b0` has 47 allowed files. The two-pass compatibility signer produces a strict-ZIP-valid, exact-CMS-verified QA artifact, but matching tag and a production-trusted signature remain open. |
-| R2 — validation CI | Lock, lint, Python 3.10/3.14 tests, stdio/HTTP contracts, clean build, installed-artifact and MCPB verification | Lock, lint, 463 tests on Python 3.10 and 3.14, npm audit, MCPB validation, deterministic packing, and exact inventory verification pass locally on the rebased signing branch. A fresh remote PR run remains open. |
+| R1 — reproducible artifact | Clean reviewed commit; matching package version/tag; wheel, sdist, and MCPB install; SHA-256 manifest and release notes | Exact merged `main` commit `d78dbe2` reproduced wheel `d4484ab...`, sdist `ec8a4505...`, and 47-member unsigned MCPB `6d7424f...` byte-for-byte in two clean archives. The required SEC claim-persistence fix is now an uncommitted deterministic candidate, so no final clean/tagged artifacts exist. Production-trusted signing remains open. |
+| R2 — validation CI | Lock, lint, Python 3.10/3.14 tests, stdio/HTTP contracts, clean build, installed-artifact and MCPB verification | PR #14 merged only after fresh Python 3.10, Python 3.14, and Installed artifact checks passed. The new SEC claim-persistence diff passes lock, Ruff, all 463 tests on both Python versions, npm audit, MCPB validation, deterministic packing, exact inventory, and installed stdio/HTTP probes locally; it still requires review, commit, and fresh remote CI. |
 | R3 — public configuration | SEC identity required; issuer/GDELT/Bluesky disabled by default; package metadata, `.env.example`, README, and runtime agree | Implemented; focused contracts and the full 463-test suite pass locally. |
 | R4 — self-serve onboarding | Clean local wheel install plus actual Codex and Claude Desktop tool discovery without package-code edits | Codex CLI and Claude Desktop both discovered the exact two tools from the prior exact self-signed QA artifact and returned an AAPL SEC-only score. Claude previewed, installed, configured, and enabled it; Codex invoked the same extracted member bytes from an isolated home. The rebased 47-member candidate still requires exact-byte client rerun after production-trusted signing; current Claude and MCPB CLI verification remains fail-closed upstream. |
-| R5 — release sample | Five fixed public tickers produce five schema-valid dossiers, complete available claim pagination, and explicit missing/rejected evidence; one sanitized example is safe to publish | Fresh AAPL/NVDA/TSLA/RKLB/BRK.B SEC-only calls are schema-valid and contain typed missingness. No grouped claim was available, so the explicit no-claim boundary remains. Ryan approved the Evidence Terminal visual system, sanitized AAPL source copy, three website heroes, two social crops, and explanatory infographic on 2026-08-03 for launch-package inclusion. Publication remains separately gated by R7. |
+| R5 — release sample | Five fixed public tickers produce five schema-valid dossiers, complete available claim pagination, and explicit missing/rejected evidence; one sanitized example is safe to publish | A live SEC-only HOOD/AAPL/NVDA/TSLA/RKLB run produced five schema-valid dossiers and typed missingness. HOOD returned one real two-filing claim; two one-source pages reconciled `2 returned = 2 unique = total_sources`, with terminal `next_cursor=null`, SEC-only `primary_regulator` sources, and `approved` policy decisions. This proof depends on the uncommitted claim-persistence diff. Ryan approved the Evidence Terminal launch package on 2026-08-03; publication remains separately gated by R7. |
 | R6 — rollback | Prior artifact/configuration can be restored without deleting the local evidence store | Met for the QA path. The materialized isolated SQLite store retained its exact SHA-256, sentinel, 11-table schema, and `ok` integrity result across uninstall of the unsigned fallback, install/configuration of the self-signed QA artifact, and fresh Claude/Codex calls. |
 | R7 — publication authority | Public-source rights/defaults, package inventory, security notes, final target URLs, and exact publication actions are reviewed and explicitly approved by Ryan | Open; blocks publication |
 
@@ -146,10 +146,11 @@ willingness to pay.
 These are proposed targets only; none has been created, made public, tagged, uploaded,
 or submitted by this plan:
 
-1. Merge the reviewed preparatory PR into the private `rm0nroe/catalyst-edge-mcp`
-   repository.
-2. Build wheel, sdist, and `catalyst-edge-mcp-0.1.1.mcpb` from the resulting clean
-   `main` commit and record their hashes.
+1. PR #14 is merged into the private `rm0nroe/catalyst-edge-mcp` repository at
+   `d78dbe2`; repository visibility remains private.
+2. Review and land the SEC grouped-claim persistence diff, rerun fresh CI, then rebuild
+   wheel, sdist, and `catalyst-edge-mcp-0.1.1.mcpb` from the resulting clean `main`
+   commit and record their final hashes.
 3. Resolve the Claude-compatible production signature and repeat Codex/Claude install,
    invocation, and rollback proof against those exact bytes.
 4. After explicit publication approval, make the existing repository public and create
