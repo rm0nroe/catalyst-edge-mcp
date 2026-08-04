@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 dist/
+dist-site/
 build/
 node_modules/
 *.egg-info/
@@ -13,3 +14,5 @@ node_modules/
 .DS_Store
 .env
 !.env.example
+.vercel
+.env*.local
