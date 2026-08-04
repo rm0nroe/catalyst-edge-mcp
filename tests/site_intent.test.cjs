@@ -11,7 +11,7 @@ test("intent validation, private email storage, and decision bound", () => {
     client: "codex",
     definitelyPay: true,
     privacyConsent: true,
-    offerVersion: "hosted-pro-29-v1-2026-08-04",
+    offerVersion: "hosted-pro-29-v1-2026-08-04-live",
     visitorId: "019fceaa-b7a2-7490-bac8-1f0325762477",
     source: "github",
   });

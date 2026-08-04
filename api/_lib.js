@@ -1,7 +1,7 @@
 const crypto = require("node:crypto");
 const { del, get, head, list, put, rename } = require("@vercel/blob");
 
-const OFFER_VERSION = "hosted-pro-29-v1-2026-08-04";
+const OFFER_VERSION = "hosted-pro-29-v1-2026-08-04-live";
 const RECENT_SECONDS = 180 * 24 * 60 * 60;
 const CLIENTS = new Set(["claude", "codex", "cursor", "other"]);
 
