@@ -30,8 +30,9 @@ filings and insider records plus reviewed issuer-feed, GDELT Web NGrams, and
 forward-collected Bluesky partial-public-attention adapters. Local stdio/HTTP MCP transports, strict
 contracts, provenance, typed missingness, the canonical event graph, and
 deterministic scoring are implemented. The public self-serve configuration is
-fail-closed: SEC is composed only when the user supplies a monitored identity,
-while issuer feeds, GDELT, and Bluesky are disabled unless explicitly enabled.
+fail-closed: SEC is composed only when the user supplies a monitored identity, attributed
+GDELT discovery is enabled by default, and issuer feeds and Bluesky remain disabled unless
+explicitly enabled.
 Bluesky opt-in uses a local out-of-band collector; MCP requests never call AppView.
 
 The zero-subscription implementation meets the current bounded local PRD

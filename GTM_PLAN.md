@@ -127,9 +127,9 @@ discovery.
 Complete these steps before requesting public-release authorization:
 
 1. Make the public default source set conservative and rights-cleared. Require a valid
-   SEC identity, disable conditional or unclear sources by default, keep GDELT disabled
-   until its required attribution/linking is implemented and tested, and align the rights
-   record with runtime configuration.
+   SEC identity, disable conditional or unclear sources by default, and keep attributed
+   GDELT discovery enabled only while its citation/linking contract and live freshness
+   tests pass. Align the rights record with runtime configuration.
 2. Produce one clean reviewed `0.1.1` commit and tag, run the existing CI on GitHub, and
    verify the released wheel, source distribution, hashes, rollback, and exact two-tool
    discovery.

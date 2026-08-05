@@ -202,6 +202,7 @@ def _validate_no_data(result) -> dict[str, object]:
         "edge",
         "summary",
         "evidence",
+        "attributions",
         "data_quality",
         "next_checks",
     }
@@ -220,7 +221,7 @@ def _validate_no_data(result) -> dict[str, object]:
         raise ValueError("installed response uses an unexpected scoring method")
     if edge.get("model_status") != "not_trained":
         raise ValueError("installed response uses an unexpected model status")
-    if data_quality.get("coverage") != "none" or evidence:
+    if data_quality.get("coverage") != "none" or evidence or payload["attributions"]:
         raise ValueError("offline installed response is not the typed no-data case")
     return payload
 

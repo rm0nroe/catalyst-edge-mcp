@@ -29,7 +29,7 @@ from catalyst_edge_mcp.models import (
 from catalyst_edge_mcp.reason_records import ordered_reasons, scoped_reason
 from catalyst_edge_mcp.redaction import bounded_raw
 from catalyst_edge_mcp.scorer import CANONICAL_FAMILIES, CatalystScorer, DeterministicScorer
-from catalyst_edge_mcp.source_policy import SOURCE_POLICIES
+from catalyst_edge_mcp.source_policy import SOURCE_POLICIES, source_attributions
 from catalyst_edge_mcp.summary import build_summary, next_checks
 
 Clock = Callable[[], datetime]
@@ -95,6 +95,7 @@ class CatalystService:
         )
 
         evidence: list[Evidence] = []
+        used_source_ids: set[str] = set()
         warnings: list[str] = []
         stale: set[str] = set()
         providers_by_family: dict[str, set[str]] = defaultdict(set)
@@ -229,6 +230,7 @@ class CatalystService:
                     )
                     continue
                 evidence.append(item)
+                used_source_ids.add(result.provider)
 
         evidence = self._deduplicate(evidence)
         for item in evidence:
@@ -299,6 +301,7 @@ class CatalystService:
         ]
 
         compact = self._compact(scored.evidence)
+        attributions = source_attributions(used_source_ids)
         summary = build_summary(compact, missing, request.risk_mode)
         checks = next_checks(compact, request.risk_mode, request.lookback_days)
         output = self._apply_options(compact, request)
@@ -352,6 +355,7 @@ class CatalystService:
             edge=scored.edge,
             summary=summary,
             evidence=output,
+            attributions=attributions,
             data_quality=DataQuality(
                 coverage=coverage,
                 missing_families=sorted(missing),

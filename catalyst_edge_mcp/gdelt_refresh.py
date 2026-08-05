@@ -10,6 +10,7 @@ from catalyst_edge_mcp.gdelt_web_ngrams import GdeltWebNgramsRefresher
 from catalyst_edge_mcp.models import SourceStatus, ToolInput
 from catalyst_edge_mcp.registry_config import load_registry_bundle
 from catalyst_edge_mcp.settings import Settings
+from catalyst_edge_mcp.source_policy import source_attributions
 
 
 async def _run(tickers: list[str], lookback_days: int) -> int:
@@ -66,7 +67,19 @@ async def _run(tickers: list[str], lookback_days: int) -> int:
                 "warnings": list(result.warnings),
             }
         )
-    print(json.dumps({"provider": "gdelt", "results": reports}, indent=2))
+    print(
+        json.dumps(
+            {
+                "provider": "gdelt",
+                "attributions": [
+                    item.model_dump(mode="json")
+                    for item in source_attributions(["gdelt"])
+                ],
+                "results": reports,
+            },
+            indent=2,
+        )
+    )
     return 1 if failed else 0
 
 

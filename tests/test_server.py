@@ -60,15 +60,22 @@ async def test_fastmcp_registers_expected_tool():
     assert schema["properties"]["include_raw_signals"]["default"] is False
 
 
-def test_build_service_defaults_to_sec_only_when_identity_is_declared(monkeypatch):
+def test_build_service_defaults_to_sec_and_gdelt_discovery(monkeypatch):
     from catalyst_edge_mcp.server import build_service
 
     monkeypatch.delenv("CATALYST_EDGE_SEC_USER_AGENT", raising=False)
-    assert build_service(Settings.from_env()).adapters == ()
+    assert [adapter.provider for adapter in build_service(Settings.from_env()).adapters] == [
+        "gdelt"
+    ]
 
     monkeypatch.setenv("CATALYST_EDGE_SEC_USER_AGENT", "Catalyst Edge ops@example.com")
     configured = build_service(Settings.from_env())
-    assert [adapter.provider for adapter in configured.adapters] == ["sec", "sec", "sec_funds"]
+    assert [adapter.provider for adapter in configured.adapters] == [
+        "sec",
+        "sec",
+        "sec_funds",
+        "gdelt",
+    ]
     assert {adapter.family for adapter in configured.adapters} == {
         "filings_news",
         "insider_trading",

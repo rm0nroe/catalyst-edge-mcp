@@ -78,6 +78,13 @@ class ToolInput(BaseModel):
     risk_mode: RiskMode = RiskMode.RESEARCH
 
 
+class Attribution(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    url: HttpUrl
+
+
 class Source(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -253,6 +260,7 @@ class ClaimSourcePage(BaseModel):
     total_sources: int = Field(ge=0)
     cursor: int = Field(ge=0)
     next_cursor: int | None = Field(default=None, ge=0)
+    attributions: list[Attribution] = Field(default_factory=list)
 
 
 class CatalystEdgeResponse(BaseModel):
@@ -264,5 +272,6 @@ class CatalystEdgeResponse(BaseModel):
     edge: Edge
     summary: Summary
     evidence: list[Evidence]
+    attributions: list[Attribution] = Field(default_factory=list)
     data_quality: DataQuality
     next_checks: list[str]

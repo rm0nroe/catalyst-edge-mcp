@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from catalyst_edge_mcp.models import (
     CatalystEdgeResponse,
+    ClaimSourcePage,
     ReasonCode,
     RiskMode,
     SourceStatus,
@@ -46,3 +47,5 @@ def test_CT_FAMILY_STATUS_is_present_in_public_response_schema():
         reason.value for reason in ReasonCode
     }
     assert "reason_records" in data_quality["properties"]
+    assert "attributions" in schema["properties"]
+    assert "attributions" in ClaimSourcePage.model_json_schema()["properties"]
