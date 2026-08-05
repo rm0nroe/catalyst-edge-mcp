@@ -1,10 +1,10 @@
 {
   "manifest_version": "0.4",
   "name": "catalyst-edge-mcp",
-  "display_name": "Catalyst Edge",
-  "version": "0.1.1",
-  "description": "Source-linked deterministic catalyst evidence scoring for public-company tickers.",
-  "long_description": "Catalyst Edge exposes exactly two read-only MCP tools for ticker-level evidence research. Scores are deterministic, unbacktested, and non-advisory. The public default uses official SEC data only; other providers remain disabled.",
+  "display_name": "Catalyst Edge Research",
+  "version": "0.1.2",
+  "description": "Source-linked market intelligence for AI agents researching public-company tickers.",
+  "long_description": "Catalyst Edge Research exposes exactly two read-only MCP tools for ticker-level evidence research. Scores are deterministic, unbacktested, and non-advisory. The public default uses official SEC data only; other providers remain disabled.",
   "author": {
     "name": "Ryan Monroe",
     "url": "https://github.com/rm0nroe"

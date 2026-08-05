@@ -110,12 +110,12 @@ jobs:
           npm run mcpb:validate
           npm run mcpb:pack
           uv run --frozen python scripts/verify_mcpb.py \
-            --bundle dist/catalyst-edge-mcp-0.1.1.mcpb \
+            --bundle dist/catalyst-edge-mcp-0.1.2.mcpb \
             --record dist/mcpb-verification.json
           {
             echo "### MCPB release-candidate hash"
             echo '```text'
-            sha256sum dist/catalyst-edge-mcp-0.1.1.mcpb
+            sha256sum dist/catalyst-edge-mcp-0.1.2.mcpb
             echo '```'
             echo "MCPB CLI $(./node_modules/.bin/mcpb --version); validated and packed only."
           } >> "$GITHUB_STEP_SUMMARY"
