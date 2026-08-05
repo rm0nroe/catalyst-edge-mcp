@@ -2,9 +2,24 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
-from catalyst_edge_mcp.models import PolicyDecision
+from catalyst_edge_mcp.models import Attribution, PolicyDecision
+
+SOURCE_ATTRIBUTIONS = {
+    "gdelt": Attribution(
+        name="The GDELT Project",
+        url="https://www.gdeltproject.org/",
+    )
+}
+
+
+def source_attributions(source_ids: Iterable[str | None]) -> list[Attribution]:
+    return [
+        SOURCE_ATTRIBUTIONS[source_id].model_copy(deep=True)
+        for source_id in sorted(set(source_ids) & SOURCE_ATTRIBUTIONS.keys())
+    ]
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +77,7 @@ SOURCE_POLICIES: dict[str, SourcePolicy] = {
         0.60,
         0.70,
         official_hosts=("api.gdeltproject.org", "storage.googleapis.com"),
-        reviewed_on="2026-07-14",
+        reviewed_on="2026-08-04",
     ),
     "bluesky": SourcePolicy(
         "bluesky",

@@ -62,7 +62,7 @@ function updateInstallCommand() {
   copyCommand.disabled = !ready;
   copyCommand.textContent = ready ? "Copy command" : "Enter SEC identity to copy";
   codexCommand.textContent = ready
-    ? `codex mcp add catalyst-edge \\\n  --env ${shellQuote(`CATALYST_EDGE_SEC_USER_AGENT=${organization.value.trim()} ${secEmail.value}`)} \\\n  -- uvx --from 'catalyst-edge-mcp==0.1.3' catalyst-edge-mcp`
+    ? `codex mcp add catalyst-edge \\\n  --env ${shellQuote(`CATALYST_EDGE_SEC_USER_AGENT=${organization.value.trim()} ${secEmail.value}`)} \\\n  -- uvx --from 'catalyst-edge-mcp==0.1.4' catalyst-edge-mcp`
     : "Enter your organization and monitored email to generate the command.";
 }
 

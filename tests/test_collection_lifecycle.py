@@ -199,6 +199,9 @@ def test_health_command_emits_machine_readable_never_refreshed_state(
     payload = json.loads(capsys.readouterr().out)
     assert exc_info.value.code == 1
     assert payload["provider"] == "gdelt"
+    assert payload["attributions"] == [
+        {"name": "The GDELT Project", "url": "https://www.gdeltproject.org/"}
+    ]
     assert payload["results"][0]["freshness"] == "never_refreshed"
     assert payload["results"][0]["last_success_age_seconds"] is None
 

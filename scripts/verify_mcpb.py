@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 from scripts.normalize_mcpb import FIXED_ZIP_TIMESTAMP
 
 PACKAGE = "catalyst-edge-mcp"
-PACKAGE_VERSION = "0.1.3"
+PACKAGE_VERSION = "0.1.4"
 MCPB_CLI_VERSION = "2.1.2"
 MCPB_CLI_INTEGRITY = (
     "sha512-goRbBC8ySo7SWb7tRzr+tL6FxDc4JPTRCdgfD2omba7freofvjq5rom1lBnYHZHo6Mizs1j"
@@ -24,7 +24,7 @@ EXPECTED_ENV = {
     "CATALYST_EDGE_EVIDENCE_STORE": "${user_config.evidence_store}",
     "CATALYST_EDGE_TRANSPORT": "stdio",
     "CATALYST_EDGE_ISSUER_FEEDS": "disabled",
-    "CATALYST_EDGE_GDELT": "disabled",
+    "CATALYST_EDGE_GDELT": "enabled",
     "CATALYST_EDGE_BLUESKY": "disabled",
     "CATALYST_EDGE_OPTIONS_PROVIDER": "none",
     "CATALYST_EDGE_SENTIMENT_MODEL": "disabled",
