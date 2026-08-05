@@ -1,8 +1,9 @@
-# Catalyst Edge MCP
+# CATALYST/EDGE
 
 <!-- mcp-name: io.github.rm0nroe/catalyst-edge-mcp -->
 
-Catalyst Edge is a standalone, read-only MCP server that returns compact,
+**Catalyst Edge Research** is source-linked market intelligence for AI agents. The
+standalone, read-only MCP server returns compact,
 source-linked catalyst evidence dossiers for public-company tickers. It collects
 independent evidence families concurrently and applies a documented deterministic
 score. It does not import the sibling `analysis-api` application or its random-weight
@@ -26,7 +27,7 @@ The product promise is bounded:
 The scorer is deterministic and unbacktested. Catalyst Edge does not promise alpha,
 investment performance, buy/sell signals, personalized advice, or execution.
 
-Version 0.1.1 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
+Version 0.1.2 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
 Registry. Claude Desktop can use the same PyPI package through a manual stdio
 configuration, but the one-click `.mcpb` is intentionally withheld until its publisher
 can be verified by a production-trusted signing path. The current direction also includes
@@ -109,7 +110,7 @@ or filing structures remain `other_material_event` and require human review.
 No numeric scorer change was justified because the real corpus contains no
 forward-return labels. The scorer remains deterministic and explicitly
 unbacktested. Paid options flow, licensed OHLC, sentiment, hosted deployment, and
-broader SEC semantic extraction are future capabilities. Version 0.1.1 ships only the
+broader SEC semantic extraction are future capabilities. Version 0.1.2 ships only the
 local, self-serve surface.
 
 In older implementation notes and runtime messages, “production” means the
@@ -125,7 +126,7 @@ package with Codex:
 codex mcp add catalyst-edge \
   --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.1' catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.2' catalyst-edge-mcp
 ```
 
 Open a fresh task and confirm discovery of exactly `catalyst_edge_score` and
@@ -168,7 +169,7 @@ npm audit --audit-level=low
 npm run mcpb:validate
 npm run mcpb:pack
 uv run --frozen python scripts/verify_mcpb.py \
-  --bundle dist/catalyst-edge-mcp-0.1.1.mcpb
+  --bundle dist/catalyst-edge-mcp-0.1.2.mcpb
 ```
 
 This produces an unsigned compatibility artifact for maintainer QA. It is not distributed
