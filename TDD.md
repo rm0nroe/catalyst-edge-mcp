@@ -29,9 +29,9 @@ Fixed decisions:
   `model_status=not_trained`.
 - The zero-subscription capability set is direct SEC data, reviewed issuer feeds, GDELT
   discovery metadata, Bluesky AppView, and reviewed Mastodon instances. The public
-  self-serve runtime composes SEC only when a monitored identity is supplied; issuer
-  feeds, GDELT, and Bluesky default to disabled and require explicit opt-in after the
-  applicable source/output review. Each non-SEC source remains constrained by the
+  self-serve runtime composes SEC only when a monitored identity is supplied; attributed
+  GDELT discovery is enabled by default, while issuer feeds and Bluesky require explicit
+  opt-in after the applicable source/output review. Each non-SEC source remains constrained by the
   source-policy registry in §6.
 - FMP, Finnhub, Reddit, Stocktwits, OCC, and any options vendor are conditional:
   credentials alone never prove commercial authorization. Their adapters may
@@ -308,7 +308,7 @@ hosts, and review date. A key or reachable endpoint cannot override policy.
 | --- | --- | --- |
 | SEC submissions/archive, Forms 3/4/5/144, 8-K/6-K | `approved` | Required baseline; identifying user agent; parsed facts/hashes/links |
 | Reviewed issuer RSS/Atom | `approved_per_registry` | Disabled by public default; only reviewed feeds/terms and bounded metadata/factual extraction after explicit opt-in |
-| GDELT Web NGrams/TOC | `approved_discovery` | Disabled by public default until required GDELT citation/linking is implemented; discovery never outranks primary evidence |
+| GDELT Web NGrams/TOC | `approved_discovery` | Enabled by public default with a mandatory GDELT citation/link in every derived output; discovery never outranks primary evidence |
 | Bluesky AppView | `approved_partial_attention` | Disabled by public default; minimal post metadata/derived buckets only after output/privacy/retention review |
 | Reviewed Mastodon instance | `approved_per_registry` | Instance-scoped partial attention only |
 | FMP/Finnhub/Reddit/Stocktwits/OCC | `permission_required` | Disabled until written rights are recorded |
@@ -866,11 +866,11 @@ Test identifiers below are mandatory names or markers in the test suite.
   §6 policy. No sibling runtime imports.
 - **Flask migration:** decision-complete design only; execution remains the
   PRD-stated follow-up.
-- **Legally available sources:** SEC is the public baseline under fair-access and
+- **Legally available sources:** SEC is the primary public baseline under fair-access and
   content-retention constraints. Issuer/Bluesky/Mastodon use the reviewed policies in
   §6 and remain disabled by public default. GDELT permits commercial use and
-  redistribution but requires a GDELT citation/link; it remains disabled until that
-  output contract is implemented. FMP, Finnhub, Reddit, Stocktwits, OCC, OHLC vendors,
+  redistribution with a citation/link; that output contract is implemented and GDELT
+  discovery defaults to enabled. FMP, Finnhub, Reddit, Stocktwits, OCC, OHLC vendors,
   and options vendors require an explicit permission/license decision; credentials are
   insufficient.
 - **Options:** the zero-subscription local runtime reports
