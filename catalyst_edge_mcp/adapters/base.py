@@ -77,6 +77,11 @@ class ProviderGate:
         self._rate_lock = asyncio.Lock()
         self._next_start = 0.0
 
+    @property
+    def requests_per_second(self) -> float:
+        """Configured start rate; 0.0 means unthrottled."""
+        return 0.0 if self._spacing == 0 else 1.0 / self._spacing
+
     def _primitives(self) -> tuple[asyncio.Semaphore, asyncio.Lock]:
         loop = asyncio.get_running_loop()
         if loop is not self._loop:
