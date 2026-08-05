@@ -208,6 +208,10 @@ async def test_no_adapter_response_is_explicit(fixed_clock):
     assert response.edge.score == 50
     assert response.data_quality.coverage == "none"
     assert "No live evidence adapters are configured." in response.data_quality.warnings
+    assert response.next_checks[0] == (
+        "Retry with lookback_days=30 to check a wider filing window."
+    )
+    assert not any("the observation" in check for check in response.next_checks)
 
 
 @pytest.mark.asyncio
