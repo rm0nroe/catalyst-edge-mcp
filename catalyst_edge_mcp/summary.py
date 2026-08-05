@@ -190,7 +190,24 @@ def build_summary(evidence: list[Evidence], missing: set[str], risk_mode: RiskMo
     )
 
 
-def next_checks(evidence: list[Evidence], risk_mode: RiskMode) -> list[str]:
+def next_checks(
+    evidence: list[Evidence], risk_mode: RiskMode, lookback_days: int
+) -> list[str]:
+    if not evidence:
+        checks = []
+        if lookback_days < 30:
+            checks.append("Retry with lookback_days=30 to check a wider filing window.")
+        checks.extend(
+            [
+                (
+                    "Open the issuer's recent SEC filings and verify whether qualifying "
+                    "evidence exists."
+                ),
+                "Confirm the monitored SEC identity and configured-source statuses.",
+            ]
+        )
+        return checks
+
     checks: list[str] = []
     for item in sorted(evidence, key=lambda value: -value.timestamp.timestamp()):
         source = item.sources[0] if item.sources else None

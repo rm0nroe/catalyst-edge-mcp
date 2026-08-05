@@ -27,7 +27,7 @@ The product promise is bounded:
 The scorer is deterministic and unbacktested. Catalyst Edge does not promise alpha,
 investment performance, buy/sell signals, personalized advice, or execution.
 
-Version 0.1.2 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
+Version 0.1.3 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
 Registry. Claude Desktop can use the same PyPI package through a manual stdio
 configuration, but the one-click `.mcpb` is intentionally withheld until its publisher
 can be verified by a production-trusted signing path. The current direction also includes
@@ -36,8 +36,8 @@ now: only recent activation-linked, verified, price-aware signups count toward s
 compatibility-spike, 1,350 scoped-review, and 11,100 safeguarded full-build reconsideration
 gates. None grants automatic implementation, payment, or deployment authority. Paid
 launch remains separately gated in
-[`internal-plan`](internal-plan); the economics are documented in the
-[`Hosted Pro architecture research`](notes/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md).
+[`internal-plan`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/internal-plan); the economics are documented in the
+[`Hosted Pro architecture research`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/notes/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md).
 
 ## Current status and completion boundary
 
@@ -110,7 +110,7 @@ or filing structures remain `other_material_event` and require human review.
 No numeric scorer change was justified because the real corpus contains no
 forward-return labels. The scorer remains deterministic and explicitly
 unbacktested. Paid options flow, licensed OHLC, sentiment, hosted deployment, and
-broader SEC semantic extraction are future capabilities. Version 0.1.2 ships only the
+broader SEC semantic extraction are future capabilities. Version 0.1.3 ships only the
 local, self-serve surface.
 
 In older implementation notes and runtime messages, “production” means the
@@ -124,15 +124,15 @@ package with Codex:
 
 ```bash
 codex mcp add catalyst-edge \
-  --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
+  --env 'CATALYST_EDGE_SEC_USER_AGENT=YOUR_ORGANIZATION YOUR_EMAIL' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.2' catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.3' catalyst-edge-mcp
 ```
 
 Open a fresh task and confirm discovery of exactly `catalyst_edge_score` and
 `catalyst_edge_claim_sources`. The complete Codex, Claude Desktop, privacy, and rollback
 procedure is in
-[`docs/demo/customer-installation-runbook.md`](docs/demo/customer-installation-runbook.md).
+[`docs/demo/customer-installation-runbook.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/demo/customer-installation-runbook.md).
 
 ## Build and verify from source
 
@@ -169,14 +169,14 @@ npm audit --audit-level=low
 npm run mcpb:validate
 npm run mcpb:pack
 uv run --frozen python scripts/verify_mcpb.py \
-  --bundle dist/catalyst-edge-mcp-0.1.2.mcpb
+  --bundle dist/catalyst-edge-mcp-0.1.3.mcpb
 ```
 
 This produces an unsigned compatibility artifact for maintainer QA. It is not distributed
 as a production-trusted Claude one-click package.
 
 The live Web NGrams replacement evidence is recorded in
-[`docs/validation/gdelt-web-ngrams-live-2026-07-14.md`](docs/validation/gdelt-web-ngrams-live-2026-07-14.md).
+[`docs/validation/gdelt-web-ngrams-live-2026-07-14.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/validation/gdelt-web-ngrams-live-2026-07-14.md).
 
 ## Source and provider configuration
 
@@ -313,7 +313,7 @@ adapter is composed. FlowAlgo and CheddarFlow also remain uncomposed: public
 terms do not grant the required automated extraction, storage, redistribution,
 and derived-output rights. The local composition root therefore never calls an
 options provider before policy evaluation. See
-[`docs/audits/phase5-capability-gates-2026-07-13.md`](docs/audits/phase5-capability-gates-2026-07-13.md).
+[`docs/audits/phase5-capability-gates-2026-07-13.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/audits/phase5-capability-gates-2026-07-13.md).
 
 Phase 6 validates 28 dated, sanitized synthetic product-contract cases covering strong and
 weak bullish evidence, bearish material events, neutral issuer/discovery items,
@@ -322,17 +322,17 @@ historical warm-up/outage/sample regressions, contradictions, rejected sentiment
 unlicensed options/technical missingness. All 28 expected-versus-produced
 assertions pass. A separate 25-case real SEC product evaluation now covers the
 primary-source gate. See
-[`docs/validation/phase6-historical-validation-2026-07-13.md`](docs/validation/phase6-historical-validation-2026-07-13.md).
+[`docs/validation/phase6-historical-validation-2026-07-13.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/validation/phase6-historical-validation-2026-07-13.md).
 
 The real-case evaluation, semantic corrections, offline suite, live target
 cohort, fresh GDELT health, and final RKLB `launch_ready=true` smoke are recorded
-in [`docs/validation/real-catalyst-evaluation-2026-07-15.md`](docs/validation/real-catalyst-evaluation-2026-07-15.md)
-and [`docs/validation/local-product-completion-2026-07-15.md`](docs/validation/local-product-completion-2026-07-15.md).
+in [`docs/validation/real-catalyst-evaluation-2026-07-15.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/validation/real-catalyst-evaluation-2026-07-15.md)
+and [`docs/validation/local-product-completion-2026-07-15.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/validation/local-product-completion-2026-07-15.md).
 
 The live evidence-semantic launch gate passed for RKLB on 2026-07-14 from
 merged `main`; the other four acceptance tickers correctly remained
 fail-closed. See
-[`docs/validation/live-launch-acceptance-2026-07-14.md`](docs/validation/live-launch-acceptance-2026-07-14.md).
+[`docs/validation/live-launch-acceptance-2026-07-14.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/validation/live-launch-acceptance-2026-07-14.md).
 
 ## Run
 
@@ -690,5 +690,5 @@ Raw signals are excluded by default. When explicitly requested, a recursive reda
 removes credential and identity-like fields, bounds containers and strings, and caps
 each serialized raw item at 8 KiB.
 
-See [technical specification](technical specification) for exact formulas, provider contracts, compactness rules, and
+See [technical specification](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/technical specification) for exact formulas, provider contracts, compactness rules, and
 the Flask migration design that intentionally remains outside this repository.

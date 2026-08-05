@@ -48,6 +48,26 @@ if (location.pathname === "/confirm") {
 
 document.querySelectorAll("[data-install]").forEach((link) => link.addEventListener("click", () => track("install_click")));
 
+const organization = document.querySelector("#sec-organization");
+const secEmail = document.querySelector("#sec-email");
+const codexCommand = document.querySelector("#codex-command");
+const copyCommand = document.querySelector("[data-copy='codex-command']");
+
+function shellQuote(value) {
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
+function updateInstallCommand() {
+  const ready = organization.value.trim() && secEmail.value && secEmail.checkValidity();
+  copyCommand.disabled = !ready;
+  copyCommand.textContent = ready ? "Copy command" : "Enter SEC identity to copy";
+  codexCommand.textContent = ready
+    ? `codex mcp add catalyst-edge \\\n  --env ${shellQuote(`CATALYST_EDGE_SEC_USER_AGENT=${organization.value.trim()} ${secEmail.value}`)} \\\n  -- uvx --from 'catalyst-edge-mcp==0.1.3' catalyst-edge-mcp`
+    : "Enter your organization and monitored email to generate the command.";
+}
+
+[organization, secEmail].forEach((input) => input?.addEventListener("input", updateInstallCommand));
+
 document.querySelectorAll("[data-copy]").forEach((button) => button.addEventListener("click", async () => {
   await navigator.clipboard.writeText(document.querySelector(`#${button.dataset.copy}`).textContent);
   button.textContent = "Copied";
