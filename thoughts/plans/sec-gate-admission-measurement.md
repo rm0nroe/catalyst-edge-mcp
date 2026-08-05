@@ -79,7 +79,20 @@ input.
 
 | TC | Description | Status |
 |---|---|---|
-| TC1 | Admission wait accumulates under rate limiting; body time stays separate | pending |
-| TC2 | Body time recorded for slow bodies with no contention | pending |
-| TC3 | Cancelled (timed-out) request still records admission wait | pending |
-| TC4 | Harness reports split against real SEC at concurrency=4 | pending |
+| TC1 | Admission wait accumulates under rate limiting; body time stays separate | ✅ `pytest tests/test_provider_gate_timing.py` |
+| TC2 | Body time recorded for slow bodies with no contention | ✅ same run |
+| TC3 | Cancelled (timed-out) request still records admission wait | ✅ same run — caught a real defect in the first implementation |
+| TC4 | Harness reports split against real SEC at concurrency=4 | ✅ on axe mini, production `.env`, 12 real watchlist tickers |
+| TC5 | Full suite shows no regression from the gate change | ✅ 447 passed, exit 0 |
+
+## Result
+
+Admission wait is **91.9%** of shared-gate time under production settings
+(mean 2.45 s admission vs 0.217 s body). Dropping concurrency 4→1, changing
+nothing else, took `filings_news` from 3 timeouts to 0 and never-admitted from
+7/50 to 0/59. §8.1 is answered in the affirmative; the contention diagnosis
+holds.
+
+Full write-up, including two findings absent from the bug report
+(`SEC_FUND_GATE` as a second SEC gate; `no_observations` being independent of
+contention): zenith `thoughts/catalyst-scan-discovery-timeout-20260804/MEASUREMENT.md`.
