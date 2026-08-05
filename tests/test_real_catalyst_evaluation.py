@@ -38,7 +38,9 @@ def _evidence(case):
     if detail := case.get("detail_text"):
         SecFilingsAdapter._apply_primary_document_context(
             evidence,
-            f"<html><body>{detail}</body></html>".encode(),
+            SecFilingsAdapter._classify_primary_document(
+                f"<html><body>{detail}</body></html>".encode()
+            ),
         )
     return evidence
 
