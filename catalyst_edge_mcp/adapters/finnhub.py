@@ -15,7 +15,7 @@ from catalyst_edge_mcp.redaction import bounded_raw
 
 FINNHUB_BASE = "https://finnhub.io/api/v1"
 FINNHUB_QUALITY = 0.80
-FINNHUB_GATE = ProviderGate(concurrency=1, requests_per_second=1)
+FINNHUB_GATE = ProviderGate(name="finnhub", concurrency=1, requests_per_second=1)
 
 
 class _FinnhubAdapter:

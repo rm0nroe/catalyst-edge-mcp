@@ -43,7 +43,7 @@ PARSER_VERSION = "gdelt-doc-v1"
 MAX_RESPONSE_BYTES = 2_000_000
 MAX_ARTICLES = 50
 MAX_RETRY_AFTER_SECONDS = 300.0
-GDELT_GATE = ProviderGate(concurrency=1, requests_per_second=1 / 6)
+GDELT_GATE = ProviderGate(name="gdelt", concurrency=1, requests_per_second=1 / 6)
 
 
 class GdeltAdapter:
