@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.rm0nroe/catalyst-edge-mcp",
-  "title": "Catalyst Edge",
-  "description": "Deterministic, source-linked catalyst evidence dossiers for public-company tickers.",
-  "version": "0.1.1",
+  "title": "Catalyst Edge Research",
+  "description": "Source-linked market intelligence for AI agents researching public-company tickers.",
+  "version": "0.1.2",
   "repository": {
     "url": "https://github.com/rm0nroe/catalyst-edge-mcp",
     "source": "github",
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "catalyst-edge-mcp",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "transport": {
         "type": "stdio"
       },
