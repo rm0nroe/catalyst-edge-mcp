@@ -50,11 +50,17 @@ async def test_exported_tool_reuses_process_service(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_fastmcp_registers_expected_tool():
+async def test_fastmcp_registers_expected_tools_with_directory_annotations():
     tools = await mcp.list_tools()
     registered = {tool.name: tool for tool in tools}
 
-    assert "catalyst_edge_score" in registered
+    assert set(registered) == {"catalyst_edge_score", "catalyst_edge_claim_sources"}
+    for tool in registered.values():
+        assert tool.title
+        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.destructiveHint is False
+        assert tool.annotations.idempotentHint is True
+
     schema = registered["catalyst_edge_score"].inputSchema
     assert schema["properties"]["lookback_days"]["default"] == 14
     assert schema["properties"]["include_raw_signals"]["default"] is False

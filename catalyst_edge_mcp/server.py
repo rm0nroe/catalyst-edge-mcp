@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager, suppress
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from catalyst_edge_mcp.adapters.bluesky import BlueskyAdapter
@@ -135,7 +136,14 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool()
+@mcp.tool(
+    title="Research ticker catalysts",
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+    ),
+)
 async def catalyst_edge_score(
     ticker: Ticker,
     lookback_days: Annotated[int, Field(ge=1, le=90, strict=True)] = 14,
@@ -143,7 +151,7 @@ async def catalyst_edge_score(
     include_raw_signals: Annotated[bool, Field(strict=True)] = False,
     risk_mode: RiskMode = RiskMode.RESEARCH,
 ) -> CatalystEdgeResponse:
-    """Assess recent catalyst evidence, provenance, confidence, and next checks for a ticker."""
+    """Use for ticker research to assess recent evidence, provenance, and next checks."""
     request = ToolInput(
         ticker=ticker,
         lookback_days=lookback_days,
@@ -154,13 +162,20 @@ async def catalyst_edge_score(
     return await _service.evaluate(request)
 
 
-@mcp.tool()
+@mcp.tool(
+    title="Read grouped claim sources",
+    annotations=ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+    ),
+)
 async def catalyst_edge_claim_sources(
     claim_id: Annotated[str, Field(pattern=r"^clm_[0-9a-f]{64}$")],
     cursor: Annotated[int, Field(ge=0, strict=True)] = 0,
     limit: Annotated[int, Field(ge=1, le=20, strict=True)] = 20,
 ) -> ClaimSourcePage:
-    """Return one bounded page of immutable source records supporting a grouped claim."""
+    """Use with a dossier claim ID to read one bounded page of its immutable source records."""
     store = EvidenceStore(Settings.from_env().evidence_store_path)
     try:
         return store.claim_sources(claim_id, cursor=cursor, limit=limit)
