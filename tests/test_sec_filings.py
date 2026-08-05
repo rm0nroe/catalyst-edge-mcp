@@ -193,7 +193,10 @@ def test_sec_primary_document_rules_handle_representative_structures(
     evidence = _generic_item_801_evidence()
 
     SecFilingsAdapter._apply_primary_document_context(
-        evidence, (PRIMARY_DOCUMENT_FIXTURES / fixture_name).read_bytes()
+        evidence,
+        SecFilingsAdapter._classify_primary_document(
+            (PRIMARY_DOCUMENT_FIXTURES / fixture_name).read_bytes()
+        ),
     )
 
     enrichment = evidence.raw_signal["document_enrichment"]
@@ -214,7 +217,10 @@ def test_sec_primary_document_rule_preserves_amendment_semantics():
     evidence = _generic_item_801_evidence(form="8-K/A")
 
     SecFilingsAdapter._apply_primary_document_context(
-        evidence, (PRIMARY_DOCUMENT_FIXTURES / "equity_amendment.html").read_bytes()
+        evidence,
+        SecFilingsAdapter._classify_primary_document(
+            (PRIMARY_DOCUMENT_FIXTURES / "equity_amendment.html").read_bytes()
+        ),
     )
 
     assert evidence.context.event_type == "equity_distribution"
@@ -241,7 +247,10 @@ def test_sec_primary_document_rules_fail_closed_on_negative_or_near_matches(
     original_context = evidence.context.model_copy(deep=True)
 
     SecFilingsAdapter._apply_primary_document_context(
-        evidence, (PRIMARY_DOCUMENT_FIXTURES / fixture_name).read_bytes()
+        evidence,
+        SecFilingsAdapter._classify_primary_document(
+            (PRIMARY_DOCUMENT_FIXTURES / fixture_name).read_bytes()
+        ),
     )
 
     assert evidence.context == original_context
@@ -262,7 +271,9 @@ def test_sec_primary_document_rules_fail_closed_on_multiple_specific_events():
 
     SecFilingsAdapter._apply_primary_document_context(
         evidence,
-        (PRIMARY_DOCUMENT_FIXTURES / "multi_event_ambiguous.html").read_bytes(),
+        SecFilingsAdapter._classify_primary_document(
+            (PRIMARY_DOCUMENT_FIXTURES / "multi_event_ambiguous.html").read_bytes()
+        ),
     )
 
     enrichment = evidence.raw_signal["document_enrichment"]

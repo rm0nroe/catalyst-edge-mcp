@@ -7,7 +7,7 @@ import json
 import re
 import sqlite3
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -219,6 +219,16 @@ class EvidenceStore:
                 id INTEGER PRIMARY KEY, issuer_key TEXT NOT NULL, cluster_json TEXT NOT NULL,
                 observed_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS sec_document_cache (
+                url TEXT PRIMARY KEY,
+                parser_version TEXT NOT NULL,
+                raw_sha256 TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                filed_at TEXT NOT NULL,
+                first_retrieved_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_sec_document_cache_filed
+                ON sec_document_cache(filed_at);
             CREATE TABLE IF NOT EXISTS social_bucket (
                 id INTEGER PRIMARY KEY, issuer_key TEXT NOT NULL, source_id TEXT NOT NULL,
                 bucket_at TEXT NOT NULL, metrics_json TEXT NOT NULL
@@ -805,6 +815,79 @@ class EvidenceStore:
                 }
                 for row in rows
             ]
+
+    def get_sec_documents(
+        self, urls: Sequence[str], parser_version: str
+    ) -> dict[str, tuple[str, Any]]:
+        """Return `url -> (raw_sha256, parsed payload)` for cached SEC documents.
+
+        Keyed on `parser_version` as well as URL: an accession-addressed document never
+        changes, but our reading of it does, so a parser or ruleset bump must miss.
+        """
+        if not urls:
+            return {}
+        with self._lock:
+            placeholders = ",".join("?" * len(urls))
+            rows = (
+                self._connect()
+                .execute(
+                    "SELECT url, raw_sha256, payload_json FROM sec_document_cache "
+                    f"WHERE parser_version=? AND url IN ({placeholders})",
+                    (parser_version, *urls),
+                )
+                .fetchall()
+            )
+        return {
+            str(row["url"]): (str(row["raw_sha256"]), json.loads(str(row["payload_json"])))
+            for row in rows
+        }
+
+    def put_sec_document(
+        self,
+        url: str,
+        *,
+        parser_version: str,
+        raw_sha256: str,
+        payload: Any,
+        filed_at: datetime,
+        retrieved_at: datetime,
+    ) -> None:
+        """Cache one immutable SEC document's parsed payload."""
+        with self._lock:
+            connection = self._connect()
+            connection.execute(
+                """
+                INSERT INTO sec_document_cache
+                    (url, parser_version, raw_sha256, payload_json, filed_at, first_retrieved_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(url) DO UPDATE SET
+                    parser_version=excluded.parser_version,
+                    raw_sha256=excluded.raw_sha256,
+                    payload_json=excluded.payload_json
+                """,
+                (
+                    url,
+                    parser_version,
+                    raw_sha256,
+                    json.dumps(payload),
+                    self._iso(filed_at),
+                    self._iso(retrieved_at),
+                ),
+            )
+            connection.commit()
+        # first_retrieved_at survives a re-derive on purpose: it records when the bytes
+        # were actually seen, which a parser bump does not change.
+
+    def prune_sec_documents(self, *, before: datetime) -> int:
+        """Drop cached documents that fell out of the rolling lookback window."""
+        with self._lock:
+            connection = self._connect()
+            cursor = connection.execute(
+                "DELETE FROM sec_document_cache WHERE filed_at<?",
+                (self._iso(before),),
+            )
+            connection.commit()
+            return max(0, int(cursor.rowcount))
 
     def prune_social_buckets(
         self,
