@@ -4,7 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Catalyst Edge Research is source-linked market intelligence for AI agents, delivered through a free local read-only MCP server.">
+  <link rel="canonical" href="https://catalyst-edge-mcp.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Catalyst Edge Research — Source-linked market intelligence for AI agents">
+  <meta property="og:description" content="Ask what changed for a public-company ticker and inspect the primary-source evidence, contradictions, and missing-data boundaries.">
+  <meta property="og:url" content="https://catalyst-edge-mcp.vercel.app/">
+  <meta property="og:image" content="https://catalyst-edge-mcp.vercel.app/assets/evidence-ledger-1920x800.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Catalyst Edge Research">
+  <meta name="twitter:description" content="Source-linked market intelligence for AI agents. Free local read-only MCP server.">
+  <meta name="twitter:image" content="https://catalyst-edge-mcp.vercel.app/assets/evidence-ledger-1920x800.png">
   <title>Catalyst Edge Research — Source-linked market intelligence for AI agents</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
@@ -19,10 +30,10 @@
   <main id="main">
     <section class="hero" id="top">
       <div class="hero-copy">
-        <p class="eyebrow">Catalyst Edge Research · Free Local Beta · v0.1.2</p>
+        <p class="eyebrow">Catalyst Edge Research · Free Local Beta · v0.1.3</p>
         <h1>Market-speed research.<br><span>Source-level proof.</span></h1>
         <p class="lede">Ask your AI research agent what changed for a ticker, why it matters, what contradicts it—and show every source and missing-data warning.</p>
-        <div class="actions"><a class="button" href="#install">Install free</a><a class="button button-secondary" href="#example">Watch the 90-second example</a></div>
+        <div class="actions"><a class="button" href="#install">Install free</a><a class="button button-secondary" href="#example">See the 90-second example</a></div>
         <ul class="trust-row" aria-label="Product boundaries"><li>Runs locally</li><li>Two read-only tools</li><li>SEC-only public default</li></ul>
       </div>
       <img class="hero-art" src="/assets/evidence-ledger-1920x800.png" alt="AAPL evidence terminal with two SEC filings, a neutral bounded dossier, and five explicit coverage states" width="1920" height="800">
@@ -42,12 +53,9 @@
     </section>
 
     <section class="section install" id="install">
-      <div class="section-heading"><p class="eyebrow">Local and self-serve</p><h2>Install free. Keep the evidence on your machine.</h2><p>Python 3.10+ and <a href="https://docs.astral.sh/uv/">uv</a> are required. Use a real monitored SEC identity and an absolute local evidence-store path.</p></div>
+      <div class="section-heading"><p class="eyebrow">Local and self-serve</p><h2>Install free. Keep the evidence on your machine.</h2><p>Python 3.10+ and <a href="https://docs.astral.sh/uv/">uv</a> are required. Use a real monitored SEC identity; the local evidence store uses a private default path unless you override it.</p><p class="marketplace-links">Published on <a href="https://pypi.org/project/catalyst-edge-mcp/">PyPI</a> and the <a href="https://registry.modelcontextprotocol.io/v0/servers/io.github.rm0nroe%2Fcatalyst-edge-mcp/versions">Official MCP Registry</a>.</p></div>
       <div class="install-grid">
-        <article class="install-card"><div class="card-top"><span>Codex</span><a data-install="codex" href="https://github.com/rm0nroe/catalyst-edge-mcp#install">Full guide ↗</a></div><pre><code id="codex-command">codex mcp add catalyst-edge \
-  --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
-  --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.2' catalyst-edge-mcp</code></pre><button class="copy" data-copy="codex-command">Copy command</button></article>
+        <article class="install-card"><div class="card-top"><span>Codex</span><a data-install="codex" href="https://github.com/rm0nroe/catalyst-edge-mcp#install">Full guide ↗</a></div><div class="identity-fields"><label>Organization<input id="sec-organization" type="text" autocomplete="organization" required maxlength="80" placeholder="Acme Research"></label><label>Monitored SEC email<input id="sec-email" type="email" autocomplete="email" required maxlength="254" placeholder="research@acme.com"></label></div><pre><code id="codex-command">Enter your organization and monitored email to generate the command.</code></pre><button class="copy" data-copy="codex-command" disabled>Enter SEC identity to copy</button><p class="form-status" id="install-status" role="status">The identity is sent only to sec.gov as the required request User-Agent.</p></article>
         <article class="install-card"><div class="card-top"><span>Claude Desktop</span><a data-install="claude" href="https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/demo/customer-installation-runbook.md#add-to-claude-desktop-manually">Manual setup ↗</a></div><p>Use the same pinned PyPI package through Claude Desktop’s manual stdio configuration.</p><div class="notice"><strong>One-click bundle withheld</strong><span>The <code>.mcpb</code> is not distributed until publisher trust can be verified in production.</span></div></article>
       </div>
       <div class="activation"><div><strong>Installed and ran one tool?</strong><p>Report a successful local activation. It links only this browser’s random ID to paid-intent measurement; no ticker, prompt, portfolio, IP address, or local evidence is stored.</p></div><button class="button button-secondary" id="activation-button">I installed and ran one tool</button><p class="form-status" id="activation-status" role="status"></p></div>
@@ -59,7 +67,7 @@
         <label>Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>
         <label>MCP client<select name="client" required><option value="">Choose one</option><option value="claude">Claude</option><option value="codex">Codex</option><option value="cursor">Cursor</option><option value="other">Other</option></select></label>
         <label class="check"><input name="definitelyPay" type="checkbox" required><span>Yes, I would definitely pay $29/month for zero-install hosted access and managed updates.</span></label>
-        <label class="check"><input name="privacyConsent" type="checkbox" required><span>I agree to store my encrypted email and this response for up to 180 days for this demand test.</span></label>
+        <label class="check"><input name="privacyConsent" type="checkbox" required><span>I agree to the <a href="/privacy.html">privacy notice</a> and to storing my encrypted email and this response for up to 180 days.</span></label>
         <label class="honeypot" aria-hidden="true">Company<input name="company" tabindex="-1" autocomplete="off"></label>
         <input type="hidden" name="offerVersion" value="hosted-pro-29-v1-2026-08-04">
         <button class="button" type="submit">Email my confirmation link</button>
@@ -75,6 +83,6 @@
 
   <section class="confirmation" id="confirmation" hidden aria-live="polite"><div><p class="eyebrow">Hosted Pro intent</p><h1 id="confirmation-title">Confirming…</h1><p id="confirmation-message">Checking this one-time link.</p><a class="button" href="/">Return to Catalyst Edge</a></div></section>
 
-  <footer><div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>CATALYST/<em>EDGE</em></strong></div><nav aria-label="Project links"><a href="https://github.com/rm0nroe/catalyst-edge-mcp">Documentation</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/commercial/source-rights-matrix.md">Source policy</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/security">Security</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/issues">Report an issue</a></nav><p>Catalyst Edge Research · Local Beta v0.1.2 · MIT · Read only · Not investment advice</p></footer>
+  <footer><div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>CATALYST/<em>EDGE</em></strong></div><nav aria-label="Project links"><a href="https://github.com/rm0nroe/catalyst-edge-mcp">Documentation</a><a href="https://pypi.org/project/catalyst-edge-mcp/">PyPI</a><a href="https://registry.modelcontextprotocol.io/v0/servers/io.github.rm0nroe%2Fcatalyst-edge-mcp/versions">MCP Registry</a><a href="/privacy.html">Privacy</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/commercial/source-rights-matrix.md">Source policy</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/security">Security</a><a href="https://github.com/rm0nroe/catalyst-edge-mcp/issues">Report an issue</a></nav><p>Catalyst Edge Research · Local Beta v0.1.3 · MIT · Read only · Not investment advice</p></footer>
 </body>
 </html>

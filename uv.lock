@@ -68,7 +68,7 @@ wheels = [
 
 [[package]]
 name = "catalyst-edge-mcp"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "feedparser" },

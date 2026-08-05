@@ -12,7 +12,7 @@ from pathlib import Path, PurePosixPath
 from scripts.normalize_mcpb import FIXED_ZIP_TIMESTAMP
 
 PACKAGE = "catalyst-edge-mcp"
-PACKAGE_VERSION = "0.1.2"
+PACKAGE_VERSION = "0.1.3"
 MCPB_CLI_VERSION = "2.1.2"
 MCPB_CLI_INTEGRITY = (
     "sha512-goRbBC8ySo7SWb7tRzr+tL6FxDc4JPTRCdgfD2omba7freofvjq5rom1lBnYHZHo6Mizs1j"
