@@ -27,10 +27,11 @@ The product promise is bounded:
 The scorer is deterministic and unbacktested. Catalyst Edge does not promise alpha,
 investment performance, buy/sell signals, personalized advice, or execution.
 
-Version 0.1.4 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
-Registry. Claude Desktop can use the same PyPI package through a manual stdio
-configuration, but the one-click `.mcpb` is intentionally withheld until its publisher
-can be verified by a production-trusted signing path. The current direction also includes
+Version 0.1.4 is the approved free Local Beta for GitHub, PyPI, Codex, the MCP
+Registry, and Claude Desktop. The Claude Desktop `.mcpb` is distributed as a transparent
+unsigned custom extension because file-level publisher verification is unavailable in the
+released MCPB tooling. Review the source and checksum before installing it. This is separate
+from any future Anthropic directory review. The current direction also includes
 a `Hosted Pro — $29/month` paid-intent test. Research does not support building Hosted Pro
 now: only recent activation-linked, verified, price-aware signups count toward staged 350
 compatibility-spike, 1,350 scoped-review, and 11,100 safeguarded full-build reconsideration
@@ -120,8 +121,15 @@ hosted service, third-party provider role, paid account, or consumer rollout.
 
 ## Install
 
-Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required. Register the pinned PyPI
-package with Codex:
+For Claude Desktop, download
+[`catalyst-edge-mcp-0.1.4.mcpb`](https://github.com/rm0nroe/catalyst-edge-mcp/releases/download/v0.1.4/catalyst-edge-mcp-0.1.4.mcpb),
+then choose **Settings → Extensions → Advanced settings → Install Extension…**. Enter a
+monitored SEC identity in `Company email@example.com` form. Claude will show an unverified
+custom-extension warning because the bundle is unsigned; review and accept it only if the
+download and published SHA-256 match.
+
+For Codex, Python 3.10+ and [uv](https://docs.astral.sh/uv/) are required. Register the
+pinned PyPI package:
 
 ```bash
 codex mcp add catalyst-edge \
@@ -134,6 +142,15 @@ Open a fresh task and confirm discovery of exactly `catalyst_edge_score` and
 `catalyst_edge_claim_sources`. The complete Codex, Claude Desktop, privacy, and rollback
 procedure is in
 [`docs/demo/customer-installation-runbook.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/demo/customer-installation-runbook.md).
+
+## Privacy Policy
+
+Read the [Catalyst Edge Privacy Policy](https://catalyst-edge-mcp.vercel.app/privacy.html).
+Tool results and SQLite evidence stay on the user's machine. Ticker and issuer search terms
+may be sent directly from that machine to the enabled public-source providers. The policy
+describes public-source collection, local and site storage, third-party sharing, retention,
+deletion, and contact information. The required SEC identity is sent only to `sec.gov` as
+the monitored request `User-Agent`.
 
 ## Build and verify from source
 
@@ -173,8 +190,8 @@ uv run --frozen python scripts/verify_mcpb.py \
   --bundle dist/catalyst-edge-mcp-0.1.4.mcpb
 ```
 
-This produces an unsigned compatibility artifact for maintainer QA. It is not distributed
-as a production-trusted Claude one-click package.
+This produces the unsigned custom-extension artifact distributed for Claude Desktop. It is
+not a cryptographically verified publisher package.
 
 The live Web NGrams replacement evidence is recorded in
 [`docs/validation/gdelt-web-ngrams-live-2026-07-14.md`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/docs/validation/gdelt-web-ngrams-live-2026-07-14.md).
