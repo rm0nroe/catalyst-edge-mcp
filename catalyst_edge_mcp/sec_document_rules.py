@@ -160,6 +160,9 @@ SEC_DOCUMENT_RULES = (
 )
 
 
+SEC_DOCUMENT_RULES_BY_ID = {rule.rule_id: rule for rule in SEC_DOCUMENT_RULES}
+
+
 def classify_sec_primary_document(text: str) -> SecDocumentDecision:
     """Classify only explicitly supported events and fail closed on ambiguity."""
     candidates = tuple(rule for rule in SEC_DOCUMENT_RULES if rule.matches(text))

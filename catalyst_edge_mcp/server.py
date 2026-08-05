@@ -51,6 +51,7 @@ def build_service(
                 SecFilingsAdapter(
                     settings.sec_user_agent,
                     fund_tickers=fund_tickers,
+                    store_path=settings.evidence_store_path,
                 ),
                 SecInsiderAdapter(
                     settings.sec_user_agent,

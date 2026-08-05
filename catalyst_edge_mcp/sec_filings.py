@@ -14,6 +14,7 @@ from pydantic import HttpUrl, TypeAdapter
 
 from catalyst_edge_mcp.adapters.base import ProviderGate
 from catalyst_edge_mcp.compat import UTC
+from catalyst_edge_mcp.evidence_store import EvidenceStore
 from catalyst_edge_mcp.models import (
     AdapterResult,
     Change,
@@ -29,6 +30,8 @@ from catalyst_edge_mcp.models import (
 from catalyst_edge_mcp.reason_records import scoped_reason
 from catalyst_edge_mcp.sec_document_rules import (
     RULESET_VERSION,
+    SEC_DOCUMENT_RULES_BY_ID,
+    SecDocumentDecision,
     classify_sec_primary_document,
 )
 
@@ -78,6 +81,9 @@ ITEM_PRIORITY = (
     "9.01",
 )
 MAX_PRIMARY_DOCUMENT_BYTES = 2_000_000
+# A filing directory can gain documents in the minutes after acceptance, so an index is
+# only cached once the filing has settled. Deliberately independent of scan cadence.
+FILING_INDEX_SETTLE = timedelta(hours=24)
 SEC_GATE = ProviderGate(name="sec", concurrency=4, requests_per_second=6)
 PARSER_VERSION = "sec-events-v1"
 HTTP_URL_LIST = TypeAdapter(list[HttpUrl])
@@ -291,6 +297,7 @@ class SecFilingsAdapter:
         client: httpx.AsyncClient | None = None,
         clock=None,
         fund_tickers: frozenset[str] = frozenset(),
+        store_path: str | None = None,
     ) -> None:
         if "@" not in user_agent:
             raise ValueError("SEC User-Agent must include a contact email address")
@@ -299,6 +306,7 @@ class SecFilingsAdapter:
         self._clock = clock or (lambda: datetime.now(UTC))
         self._ticker_to_cik: dict[str, str] | None = None
         self._fund_tickers = fund_tickers
+        self.store = EvidenceStore(store_path) if store_path else None
 
     async def collect(self, ticker: str, lookback_days: int) -> AdapterResult:
         if self._client is not None:
@@ -374,17 +382,22 @@ class SecFilingsAdapter:
             form = str((item.raw_signal or {}).get("form") or "")
             if not accession or form.removesuffix("/A") not in {"8-K", "6-K"}:
                 continue
+            filed_at = source.published_at
             if item.context and item.context.event_type == "other_material_event":
                 try:
-                    await self._enrich_primary_document(client, item)
+                    await self._enrich_primary_document(client, item, filed_at, retrieved_at)
                 except (httpx.HTTPError, ValueError):
                     warnings.append(
                         f"SEC {accession} primary document was unavailable or malformed."
                     )
             try:
-                source.related_sources = await self._exhibit_links(client, cik, accession)
+                source.related_sources = await self._exhibit_links(
+                    client, cik, accession, filed_at, retrieved_at
+                )
             except (httpx.HTTPError, ValueError):
                 warnings.append(f"SEC {accession} exhibit index was unavailable or malformed.")
+        if self.store is not None:
+            self.store.prune_sec_documents(before=cutoff)
         if not evidence:
             warnings.append(f"No tracked SEC filings found for {ticker} in the lookback window.")
         return AdapterResult(
@@ -398,12 +411,20 @@ class SecFilingsAdapter:
         )
 
     async def _exhibit_links(
-        self, client: httpx.AsyncClient, cik: str, accession: str
+        self,
+        client: httpx.AsyncClient,
+        cik: str,
+        accession: str,
+        filed_at: datetime | None,
+        now: datetime,
     ) -> list[HttpUrl]:
         accession_path = accession.replace("-", "")
         index_url = (
             f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession_path}/index.json"
         )
+        cached = self.store.get_sec_documents([index_url], PARSER_VERSION) if self.store else {}
+        if index_url in cached:
+            return HTTP_URL_LIST.validate_python(cached[index_url][1])
         async with SEC_GATE.request():
             response = await client.get(index_url)
         response.raise_for_status()
@@ -420,16 +441,38 @@ class SecFilingsAdapter:
             normalized_name = name.lower().replace("-", "").replace("_", "")
             if document_type.startswith("EX-99") or "ex99" in normalized_name:
                 links.append(index_url.rsplit("/", 1)[0] + "/" + name)
-        return HTTP_URL_LIST.validate_python(links[:20])
+        links = links[:20]
+        settled = filed_at is not None and now - filed_at >= FILING_INDEX_SETTLE
+        if self.store is not None and settled:
+            self.store.put_sec_document(
+                index_url,
+                parser_version=PARSER_VERSION,
+                raw_sha256=hashlib.sha256(response.content).hexdigest(),
+                payload=links,
+                filed_at=filed_at,
+                retrieved_at=now,
+            )
+        return HTTP_URL_LIST.validate_python(links)
 
     async def _enrich_primary_document(
         self,
         client: httpx.AsyncClient,
         evidence: Evidence,
+        filed_at: datetime | None,
+        now: datetime,
     ) -> None:
         source = evidence.sources[0]
         url = str(source.canonical_url or source.url or "")
         self._require_archive_url(url)
+        # The ruleset version rides in the cache key: an accession-addressed document never
+        # changes, but a rules bump must re-derive rather than replay the old reading.
+        version = f"{PARSER_VERSION}+{RULESET_VERSION}"
+        cached = self.store.get_sec_documents([url], version) if self.store else {}
+        if url in cached:
+            sha256, payload = cached[url]
+            self._apply_primary_document_context(evidence, self._decision(payload))
+            source.raw_sha256 = sha256
+            return
         async with SEC_GATE.request():
             response = await client.get(url)
         response.raise_for_status()
@@ -437,11 +480,25 @@ class SecFilingsAdapter:
         content = response.content
         if len(content) > MAX_PRIMARY_DOCUMENT_BYTES:
             raise ValueError("SEC primary document exceeded the bounded response size")
-        self._apply_primary_document_context(evidence, content)
+        decision = self._classify_primary_document(content)
+        self._apply_primary_document_context(evidence, decision)
         source.raw_sha256 = hashlib.sha256(content).hexdigest()
+        if self.store is not None and filed_at is not None:
+            self.store.put_sec_document(
+                url,
+                parser_version=version,
+                raw_sha256=source.raw_sha256,
+                payload={
+                    "status": decision.status,
+                    "rule_id": decision.selected_rule.rule_id if decision.selected_rule else None,
+                    "candidate_rule_ids": list(decision.candidate_rule_ids),
+                },
+                filed_at=filed_at,
+                retrieved_at=now,
+            )
 
-    @classmethod
-    def _apply_primary_document_context(cls, evidence: Evidence, content: bytes) -> None:
+    @staticmethod
+    def _classify_primary_document(content: bytes) -> SecDocumentDecision:
         try:
             tree = html.fromstring(content)
         except (ValueError, TypeError) as exc:
@@ -449,7 +506,24 @@ class SecFilingsAdapter:
         for element in tree.xpath("//script|//style|//noscript"):
             element.drop_tree()
         text = " ".join(" ".join(tree.xpath("//body//text()")).split())
-        decision = classify_sec_primary_document(text)
+        return classify_sec_primary_document(text)
+
+    @staticmethod
+    def _decision(payload: Any) -> SecDocumentDecision:
+        """Rebuild a cached decision. Rule identity is enough: the ruleset version is in
+        the cache key, so a stored rule_id can only refer to the ruleset that produced it."""
+        rule_id = payload.get("rule_id")
+        return SecDocumentDecision(
+            ruleset_version=RULESET_VERSION,
+            status=str(payload.get("status") or "no_match"),
+            selected_rule=SEC_DOCUMENT_RULES_BY_ID.get(str(rule_id)) if rule_id else None,
+            candidate_rule_ids=tuple(payload.get("candidate_rule_ids") or ()),
+        )
+
+    @classmethod
+    def _apply_primary_document_context(
+        cls, evidence: Evidence, decision: SecDocumentDecision
+    ) -> None:
         if isinstance(evidence.raw_signal, dict):
             evidence.raw_signal["document_enrichment"] = {
                 "ruleset_version": decision.ruleset_version,
