@@ -12,6 +12,8 @@ def test_registry_metadata_matches_package():
     package_version = version("catalyst-edge-mcp")
 
     assert payload["name"] == MCP_NAME
+    assert payload["title"] == "Catalyst Edge Research"
+    assert payload["description"].startswith("Source-linked market intelligence")
     assert payload["version"] == package_version
     assert package["registryType"] == "pypi"
     assert package["identifier"] == "catalyst-edge-mcp"
@@ -23,6 +25,6 @@ def test_registry_metadata_matches_package():
         if item["name"] == "CATALYST_EDGE_SEC_USER_AGENT"
     )
     assert sec_identity["isRequired"] is True
-    assert f"<!-- mcp-name: {MCP_NAME} -->" in (ROOT / "README.md").read_text(
-        encoding="utf-8"
-    )
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert f"<!-- mcp-name: {MCP_NAME} -->" in readme
+    assert readme.startswith("# CATALYST/EDGE\n")
