@@ -32,7 +32,7 @@ SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 TRACKED_FUND_FORMS = frozenset({"N-CEN", "N-CEN/A", "NPORT-P", "NPORT-P/A"})
 MAX_FUND_DOCUMENT_BYTES = 25_000_000
 PARSER_VERSION = "sec-funds-v1"
-SEC_FUND_GATE = ProviderGate(concurrency=2, requests_per_second=2)
+SEC_FUND_GATE = ProviderGate(name="sec_funds", concurrency=2, requests_per_second=2)
 
 
 class SecFundAdapter:

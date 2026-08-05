@@ -35,7 +35,7 @@ MIN_POSTS_PER_WINDOW = 5
 MIN_AUTHORS_PER_WINDOW = 3
 COMPARISON_DAYS = 7
 PARSER_VERSION = "bluesky-forward-attention-v2"
-BLUESKY_GATE = ProviderGate(concurrency=1, requests_per_second=1.0)
+BLUESKY_GATE = ProviderGate(name="bluesky", concurrency=1, requests_per_second=1.0)
 
 
 class BlueskyAdapter:

@@ -73,7 +73,7 @@ ITEM_PRIORITY = (
     "9.01",
 )
 MAX_PRIMARY_DOCUMENT_BYTES = 2_000_000
-SEC_GATE = ProviderGate(concurrency=2, requests_per_second=2)
+SEC_GATE = ProviderGate(name="sec", concurrency=2, requests_per_second=2)
 PARSER_VERSION = "sec-events-v1"
 HTTP_URL_LIST = TypeAdapter(list[HttpUrl])
 ITEM_CONTEXT = {
