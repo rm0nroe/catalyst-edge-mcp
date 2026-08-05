@@ -16,6 +16,7 @@
   "homepage": "https://catalyst-edge-mcp.vercel.app",
   "documentation": "https://github.com/rm0nroe/catalyst-edge-mcp#readme",
   "support": "https://github.com/rm0nroe/catalyst-edge-mcp/issues",
+  "icon": "icon.png",
   "server": {
     "type": "uv",
     "entry_point": "catalyst_edge_mcp/server.py",
@@ -42,11 +43,11 @@
   "tools": [
     {
       "name": "catalyst_edge_score",
-      "description": "Assess recent catalyst evidence, provenance, confidence, and next checks for one ticker."
+      "description": "Use for ticker research to assess recent evidence, provenance, confidence, and next checks."
     },
     {
       "name": "catalyst_edge_claim_sources",
-      "description": "Return one bounded page of immutable source records supporting a grouped claim."
+      "description": "Use with a dossier claim ID to read one bounded page of its immutable source records."
     }
   ],
   "tools_generated": false,
@@ -84,7 +85,6 @@
       "type": "string",
       "title": "Local evidence-store path",
       "description": "Optional absolute path for the local SQLite evidence store.",
-      "default": "${HOME}/.local/state/catalyst-edge-mcp/evidence.sqlite3",
       "sensitive": false,
       "required": false
     }

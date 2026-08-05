@@ -34,6 +34,7 @@ REQUIRED_MEMBERS = {
     "README.md",
     "catalyst_edge_mcp/data/reviewed_registries.json",
     "catalyst_edge_mcp/server.py",
+    "icon.png",
     "manifest.json",
     "pyproject.toml",
     "server.json",
@@ -44,6 +45,7 @@ ALLOWED_ROOTS = {
     "LICENSE",
     "README.md",
     "catalyst_edge_mcp",
+    "icon.png",
     "manifest.json",
     "pyproject.toml",
     "server.json",
@@ -123,6 +125,15 @@ def _validate_source(repo: Path) -> dict[str, object]:
         raise ValueError("manifest must declare exactly the two public tools")
     if manifest.get("tools_generated") is not False:
         raise ValueError("manifest must prohibit generated tools")
+    if manifest.get("icon") != "icon.png":
+        raise ValueError("manifest must declare the bundled icon")
+    if "default" in manifest["user_config"]["evidence_store"]:
+        raise ValueError("evidence_store must use the server default when left blank")
+    privacy_policies = manifest.get("privacy_policies")
+    if not isinstance(privacy_policies, list) or not privacy_policies or not all(
+        isinstance(url, str) and url.startswith("https://") for url in privacy_policies
+    ):
+        raise ValueError("manifest privacy policies must be HTTPS URLs")
     user_config = manifest.get("user_config")
     if not isinstance(user_config, dict):
         raise ValueError("manifest user_config is missing")
