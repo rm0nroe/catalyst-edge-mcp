@@ -17,9 +17,9 @@ from catalyst_edge_mcp.redaction import bounded_raw
 
 OPTIONS_QUALITY = 0.85
 YFINANCE_QUALITY = 0.45
-FLOWALGO_GATE = ProviderGate(concurrency=1)
-CHEDDARFLOW_GATE = ProviderGate(concurrency=1)
-YFINANCE_GATE = ProviderGate(concurrency=1)
+FLOWALGO_GATE = ProviderGate(name="flowalgo", concurrency=1)
+CHEDDARFLOW_GATE = ProviderGate(name="cheddarflow", concurrency=1)
+YFINANCE_GATE = ProviderGate(name="yfinance", concurrency=1)
 
 
 class _TrueFlowAdapter:

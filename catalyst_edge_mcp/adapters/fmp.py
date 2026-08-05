@@ -15,7 +15,7 @@ from catalyst_edge_mcp.redaction import bounded_raw
 
 FMP_BASE = "https://financialmodelingprep.com"
 FMP_QUALITY = 0.85
-FMP_GATE = ProviderGate(concurrency=2, requests_per_second=5)
+FMP_GATE = ProviderGate(name="fmp", concurrency=2, requests_per_second=5)
 
 
 def _datetime(value: Any) -> datetime | None:
