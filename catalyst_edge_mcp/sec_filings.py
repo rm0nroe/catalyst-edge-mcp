@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import unquote, urlsplit
@@ -33,6 +34,10 @@ from catalyst_edge_mcp.sec_document_rules import (
 
 TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+COMPANY_SEARCH_URL = (
+    "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&ticker={ticker}&output=atom"
+)
+CIK_PATTERN = re.compile(r"<cik>(\d+)</cik>", re.IGNORECASE)
 TRACKED_FORMS = frozenset(
     {"8-K", "8-K/A", "10-Q", "10-Q/A", "10-K", "10-K/A", "6-K", "20-F", "40-F"}
 )
@@ -252,6 +257,27 @@ def resolve_sec_ticker(ticker_to_cik: dict[str, str], ticker: str) -> str | None
     return ticker_to_cik.get(ticker) or ticker_to_cik.get(ticker.replace(".", "-"))
 
 
+async def lookup_cik_via_company_search(client: httpx.AsyncClient, ticker: str) -> str | None:
+    """Resolve a ticker SEC's mapping file omits, via EDGAR company search.
+
+    The mapping file is incomplete: on 2026-08-05 it omitted AEP (CIK 0000004904)
+    from both company_tickers_exchange.json and company_tickers.json while EDGAR
+    itself carried the issuer, so a real 10-Q and 8-K were reported as
+    no_observations. Costs one extra request and only fires on a map miss, so a
+    genuinely unknown ticker still resolves to None.
+    """
+    try:
+        async with SEC_GATE.request():
+            response = await client.get(COMPANY_SEARCH_URL.format(ticker=ticker))
+        response.raise_for_status()
+    except httpx.HTTPError:
+        # Best-effort recovery only. A failing search must degrade to "unresolved",
+        # never escalate into an adapter error the caller did not have before.
+        return None
+    match = CIK_PATTERN.search(response.text)
+    return match.group(1).zfill(10) if match else None
+
+
 class SecFilingsAdapter:
     """Collect recent filing metadata from the official SEC submissions API."""
 
@@ -313,10 +339,27 @@ class SecFilingsAdapter:
             )
         cik = await self._resolve_cik(client, ticker)
         if cik is None:
+            # An unidentifiable issuer is not a quiet issuer. Status stays
+            # no_observations, but ENTITY_REJECTED outranks OBSERVED_NONE in
+            # REASON_PRECEDENCE, so the distinction survives into the dossier.
+            now = self._as_utc(self._clock())
             return AdapterResult(
                 family=self.family,
                 provider=self.provider,
-                warnings=[f"SEC submissions mapping has no CIK for {ticker}."],
+                warnings=[f"SEC has no CIK for {ticker} in its mapping or company search."],
+                status=SourceStatus.NO_OBSERVATIONS,
+                collected_at=now,
+                reason_records=[
+                    scoped_reason(
+                        ReasonCode.ENTITY_REJECTED,
+                        ReasonScope.EVALUATION,
+                        ticker,
+                        source_id=self.provider,
+                        family=self.family,
+                        observed_at=now,
+                        detail="cik_unresolved",
+                    )
+                ],
             )
         async with SEC_GATE.request():
             response = await client.get(SUBMISSIONS_URL.format(cik=cik))
@@ -489,7 +532,9 @@ class SecFilingsAdapter:
                 for row in payload.get("data", [])
                 if len(row) > max(ticker_index, cik_index)
             }
-        return resolve_sec_ticker(self._ticker_to_cik, ticker)
+        return resolve_sec_ticker(self._ticker_to_cik, ticker) or await (
+            lookup_cik_via_company_search(client, ticker)
+        )
 
     @classmethod
     def _normalize_recent(
