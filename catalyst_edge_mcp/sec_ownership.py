@@ -21,6 +21,7 @@ from catalyst_edge_mcp.models import (
     PolicyDecision,
     ReasonCode,
     ReasonScope,
+    ScopedReason,
     Source,
     SourceStatus,
 )
@@ -29,6 +30,7 @@ from catalyst_edge_mcp.sec_filings import (
     SEC_GATE,
     SUBMISSIONS_URL,
     TICKER_MAP_URL,
+    lookup_cik_via_company_search,
     resolve_sec_ticker,
 )
 
@@ -286,7 +288,24 @@ class SecInsiderAdapter:
             )
         cik = await self._resolve_cik(client, ticker)
         if cik is None:
-            return self._result([], [f"SEC submissions mapping has no CIK for {ticker}."], now)
+            # Mirrors sec_filings: unidentifiable issuer is distinct from a quiet one,
+            # carried by ENTITY_REJECTED rather than by the status.
+            return self._result(
+                [],
+                [f"SEC has no CIK for {ticker} in its mapping or company search."],
+                now,
+                reason_records=[
+                    scoped_reason(
+                        ReasonCode.ENTITY_REJECTED,
+                        ReasonScope.EVALUATION,
+                        ticker,
+                        source_id=self.provider,
+                        family=self.family,
+                        observed_at=now,
+                        detail="cik_unresolved",
+                    )
+                ],
+            )
         payload = await self._get_json(client, SUBMISSIONS_URL.format(cik=cik))
         recent = payload.get("filings", {}).get("recent", {})
         if not isinstance(recent, dict) or not isinstance(recent.get("form"), list):
@@ -618,7 +637,9 @@ class SecInsiderAdapter:
                 for row in payload.get("data", [])
                 if len(row) > max(ticker_index, cik_index)
             }
-        return resolve_sec_ticker(self._ticker_to_cik, ticker)
+        return resolve_sec_ticker(self._ticker_to_cik, ticker) or await (
+            lookup_cik_via_company_search(client, ticker)
+        )
 
     async def _get_json(self, client: httpx.AsyncClient, url: str) -> dict[str, Any]:
         async with SEC_GATE.request():
@@ -636,7 +657,11 @@ class SecInsiderAdapter:
         return response.content
 
     def _result(
-        self, evidence: list[Evidence], warnings: list[str], collected_at: datetime
+        self,
+        evidence: list[Evidence],
+        warnings: list[str],
+        collected_at: datetime,
+        reason_records: list[ScopedReason] | None = None,
     ) -> AdapterResult:
         return AdapterResult(
             family=self.family,
@@ -646,6 +671,7 @@ class SecInsiderAdapter:
             status=SourceStatus.FRESH if evidence else SourceStatus.NO_OBSERVATIONS,
             policy_decision=PolicyDecision.APPROVED,
             collected_at=collected_at,
+            reason_records=reason_records or [],
         )
 
     @staticmethod
