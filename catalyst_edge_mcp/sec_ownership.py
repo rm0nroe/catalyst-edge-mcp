@@ -335,23 +335,13 @@ class SecInsiderAdapter:
                 f"recent of {len(planned)} in the lookback window."
             )
             planned = planned[:MAX_OWNERSHIP_DOCUMENTS]
-        # One request per filing, issued concurrently. Serially, per-ticker cost scaled
-        # linearly with filing count against a fixed 8s deadline, so active issuers timed
-        # out deterministically (every ticker needing >=12 requests failed). SEC_GATE
-        # bounds concurrency at 4, so this claims slots in one batch instead of
-        # re-queueing per filing; it does not raise the global request rate.
-        documents = await asyncio.gather(
-            *(
-                self._get_bytes(client, self._archive_url(cik, entry.accession, entry.document))
-                for entry in planned
-            )
-        )
-        for entry, content in zip(planned, documents, strict=True):
+        urls = [self._archive_url(cik, entry.accession, entry.document) for entry in planned]
+        parsed = await self._parsed_documents(client, planned, urls, cutoff, now)
+        for entry, url in zip(planned, urls, strict=True):
             form = entry.form
             filed_at = entry.filed_at
             accession = entry.accession
-            url = self._archive_url(cik, accession, entry.document)
-            sha256 = hashlib.sha256(content).hexdigest()
+            sha256, facts = parsed[url]
             source = Source(
                 name="SEC EDGAR",
                 source_id="sec",
@@ -367,10 +357,8 @@ class SecInsiderAdapter:
                 policy_decision=PolicyDecision.APPROVED,
             )
             if form in FORM_144:
-                facts = parse_form_144_xml(content)
                 proposed_sales.append(self._form_144_evidence(facts, filed_at, source, accession))
                 continue
-            facts = parse_ownership_xml(content)
             owner_names = [owner.get("name") for owner in facts["owners"] if owner.get("name")]
             owner = owner_names[0] if owner_names else "unknown reporting owner"
             for transaction in facts["transactions"]:
@@ -392,6 +380,56 @@ class SecInsiderAdapter:
         if not evidence:
             warnings.append(f"No qualifying direct SEC insider activity found for {ticker}.")
         return self._result(evidence, warnings, now)
+
+    async def _parsed_documents(
+        self,
+        client: httpx.AsyncClient,
+        planned: list[_PlannedDocument],
+        urls: list[str],
+        cutoff: datetime,
+        now: datetime,
+    ) -> dict[str, tuple[str, dict[str, Any]]]:
+        """Resolve every planned filing to `(raw_sha256, parsed facts)`, fetching only misses.
+
+        Accession-addressed documents are immutable, so a hit needs no revalidation — a
+        conditional request would spend the request the cache exists to avoid. The parsed
+        payload is cached rather than the body: every body has exactly one reader here,
+        and bodies are ~18x the size of what that reader keeps.
+        """
+        cached = self.store.get_sec_documents(urls, PARSER_VERSION) if self.store else {}
+        misses = [
+            (entry, url)
+            for entry, url in zip(planned, urls, strict=True)
+            if url not in cached
+        ]
+        # One request per uncached filing, issued concurrently. Serially, per-ticker cost
+        # scaled linearly with filing count against a fixed 8s deadline, so active issuers
+        # timed out deterministically (every ticker needing >=12 requests failed). SEC_GATE
+        # bounds concurrency at 4, so this claims slots in one batch instead of
+        # re-queueing per filing; it does not raise the global request rate.
+        contents = await asyncio.gather(*(self._get_bytes(client, url) for _, url in misses))
+        for (entry, url), content in zip(misses, contents, strict=True):
+            facts = (
+                parse_form_144_xml(content)
+                if entry.form in FORM_144
+                else parse_ownership_xml(content)
+            )
+            cached[url] = (hashlib.sha256(content).hexdigest(), facts)
+            if self.store is not None:
+                self.store.put_sec_document(
+                    url,
+                    parser_version=PARSER_VERSION,
+                    raw_sha256=cached[url][0],
+                    payload=facts,
+                    filed_at=entry.filed_at,
+                    retrieved_at=now,
+                )
+        if self.store is not None:
+            # Bounds the table to the lookback window, mirroring prune_social_buckets.
+            # Runs per ticker rather than per scan: an indexed delete that matches nothing
+            # is cheaper than tracking whether this ticker was the one that aged a row out.
+            self.store.prune_sec_documents(before=cutoff)
+        return cached
 
     def _record_grouped_claims(self, ticker: str, evidence: list[Evidence]) -> None:
         if self.store is None:
