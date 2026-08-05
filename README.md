@@ -27,7 +27,7 @@ The product promise is bounded:
 The scorer is deterministic and unbacktested. Catalyst Edge does not promise alpha,
 investment performance, buy/sell signals, personalized advice, or execution.
 
-Version 0.1.3 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
+Version 0.1.4 is the approved free Local Beta for GitHub, PyPI, Codex, and the MCP
 Registry. Claude Desktop can use the same PyPI package through a manual stdio
 configuration, but the one-click `.mcpb` is intentionally withheld until its publisher
 can be verified by a production-trusted signing path. The current direction also includes
@@ -43,7 +43,7 @@ launch remains separately gated in
 
 As of 2026-07-21, the zero-subscription local runtime has the free dependencies
 needed to deliver the revised product: direct SEC filings and insider records plus
-implemented, opt-in issuer-feed, GDELT Web NGrams, and Bluesky capabilities.
+implemented GDELT Web NGrams discovery and opt-in issuer-feed and Bluesky capabilities.
 The MCP transports, schemas, provenance, typed missingness, event graph, and
 deterministic scorer are implemented and tested.
 
@@ -54,11 +54,12 @@ drive event-specific headlines, invalidation criteria, and next checks. The slic
 is covered by fixed real RKLB SEC metadata and was rechecked against live RKLB
 Form 144 and 8-K records.
 
-The opt-in local GDELT lifecycle is implemented: when GDELT is explicitly enabled,
-server startup schedules
-a bounded catch-up when persisted state is due, periodic refresh remains outside
+The default local GDELT lifecycle schedules a bounded catch-up when persisted state is
+due, while periodic refresh remains outside
 the MCP request path, shutdown cancels cleanly, and `catalyst-edge-health` reports
 last-success age plus fresh, stale, failed, never-refreshed, or unregistered state.
+Every dossier and paginated claim containing GDELT-derived data includes a machine-readable
+`The GDELT Project` citation and official link even when detailed sources are suppressed.
 Issuer feeds, discovery rules, social aliases, and publisher-domain quality tiers
 now load from one strictly validated local JSON registry. Registry v2 applies
 reviewed per-alias kind, match mode, required/negative context, validity interval,
@@ -110,7 +111,7 @@ or filing structures remain `other_material_event` and require human review.
 No numeric scorer change was justified because the real corpus contains no
 forward-return labels. The scorer remains deterministic and explicitly
 unbacktested. Paid options flow, licensed OHLC, sentiment, hosted deployment, and
-broader SEC semantic extraction are future capabilities. Version 0.1.3 ships only the
+broader SEC semantic extraction are future capabilities. Version 0.1.4 ships only the
 local, self-serve surface.
 
 In older implementation notes and runtime messages, “production” means the
@@ -126,7 +127,7 @@ package with Codex:
 codex mcp add catalyst-edge \
   --env 'CATALYST_EDGE_SEC_USER_AGENT=YOUR_ORGANIZATION YOUR_EMAIL' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.3' catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.4' catalyst-edge-mcp
 ```
 
 Open a fresh task and confirm discovery of exactly `catalyst_edge_score` and
@@ -169,7 +170,7 @@ npm audit --audit-level=low
 npm run mcpb:validate
 npm run mcpb:pack
 uv run --frozen python scripts/verify_mcpb.py \
-  --bundle dist/catalyst-edge-mcp-0.1.3.mcpb
+  --bundle dist/catalyst-edge-mcp-0.1.4.mcpb
 ```
 
 This produces an unsigned compatibility artifact for maintainer QA. It is not distributed
@@ -185,7 +186,7 @@ The live Web NGrams replacement evidence is recorded in
 | Direct SEC filings/ownership | `CATALYST_EDGE_SEC_USER_AGENT="Company ops@example.com"` | Required local live-data baseline; missing identity blocks live collection |
 | SEC fund identity/N-CEN/NPORT | Same SEC user agent; reviewed SPY/QQQ/DIA/IWM/XLE/XLK/GLD/GDX registry | Official series/class IDs yield neutral as-filed context; absent or inapplicable IDs return typed unsupported status; never uses corporate-insider semantics |
 | Reviewed issuer RSS/Atom | Built-in reviewed AAPL/NVDA registry; explicit `CATALYST_EDGE_ISSUER_FEEDS=enabled` opt-in | Disabled by public default pending source-specific output-rights clearance; unregistered tickers make no feed request |
-| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; explicit `CATALYST_EDGE_GDELT=enabled` opt-in | Disabled by public default until required GDELT citation/linking is implemented in the output; when enabled, refresh is out of band and request-time reads are cache-only |
+| GDELT Web NGrams discovery | Built-in reviewed AAPL/NVDA/TSLA/RKLB/BRK-A/BRK-B aliases; `CATALYST_EDGE_GDELT=disabled` opt-out | Enabled by public default with mandatory GDELT citation/linking; refresh is out of band and request-time reads are cache-only |
 | Bluesky partial public attention | Reviewed exact aliases; explicit `CATALYST_EDGE_BLUESKY=enabled` opt-in | Disabled by public default; opt-in uses forward-only local collection, 14-day derived-cache retention, operator deletion, and neutral-only output |
 | Mastodon attention | Reviewed-instance registry required | No instance is composed: measured representative coverage has not justified an allowlist |
 | FMP and Finnhub | Key plus recorded policy approval | Keys alone do not establish commercial rights and are not composed by default |
@@ -198,7 +199,8 @@ Provider credentials are read only from this process environment. They are never
 loaded from `../prior service`, logged, or returned in raw signals.
 
 Copy the checked-in template, populate the SEC identity, then export it into the
-current shell. The template leaves issuer feeds, GDELT, and Bluesky disabled:
+current shell. The template enables attributed GDELT discovery and leaves issuer feeds
+and Bluesky disabled:
 
 ```bash
 cp .env.example .env
@@ -222,7 +224,7 @@ Runtime settings:
 | `CATALYST_EDGE_HOST` | `127.0.0.1` | Loopback addresses only |
 | `CATALYST_EDGE_PORT` | `8000` | Streamable HTTP port |
 | `CATALYST_EDGE_ISSUER_FEEDS` | `disabled` | Explicit opt-in only after source-specific rights and output review |
-| `CATALYST_EDGE_GDELT` | `disabled` | Explicit opt-in only after required GDELT citation/linking is implemented; when enabled, request reads are cache-only and refresh is out of band |
+| `CATALYST_EDGE_GDELT` | `enabled` | Attributed, neutral discovery metadata; set to `disabled` to opt out; request reads are cache-only and refresh is out of band |
 | `CATALYST_EDGE_GDELT_REFRESH_SECONDS` | `300` | Period between bounded background attempts; 60–86,400 seconds |
 | `CATALYST_EDGE_GDELT_LOOKBACK_DAYS` | `14` | Event-store reporting window used by each background refresh; 1–90 days |
 | `CATALYST_EDGE_GDELT_MAX_AGE_SECONDS` | `900` | Last-success age after which request-time cache health becomes stale; must be at least the refresh interval |
@@ -537,6 +539,7 @@ to three items per family and 15 total.
       "source_count": 1
     }
   ],
+  "attributions": [],
   "data_quality": {
     "coverage": "complete",
     "missing_families": [],
@@ -587,6 +590,7 @@ Private-yfinance diagnostic response example:
     ]
   },
   "evidence": [],
+  "attributions": [],
   "data_quality": {
     "coverage": "none",
     "missing_families": [
@@ -628,7 +632,7 @@ families in `missing_families`. Provider failures, timeouts, stale evidence, mis
 baselines, and low confidence are warnings; missingness never becomes bearish
 evidence.
 
-Full canonical no-data response example (including issuer feeds, GDELT, and Bluesky disabled):
+Full canonical no-data response example (with every evidence source absent or disabled):
 
 ```json
 {
@@ -652,6 +656,7 @@ Full canonical no-data response example (including issuer feeds, GDELT, and Blue
     ]
   },
   "evidence": [],
+  "attributions": [],
   "data_quality": {
     "coverage": "none",
     "missing_families": [

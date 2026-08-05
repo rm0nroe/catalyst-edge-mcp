@@ -42,7 +42,7 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 8000
     issuer_feeds_enabled: bool = False
-    gdelt_enabled: bool = False
+    gdelt_enabled: bool = True
     gdelt_refresh_interval_seconds: int = 300
     gdelt_refresh_lookback_days: int = 14
     gdelt_freshness_max_age_seconds: int = 900
@@ -121,7 +121,7 @@ class Settings:
         issuer_feeds = os.getenv("CATALYST_EDGE_ISSUER_FEEDS", "disabled").strip().lower()
         if issuer_feeds not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_ISSUER_FEEDS must be 'enabled' or 'disabled'")
-        gdelt = os.getenv("CATALYST_EDGE_GDELT", "disabled").strip().lower()
+        gdelt = os.getenv("CATALYST_EDGE_GDELT", "enabled").strip().lower()
         if gdelt not in {"enabled", "disabled"}:
             raise ValueError("CATALYST_EDGE_GDELT must be 'enabled' or 'disabled'")
         gdelt_refresh_interval_seconds = _bounded_int_env(

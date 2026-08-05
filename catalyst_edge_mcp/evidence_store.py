@@ -18,7 +18,7 @@ from rapidfuzz import fuzz
 
 from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.models import ClaimSourcePage, ClaimSourceReference, PolicyDecision
-from catalyst_edge_mcp.source_policy import SOURCE_POLICIES
+from catalyst_edge_mcp.source_policy import SOURCE_POLICIES, source_attributions
 
 TRACKING_QUERY_KEYS = frozenset({"fbclid", "gclid", "mc_cid", "mc_eid", "ref", "source"})
 SOURCE_RANKS = {
@@ -622,6 +622,19 @@ class EvidenceStore:
                     "SELECT COUNT(*) FROM claim_source WHERE claim_id=?", (claim_id,)
                 ).fetchone()[0]
             )
+            claim_source_ids = [
+                str(row[0])
+                for row in connection.execute(
+                    """
+                    SELECT DISTINCT observation.source_id
+                    FROM claim_source AS relation
+                    JOIN source_observation AS observation
+                        ON observation.id=relation.observation_id
+                    WHERE relation.claim_id=?
+                    """,
+                    (claim_id,),
+                ).fetchall()
+            ]
             rows = connection.execute(
                 """
                 SELECT relation.id AS relation_id, relation.source_reference_id,
@@ -663,6 +676,7 @@ class EvidenceStore:
                 total_sources=total,
                 cursor=cursor,
                 next_cursor=next_cursor,
+                attributions=source_attributions(claim_source_ids),
             )
 
     def list_events(self, issuer_key: str, since: datetime) -> list[StoredEvent]:

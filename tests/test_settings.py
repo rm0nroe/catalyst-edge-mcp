@@ -29,9 +29,9 @@ def test_launch_configuration_identifies_exact_credential_requirements():
     status = settings.launch_configuration()
 
     assert settings.issuer_feeds_enabled is False
-    assert settings.gdelt_enabled is False
+    assert settings.gdelt_enabled is True
     assert settings.bluesky_enabled is False
-    assert status["configured_providers"] == []
+    assert status["configured_providers"] == ["gdelt"]
     assert status["configuration_ready"] is False
     assert status["missing_environment_variables"] == ["CATALYST_EDGE_SEC_USER_AGENT"]
     assert status["invalid_environment_variables"] == []
@@ -118,8 +118,8 @@ def test_issuer_feed_toggle_is_explicit(monkeypatch):
 
 
 def test_gdelt_toggle_is_explicit(monkeypatch):
-    monkeypatch.setenv("CATALYST_EDGE_GDELT", "enabled")
-    assert Settings.from_env().gdelt_enabled is True
+    monkeypatch.setenv("CATALYST_EDGE_GDELT", "disabled")
+    assert Settings.from_env().gdelt_enabled is False
 
     monkeypatch.setenv("CATALYST_EDGE_GDELT", "sometimes")
     with pytest.raises(ValueError, match="CATALYST_EDGE_GDELT"):

@@ -154,6 +154,9 @@ def test_event_graph_exact_fuzzy_dedupe_and_primary_source_ranking(tmp_path):
     assert {
         item.source_reference_id for item in [*page.sources, *second_page.sources]
     } == set(regulator.supporting_source_ids)
+    assert page.attributions[0].name == "The GDELT Project"
+    assert str(page.attributions[0].url) == "https://www.gdeltproject.org/"
+    assert second_page.attributions == page.attributions
 
     exact = store.ingest_event(
         _observation(
