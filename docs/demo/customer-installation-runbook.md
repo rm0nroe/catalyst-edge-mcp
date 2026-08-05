@@ -1,13 +1,14 @@
 # Local Self-Serve Installation and Rollback Runbook
 
-**Status:** Current Local Beta procedure for the pinned PyPI package. The legacy filename
-is retained for release continuity. It does not authorize additional source enablement.
+**Status:** Current Local Beta procedure for the pinned PyPI package and unsigned Claude
+Desktop custom extension. The legacy filename is retained for release continuity. It does
+not authorize additional source enablement.
 
 ## Prerequisites
 
 - Python 3.10+ and `uv`.
 - Claude Desktop, Codex, or another local stdio MCP client.
-- The pinned `catalyst-edge-mcp==0.1.4` PyPI package.
+- The pinned `catalyst-edge-mcp==0.1.4` PyPI package or v0.1.4 `.mcpb`.
 - A monitored SEC identity in `Company email@example.com` form.
 - An absolute user-owned local evidence-store path.
 - The prior pinned wheel/configuration when testing rollback.
@@ -55,10 +56,25 @@ The omitted GDELT toggle remains enabled by runtime default; issuer feeds and Bl
 disabled. Open a fresh Codex task and confirm exact discovery of `catalyst_edge_score` and
 `catalyst_edge_claim_sources` before calling one public ticker.
 
-## Add to Claude Desktop manually
+## Add to Claude Desktop
 
-Configure the pinned PyPI package manually while the production-trusted one-click `.mcpb`
-channel remains withheld:
+Download
+[`catalyst-edge-mcp-0.1.4.mcpb`](https://github.com/rm0nroe/catalyst-edge-mcp/releases/download/v0.1.4/catalyst-edge-mcp-0.1.4.mcpb)
+and compare its SHA-256 with the v0.1.4 checksum manifest. In Claude Desktop, choose
+**Settings → Extensions → Advanced settings → Install Extension…**, select the bundle,
+review the manifest, and enter the monitored SEC identity. The unsigned custom extension
+shows an unverified warning because file-level publisher verification is unavailable in
+the released MCPB tooling.
+
+Confirm discovery of exactly `catalyst_edge_score` and `catalyst_edge_claim_sources`, then
+call each tool with valid public test data. For `catalyst_edge_claim_sources`, use a real
+`claim_id` returned by `catalyst_edge_score`; never invent one. Uninstall and reinstall the
+same bytes, retaining the evidence-store path, and verify that the SQLite store remains
+intact.
+
+## Add to Claude Desktop manually from PyPI
+
+The pinned PyPI package remains available as a manual stdio alternative:
 
 ```json
 {
