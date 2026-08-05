@@ -38,7 +38,11 @@ from catalyst_edge_mcp.sec_filings import (
 OWNERSHIP_FORMS = frozenset({"3", "3/A", "4", "4/A", "5", "5/A"})
 FORM_144 = frozenset({"144", "144/A"})
 PARSER_VERSION = "sec-ownership-v1"
-MAX_OWNERSHIP_DOCUMENTS = 20
+# Bounds pathological filers only. Set to 20 when every fetch was a live request against a
+# fixed 8s deadline; the document cache removed that pressure, and a 300-ticker production
+# scan measured 2026-08-05 still truncated two real issuers (25 and 26 filings) while
+# recording zero ownership timeouts. 30 clears the observed maximum with headroom.
+MAX_OWNERSHIP_DOCUMENTS = 30
 
 
 class _PlannedDocument(NamedTuple):
