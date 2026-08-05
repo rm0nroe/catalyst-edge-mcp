@@ -11,7 +11,6 @@ from typing import Any
 import httpx
 from lxml import etree
 
-from catalyst_edge_mcp.adapters.base import ProviderGate
 from catalyst_edge_mcp.compat import UTC
 from catalyst_edge_mcp.models import (
     AdapterResult,
@@ -27,12 +26,12 @@ from catalyst_edge_mcp.models import (
 )
 from catalyst_edge_mcp.reason_records import scoped_reason
 from catalyst_edge_mcp.registry_models import FundIdentity
+from catalyst_edge_mcp.sec_filings import SEC_GATE
 
 SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 TRACKED_FUND_FORMS = frozenset({"N-CEN", "N-CEN/A", "NPORT-P", "NPORT-P/A"})
 MAX_FUND_DOCUMENT_BYTES = 25_000_000
 PARSER_VERSION = "sec-funds-v1"
-SEC_FUND_GATE = ProviderGate(name="sec_funds", concurrency=2, requests_per_second=2)
 
 
 class SecFundAdapter:
@@ -366,7 +365,7 @@ class SecFundAdapter:
         )
 
     async def _get_json(self, client: httpx.AsyncClient, url: str) -> dict[str, Any]:
-        async with SEC_FUND_GATE.request():
+        async with SEC_GATE.request():
             response = await client.get(url)
         response.raise_for_status()
         payload = response.json()
@@ -377,7 +376,7 @@ class SecFundAdapter:
     async def _get_bounded_bytes(self, client: httpx.AsyncClient, url: str) -> bytes:
         parts: list[bytes] = []
         size = 0
-        async with SEC_FUND_GATE.request(), client.stream("GET", url) as response:
+        async with SEC_GATE.request(), client.stream("GET", url) as response:
             response.raise_for_status()
             async for chunk in response.aiter_bytes():
                 size += len(chunk)
