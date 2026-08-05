@@ -26,6 +26,7 @@ class _Result:
         "edge": {"scoring_method": "deterministic_v1", "model_status": "not_trained"},
         "summary": {},
         "evidence": [],
+        "attributions": [],
         "data_quality": {"coverage": "none"},
         "next_checks": [],
     }

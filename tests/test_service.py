@@ -321,6 +321,28 @@ async def test_sources_and_raw_signals_are_optional(fixed_clock):
 
 
 @pytest.mark.asyncio
+async def test_gdelt_attribution_survives_primary_source_and_source_suppression(fixed_clock):
+    evidence = make_evidence("filings_news", "publisher_link_discovery")
+    evidence.sources[0].source_id = "sec"
+    service = CatalystService(
+        [
+            StaticAdapter(
+                "filings_news",
+                make_result("filings_news", evidence),
+                provider="gdelt",
+            )
+        ],
+        clock=fixed_clock,
+    )
+
+    response = await service.evaluate(ToolInput(ticker="NVDA", include_sources=False))
+
+    assert response.evidence[0].sources == []
+    assert response.attributions[0].name == "The GDELT Project"
+    assert str(response.attributions[0].url) == "https://www.gdeltproject.org/"
+
+
+@pytest.mark.asyncio
 async def test_unsupported_status_retains_source_unsupported_reason(fixed_clock):
     adapter = StaticAdapter(
         "filings_news",
