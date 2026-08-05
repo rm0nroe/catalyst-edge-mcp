@@ -7,18 +7,19 @@ is retained for release continuity. It does not authorize additional source enab
 
 - Python 3.10+ and `uv`.
 - Claude Desktop, Codex, or another local stdio MCP client.
-- The pinned `catalyst-edge-mcp==0.1.3` PyPI package.
+- The pinned `catalyst-edge-mcp==0.1.4` PyPI package.
 - A monitored SEC identity in `Company email@example.com` form.
 - An absolute user-owned local evidence-store path.
 - The prior pinned wheel/configuration when testing rollback.
 
-Issuer feeds, GDELT, Bluesky, options, and sentiment are disabled by default. Do not
-enable them merely to obtain more output; follow the current source-rights matrix.
+Attributed GDELT discovery is enabled by default. Issuer feeds, Bluesky, options, and
+sentiment remain disabled. Do not enable them merely to obtain more output; follow the
+current source-rights matrix.
 
 ## Install from PyPI
 
 ```bash
-uv tool install 'catalyst-edge-mcp==0.1.3'
+uv tool install 'catalyst-edge-mcp==0.1.4'
 uv tool list
 ```
 
@@ -31,7 +32,7 @@ contact identifier, not a secret, but it must be real and monitored.
 CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com
 CATALYST_EDGE_TRANSPORT=stdio
 CATALYST_EDGE_ISSUER_FEEDS=disabled
-CATALYST_EDGE_GDELT=disabled
+CATALYST_EDGE_GDELT=enabled
 CATALYST_EDGE_BLUESKY=disabled
 CATALYST_EDGE_OPTIONS_PROVIDER=none
 CATALYST_EDGE_SENTIMENT_MODEL=disabled
@@ -46,13 +47,13 @@ The installed Codex CLI supports stdio MCP registration with `codex mcp add`:
 codex mcp add catalyst-edge \
   --env 'CATALYST_EDGE_SEC_USER_AGENT=YOUR_ORGANIZATION YOUR_EMAIL' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.3' catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.4' catalyst-edge-mcp
 codex mcp get catalyst-edge
 ```
 
-The omitted source toggles remain disabled by runtime default. Open a fresh Codex task and
-confirm exact discovery of `catalyst_edge_score` and `catalyst_edge_claim_sources` before
-calling one public ticker.
+The omitted GDELT toggle remains enabled by runtime default; issuer feeds and Bluesky stay
+disabled. Open a fresh Codex task and confirm exact discovery of `catalyst_edge_score` and
+`catalyst_edge_claim_sources` before calling one public ticker.
 
 ## Add to Claude Desktop manually
 
@@ -64,7 +65,7 @@ channel remains withheld:
   "mcpServers": {
     "catalyst-edge": {
       "command": "uvx",
-      "args": ["--from", "catalyst-edge-mcp==0.1.3", "catalyst-edge-mcp"],
+      "args": ["--from", "catalyst-edge-mcp==0.1.4", "catalyst-edge-mcp"],
       "env": {
         "CATALYST_EDGE_SEC_USER_AGENT": "Company ops@example.com",
         "CATALYST_EDGE_EVIDENCE_STORE": "/absolute/local/path/evidence.sqlite3"

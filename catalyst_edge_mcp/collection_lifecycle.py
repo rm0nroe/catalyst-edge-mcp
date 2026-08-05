@@ -24,6 +24,7 @@ from catalyst_edge_mcp.models import AdapterResult, SourceStatus
 from catalyst_edge_mcp.registry_config import RegistryBundle, load_registry_bundle
 from catalyst_edge_mcp.registry_models import DiscoveryIssuer, SocialIssuer
 from catalyst_edge_mcp.settings import Settings
+from catalyst_edge_mcp.source_policy import source_attributions
 from catalyst_edge_mcp.validation import normalize_ticker
 
 LOGGER = logging.getLogger(__name__)
@@ -454,6 +455,10 @@ def health_main() -> None:
             json.dumps(
                 {
                     "provider": "gdelt",
+                    "attributions": [
+                        item.model_dump(mode="json")
+                        for item in source_attributions(["gdelt"])
+                    ],
                     "observed_at": _as_utc(lifecycle._clock()).isoformat(),
                     "results": [report.as_dict() for report in reports],
                 },
