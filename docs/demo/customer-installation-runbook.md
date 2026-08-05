@@ -7,7 +7,7 @@ is retained for release continuity. It does not authorize additional source enab
 
 - Python 3.10+ and `uv`.
 - Claude Desktop, Codex, or another local stdio MCP client.
-- The pinned `catalyst-edge-mcp==0.1.2` PyPI package.
+- The pinned `catalyst-edge-mcp==0.1.3` PyPI package.
 - A monitored SEC identity in `Company email@example.com` form.
 - An absolute user-owned local evidence-store path.
 - The prior pinned wheel/configuration when testing rollback.
@@ -18,7 +18,7 @@ enable them merely to obtain more output; follow the current source-rights matri
 ## Install from PyPI
 
 ```bash
-uv tool install 'catalyst-edge-mcp==0.1.2'
+uv tool install 'catalyst-edge-mcp==0.1.3'
 uv tool list
 ```
 
@@ -44,9 +44,9 @@ The installed Codex CLI supports stdio MCP registration with `codex mcp add`:
 
 ```bash
 codex mcp add catalyst-edge \
-  --env 'CATALYST_EDGE_SEC_USER_AGENT=Company ops@example.com' \
+  --env 'CATALYST_EDGE_SEC_USER_AGENT=YOUR_ORGANIZATION YOUR_EMAIL' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.2' catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.3' catalyst-edge-mcp
 codex mcp get catalyst-edge
 ```
 
@@ -64,7 +64,7 @@ channel remains withheld:
   "mcpServers": {
     "catalyst-edge": {
       "command": "uvx",
-      "args": ["--from", "catalyst-edge-mcp==0.1.2", "catalyst-edge-mcp"],
+      "args": ["--from", "catalyst-edge-mcp==0.1.3", "catalyst-edge-mcp"],
       "env": {
         "CATALYST_EDGE_SEC_USER_AGENT": "Company ops@example.com",
         "CATALYST_EDGE_EVIDENCE_STORE": "/absolute/local/path/evidence.sqlite3"

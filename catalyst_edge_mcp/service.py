@@ -300,7 +300,7 @@ class CatalystService:
 
         compact = self._compact(scored.evidence)
         summary = build_summary(compact, missing, request.risk_mode)
-        checks = next_checks(compact, request.risk_mode)
+        checks = next_checks(compact, request.risk_mode, request.lookback_days)
         output = self._apply_options(compact, request)
         coverage = (
             "none"
