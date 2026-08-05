@@ -3,7 +3,15 @@
   "name": "io.github.rm0nroe/catalyst-edge-mcp",
   "title": "Catalyst Edge Research",
   "description": "Source-linked market intelligence for AI agents researching public-company tickers.",
-  "version": "0.1.2",
+  "version": "0.1.3",
+  "websiteUrl": "https://catalyst-edge-mcp.vercel.app",
+  "icons": [
+    {
+      "src": "https://catalyst-edge-mcp.vercel.app/favicon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
   "repository": {
     "url": "https://github.com/rm0nroe/catalyst-edge-mcp",
     "source": "github",
@@ -13,7 +21,7 @@
     {
       "registryType": "pypi",
       "identifier": "catalyst-edge-mcp",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "transport": {
         "type": "stdio"
       },

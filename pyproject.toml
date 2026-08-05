@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "catalyst-edge-mcp"
-version = "0.1.2"
+version = "0.1.3"
 description = "Source-linked market intelligence for AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -20,6 +20,8 @@ dependencies = [
 ]
 
 [project.urls]
+Homepage = "https://catalyst-edge-mcp.vercel.app"
+Documentation = "https://github.com/rm0nroe/catalyst-edge-mcp#readme"
 Repository = "https://github.com/rm0nroe/catalyst-edge-mcp"
 Issues = "https://github.com/rm0nroe/catalyst-edge-mcp/issues"
 
