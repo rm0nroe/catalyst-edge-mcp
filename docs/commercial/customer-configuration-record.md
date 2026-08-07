@@ -1,7 +1,7 @@
 # Customer Configuration Record
 
 **Status:** Superseded historical design-partner template; non-executable. The current
-self-serve motion is defined in `internal-plan`. Retain this only as a possible future paid
+self-serve motion is separately governed. Retain this only as a possible future paid
 deployment reference; it does not authorize interviews, prospecting, custom installation,
 or counsel quote requests.
 

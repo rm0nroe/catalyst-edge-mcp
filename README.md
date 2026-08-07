@@ -35,10 +35,7 @@ from any future Anthropic directory review. The current direction also includes
 a `Hosted Pro — $29/month` paid-intent test. Research does not support building Hosted Pro
 now: only recent activation-linked, verified, price-aware signups count toward staged 350
 compatibility-spike, 1,350 scoped-review, and 11,100 safeguarded full-build reconsideration
-gates. None grants automatic implementation, payment, or deployment authority. Paid
-launch remains separately gated in
-[`internal-plan`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/internal-plan); the economics are documented in the
-[`Hosted Pro architecture research`](https://github.com/rm0nroe/catalyst-edge-mcp/blob/main/notes/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md).
+gates. None grants automatic implementation, payment, or deployment authority.
 
 ## Current status and completion boundary
 
