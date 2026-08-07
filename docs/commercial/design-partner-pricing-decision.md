@@ -5,9 +5,7 @@ current self-serve plan uses a free Local Beta and a `$29/month` Hosted Pro paid
 test without interviews, named-buyer discovery, or counsel quote requests. Its current
 research-backed gates are 350 activation-linked signups for a separately authorized capped
 compatibility spike, 1,350 for a separately authorized scoped review, and 11,100 for full-
-build reconsideration. This worksheet does not set or modify those gates; see
-[`internal-plan`](../../internal-plan) and the
-[`Hosted Pro architecture research`](../../notes/unknown-ticket/research/2026-08-03-RESEARCH-hosted-pro-architecture.md).
+build reconsideration. This worksheet does not set or modify those gates.
 
 ## Fixed package boundary
 

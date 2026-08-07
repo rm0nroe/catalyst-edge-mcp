@@ -1,7 +1,7 @@
 # Catalyst Edge MCP Design Partner Order Form
 
 **Status:** Superseded historical design-partner draft; non-executable. The current
-self-serve motion is defined in `internal-plan`. Do not use this document for outreach,
+self-serve motion is separately governed. Do not use this document for outreach,
 customer discovery, signature, delivery, or counsel quote requests.
 
 ## Parties and term
