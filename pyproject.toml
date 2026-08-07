@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://catalyst-edge-mcp.vercel.app"
+Homepage = "https://catalyst.ryanmonroe.ai"
 Documentation = "https://github.com/rm0nroe/catalyst-edge-mcp#readme"
 Repository = "https://github.com/rm0nroe/catalyst-edge-mcp"
 Issues = "https://github.com/rm0nroe/catalyst-edge-mcp/issues"

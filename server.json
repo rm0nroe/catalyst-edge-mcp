@@ -4,10 +4,10 @@
   "title": "Catalyst Edge Research",
   "description": "Source-linked market intelligence for AI agents researching public-company tickers.",
   "version": "0.1.4",
-  "websiteUrl": "https://catalyst-edge-mcp.vercel.app",
+  "websiteUrl": "https://catalyst.ryanmonroe.ai",
   "icons": [
     {
-      "src": "https://catalyst-edge-mcp.vercel.app/favicon.svg",
+      "src": "https://catalyst.ryanmonroe.ai/favicon.svg",
       "mimeType": "image/svg+xml",
       "sizes": ["any"]
     }
