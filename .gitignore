@@ -16,3 +16,9 @@ node_modules/
 !.env.example
 .vercel
 .env*.local
+
+# Keep internal planning material out of GitHub.
+/notes/
+/internal-plan
+/product specification
+/technical specification
