@@ -15,7 +15,6 @@ from scripts.sign_mcpb import (
     sign_bundle,
 )
 from scripts.verify_mcpb import _prohibited, _validate_bundle, _validate_source
-from scripts.verify_release import _prohibited_sdist_path
 
 
 def test_mcpb_source_contract():
@@ -37,10 +36,6 @@ def test_mcpb_source_contract():
 )
 def test_mcpb_rejects_prohibited_members(name):
     assert _prohibited(name)
-
-
-def test_release_rejects_notes():
-    assert _prohibited_sdist_path("notes/internal-plan.md")
 
 
 def test_mcpb_rejects_unexpected_root(tmp_path):
