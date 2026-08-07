@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "catalyst-edge-mcp",
   "display_name": "Catalyst Edge Research",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Source-linked market intelligence for AI agents researching public-company tickers.",
   "long_description": "Catalyst Edge Research exposes exactly two read-only MCP tools for ticker-level evidence research. Scores are deterministic, unbacktested, and non-advisory. The public default uses official SEC data plus attributed GDELT discovery metadata; other providers remain disabled.",
   "author": {
