@@ -3,7 +3,7 @@
   "name": "io.github.rm0nroe/catalyst-edge-mcp",
   "title": "Catalyst Edge Research",
   "description": "Source-linked market intelligence for AI agents researching public-company tickers.",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "websiteUrl": "https://catalyst.ryanmonroe.ai",
   "icons": [
     {
@@ -21,7 +21,7 @@
     {
       "registryType": "pypi",
       "identifier": "catalyst-edge-mcp",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "transport": {
         "type": "stdio"
       },

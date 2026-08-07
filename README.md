@@ -32,7 +32,7 @@ email address.
 codex mcp add catalyst-edge \
   --env 'CATALYST_EDGE_SEC_USER_AGENT=YOUR_ORGANIZATION YOUR_EMAIL' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.4' catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.5' catalyst-edge-mcp
 ```
 
 Start a fresh task and verify that Codex discovers these two tools:
@@ -44,7 +44,7 @@ Start a fresh task and verify that Codex discovers these two tools:
 
 ### Claude Desktop
 
-Download [`catalyst-edge-mcp-0.1.4.mcpb`](https://github.com/rm0nroe/catalyst-edge-mcp/releases/download/v0.1.4/catalyst-edge-mcp-0.1.4.mcpb),
+Download [`catalyst-edge-mcp-0.1.5.mcpb`](https://github.com/rm0nroe/catalyst-edge-mcp/releases/download/v0.1.5/catalyst-edge-mcp-0.1.5.mcpb),
 then choose **Settings → Extensions → Advanced settings → Install Extension…**.
 Enter the same SEC identity when prompted. The extension is an unsigned custom bundle;
 review the source and published checksum before accepting Claude Desktop's warning.
@@ -79,10 +79,10 @@ partial score.
 
 ```bash
 # Run the local stdio MCP server
-uvx --from 'catalyst-edge-mcp==0.1.4' catalyst-edge-mcp
+uvx --from 'catalyst-edge-mcp==0.1.5' catalyst-edge-mcp
 
 # Get a dossier directly
-uvx --from 'catalyst-edge-mcp==0.1.4' catalyst-edge-score NVDA --lookback-days 14
+uvx --from 'catalyst-edge-mcp==0.1.5' catalyst-edge-score NVDA --lookback-days 14
 ```
 
 ---
@@ -105,7 +105,7 @@ The default evidence store is local SQLite at
 
 ```bash
 CATALYST_EDGE_SEC_USER_AGENT='YOUR_ORGANIZATION YOUR_EMAIL' \
-uvx --from 'catalyst-edge-mcp==0.1.4' catalyst-edge-smoke NVDA --lookback-days 14
+uvx --from 'catalyst-edge-mcp==0.1.5' catalyst-edge-smoke NVDA --lookback-days 14
 ```
 
 The smoke check reports sanitized configuration, provenance, coverage, and readiness
