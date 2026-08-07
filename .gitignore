@@ -16,3 +16,9 @@ node_modules/
 !.env.example
 .vercel
 .env*.local
+
+# Keep internal planning material out of GitHub.
+/thoughts/
+/GTM_PLAN.md
+/PRD.md
+/TDD.md
