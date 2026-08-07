@@ -145,7 +145,7 @@ procedure is in
 
 ## Privacy Policy
 
-Read the [Catalyst Edge Privacy Policy](https://catalyst-edge-mcp.vercel.app/privacy.html).
+Read the [Catalyst Edge Privacy Policy](https://catalyst.ryanmonroe.ai/privacy.html).
 Tool results and SQLite evidence stay on the user's machine. Ticker and issuer search terms
 may be sent directly from that machine to the enabled public-source providers. The policy
 describes public-source collection, local and site storage, third-party sharing, retention,
