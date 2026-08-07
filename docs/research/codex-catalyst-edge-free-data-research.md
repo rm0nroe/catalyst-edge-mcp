@@ -4,7 +4,7 @@
 
 **Research date:** 2026-07-13
 
-**Contract reviewed:** `product specification` and `technical specification`
+**Contract reviewed:** the then-current product and technical design
 
 **Scope:** legally durable, source-linked insider, company-event, options, and social inputs for a commercial-capable local MCP
 
@@ -21,7 +21,7 @@ The defensible result is:
 - **Options: an unavoidable gap.** OPRA licensing governs consolidated US options trades and quotes. Free chain snapshots and end-of-day aggregates cannot reconstruct trade premium, side, multi-exchange sweeps, or blocks.
 - **Social: useful but incomplete.** Bluesky and selected Mastodon instances are legally accessible, but neither supplies a complete market-wide history. Reddit and Stocktwits cannot be assumed available for a commercial zero-subscription product.
 
-If full-fidelity options flow is a mandatory product specification acceptance criterion, the zero-subscription build does **not** meet the product specification. If the product contract permits honest missingness and a later licensed adapter, it can still deliver a differentiated dossier rather than a generic finance-data wrapper.
+If full-fidelity options flow is mandatory, the zero-subscription build does **not** meet that requirement. If the product contract permits honest missingness and a later licensed adapter, it can still deliver a differentiated dossier rather than a generic finance-data wrapper.
 
 ## What “free” means here
 

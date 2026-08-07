@@ -40,8 +40,6 @@ PROHIBITED_PARTS = {
     ".pytest_cache",
     ".ruff_cache",
     "__pycache__",
-    "notes",
-    "notes",
 }
 PROHIBITED_SUFFIXES = (".db", ".pyc", ".pyo", ".sqlite", ".sqlite3", "-shm", "-wal")
 SECRET_ENV_NAMES = {

@@ -10,7 +10,7 @@
 - Merge state: no `.git/MERGE_HEAD`.
 - Candidate version: `0.1.1`, deliberately distinct from prior pinned `0.1.0` so forward install and rollback can be proven without ambiguous same-version artifacts.
 - Package and lock agree on `0.1.1`; `uv.lock` SHA-256 is `a996b00ce76863f83f579ddf7a28631f2fd5461fec505a25165b3484f153e2e3`.
-- The working tree is intentionally uncommitted and contains the recorded execution pack plus preserved unrelated `notes/` artifacts. This prevents a clean-commit release claim and keeps R1/R2 partial.
+- The working tree is intentionally uncommitted and contains the recorded execution pack plus preserved unrelated local artifacts. This prevents a clean-commit release claim and keeps R1/R2 partial.
 
 ## Candidate artifacts
 

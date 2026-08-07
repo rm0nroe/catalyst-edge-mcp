@@ -64,8 +64,6 @@ PROHIBITED_PARTS = {
     "node_modules",
     "scripts",
     "tests",
-    "notes",
-    "notes",
 }
 PROHIBITED_SUFFIXES = (".db", ".log", ".pyc", ".pyo", ".sqlite", ".sqlite3", "-shm", "-wal")
 

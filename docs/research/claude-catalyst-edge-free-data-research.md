@@ -1,9 +1,9 @@
 # Catalyst Edge MCP — Free/OSS Data Sourcing Research
-**Date:** July 13, 2026 | **Against:** product specification + technical specification (deterministic_v1 scorer, 5 canonical families)
+**Date:** July 13, 2026 | **Against:** deterministic_v1 scorer with five canonical families
 
-## 0. Framing against the actual technical specification
+## 0. Framing against the scorer contract
 
-The technical specification already locks in a specific dependency shape:
+The scorer contract locks in a specific dependency shape:
 
 | Family | Current technical specification source | Paid? | Failure mode if unfunded |
 |---|---|---|---|
