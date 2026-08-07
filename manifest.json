@@ -13,7 +13,7 @@
     "type": "git",
     "url": "https://github.com/rm0nroe/catalyst-edge-mcp"
   },
-  "homepage": "https://catalyst-edge-mcp.vercel.app",
+  "homepage": "https://catalyst.ryanmonroe.ai",
   "documentation": "https://github.com/rm0nroe/catalyst-edge-mcp#readme",
   "support": "https://github.com/rm0nroe/catalyst-edge-mcp/issues",
   "icon": "icon.png",
@@ -60,7 +60,7 @@
   ],
   "license": "MIT",
   "privacy_policies": [
-    "https://catalyst-edge-mcp.vercel.app/privacy.html",
+    "https://catalyst.ryanmonroe.ai/privacy.html",
     "https://www.sec.gov/privacy.htm"
   ],
   "compatibility": {

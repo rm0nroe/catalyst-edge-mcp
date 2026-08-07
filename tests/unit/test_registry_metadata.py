@@ -18,10 +18,10 @@ def test_registry_metadata_matches_package():
     assert payload["name"] == MCP_NAME
     assert payload["title"] == "Catalyst Edge Research"
     assert payload["description"].startswith("Source-linked market intelligence")
-    assert payload["websiteUrl"] == "https://catalyst-edge-mcp.vercel.app"
+    assert payload["websiteUrl"] == "https://catalyst.ryanmonroe.ai"
     assert payload["icons"] == [
         {
-            "src": "https://catalyst-edge-mcp.vercel.app/favicon.svg",
+            "src": "https://catalyst.ryanmonroe.ai/favicon.svg",
             "mimeType": "image/svg+xml",
             "sizes": ["any"],
         }
