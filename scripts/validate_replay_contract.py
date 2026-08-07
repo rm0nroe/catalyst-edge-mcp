@@ -1,4 +1,4 @@
-"""Reproduce the provider-neutral replay-contract validation recorded in technical specification §17.9."""
+"""Reproduce the provider-neutral replay-contract validation in technical specification §17.9."""
 
 from __future__ import annotations
 

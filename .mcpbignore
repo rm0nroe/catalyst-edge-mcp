@@ -2,6 +2,7 @@
 .github/
 .vercel/
 api/
+assets/
 .venv/
 build/
 dist/
