@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager, suppress
+from pathlib import Path
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -24,6 +25,7 @@ from catalyst_edge_mcp.models import (
     ToolInput,
 )
 from catalyst_edge_mcp.registry_config import RegistryBundle, load_registry_bundle
+from catalyst_edge_mcp.replay.runtime import load_runtime_scorer
 from catalyst_edge_mcp.sec_filings import SecFilingsAdapter
 from catalyst_edge_mcp.sec_funds import SecFundAdapter
 from catalyst_edge_mcp.sec_ownership import SecInsiderAdapter
@@ -103,7 +105,19 @@ def build_service(
     # not call a provider before its automation, storage, and output rights pass.
     # Sentiment likewise has no production composition path while every audited
     # candidate is gate-incomplete.
-    return CatalystService(adapters)
+    scorer = None
+    shadow_scorer = None
+    if settings.model_mode != "disabled":
+        runtime_scorer = load_runtime_scorer(
+            Path(settings.model_artifact_path or ""),
+            Path(settings.model_manifest_path or ""),
+            require_stage_b=settings.model_mode == "active",
+        )
+        if settings.model_mode == "shadow":
+            shadow_scorer = runtime_scorer
+        else:
+            scorer = runtime_scorer
+    return CatalystService(adapters, scorer=scorer, shadow_scorer=shadow_scorer)
 
 
 _initial_settings = Settings.from_env()

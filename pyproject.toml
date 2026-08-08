@@ -45,6 +45,7 @@ catalyst-edge-refresh-gdelt = "catalyst_edge_mcp.gdelt_refresh:main"
 catalyst-edge-refresh-bluesky = "catalyst_edge_mcp.bluesky_refresh:main"
 catalyst-edge-purge-bluesky-cache = "catalyst_edge_mcp.bluesky_cache:main"
 catalyst-edge-health = "catalyst_edge_mcp.collection_lifecycle:health_main"
+catalyst-edge-synthetic-model = "catalyst_edge_mcp.replay.pipeline:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["catalyst_edge_mcp"]

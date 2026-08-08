@@ -38,6 +38,9 @@ class Settings:
     cheddarflow_api_key: str | None = None
     options_provider: str = "none"
     sentiment_model: str = "disabled"
+    model_mode: str = "disabled"
+    model_artifact_path: str | None = None
+    model_manifest_path: str | None = None
     transport: str = "stdio"
     host: str = "127.0.0.1"
     port: int = 8000
@@ -89,6 +92,10 @@ class Settings:
             "options_entitlement_ready": options_provider_ready(self.options_provider),
             "sentiment_model": self.sentiment_model,
             "sentiment_model_ready": False,
+            "model_mode": self.model_mode,
+            "model_artifact_configured": bool(
+                self.model_artifact_path and self.model_manifest_path
+            ),
         }
 
     @classmethod
@@ -107,6 +114,16 @@ class Settings:
             raise ValueError(
                 "CATALYST_EDGE_SENTIMENT_MODEL must remain 'disabled' until a reviewed "
                 "candidate passes every production gate"
+            )
+        model_mode = os.getenv("CATALYST_EDGE_MODEL_MODE", "disabled").strip().lower()
+        if model_mode not in {"disabled", "shadow", "active"}:
+            raise ValueError("CATALYST_EDGE_MODEL_MODE must be disabled, shadow, or active")
+        model_artifact_path = _optional_env("CATALYST_EDGE_MODEL_ARTIFACT")
+        model_manifest_path = _optional_env("CATALYST_EDGE_MODEL_MANIFEST")
+        if model_mode != "disabled" and not (model_artifact_path and model_manifest_path):
+            raise ValueError(
+                "CATALYST_EDGE_MODEL_ARTIFACT and CATALYST_EDGE_MODEL_MANIFEST are required "
+                "when model mode is enabled"
             )
         port_text = os.getenv("CATALYST_EDGE_PORT", "8000").strip()
         try:
@@ -160,6 +177,9 @@ class Settings:
             cheddarflow_api_key=_optional_env("CHEDDARFLOW_API_KEY"),
             options_provider=options_provider,
             sentiment_model=sentiment_model,
+            model_mode=model_mode,
+            model_artifact_path=model_artifact_path,
+            model_manifest_path=model_manifest_path,
             transport=transport,
             host=host,
             port=port,
@@ -172,17 +192,10 @@ class Settings:
             bluesky_refresh_interval_seconds=bluesky_refresh_interval_seconds,
             bluesky_freshness_max_age_seconds=bluesky_freshness_max_age_seconds,
             registry_path=(
-                _optional_env("CATALYST_EDGE_REGISTRY_PATH")
-                or str(DEFAULT_REGISTRY_PATH)
+                _optional_env("CATALYST_EDGE_REGISTRY_PATH") or str(DEFAULT_REGISTRY_PATH)
             ),
             evidence_store_path=(
                 _optional_env("CATALYST_EDGE_EVIDENCE_STORE")
-                or str(
-                    Path.home()
-                    / ".local"
-                    / "state"
-                    / "catalyst-edge-mcp"
-                    / "evidence.sqlite3"
-                )
+                or str(Path.home() / ".local" / "state" / "catalyst-edge-mcp" / "evidence.sqlite3")
             ),
         )
