@@ -6,10 +6,13 @@ from datetime import timedelta
 import httpx
 import pytest
 
+from catalyst_edge_mcp import collection_lifecycle
 from catalyst_edge_mcp.collection_lifecycle import (
     BlueskyCollectionLifecycle,
     FreshnessState,
     GdeltCollectionLifecycle,
+    SingletonCollector,
+    collector_lock_path,
     health_main,
 )
 from catalyst_edge_mcp.discovery_registry import DISCOVERY_ISSUER_INDEX
@@ -266,3 +269,86 @@ async def test_bluesky_lifecycle_skips_unregistered_ticker(tmp_path):
         assert lifecycle.health()[0].freshness is FreshnessState.UNREGISTERED
     finally:
         await lifecycle.stop()
+
+
+@pytest.mark.asyncio
+async def test_only_one_collector_runs_per_evidence_store(tmp_path, monkeypatch):
+    """Every MCP client spawns its own server; exactly one of them may collect."""
+    settings = _settings(tmp_path, gdelt_enabled=True)
+    started = []
+
+    class RecordingGroup:
+        def __init__(self, name):
+            self.name = name
+
+        def start(self):
+            started.append(self.name)
+
+        async def stop(self):
+            started.remove(self.name)
+
+    builds = iter(["first", "second"])
+    monkeypatch.setattr(
+        collection_lifecycle,
+        "build_collection_lifecycle",
+        lambda _settings: RecordingGroup(next(builds)),
+    )
+
+    holder = SingletonCollector(settings)
+    follower = SingletonCollector(settings, retry_seconds=0.01)
+    try:
+        holder.start()
+        follower.start()
+
+        assert holder.holds_lock is True
+        assert follower.holds_lock is False
+        assert started == ["first"]
+
+        # The kernel releases the flock when the holder goes away, so the follower
+        # is promoted on its next retry without any heartbeat or takeover timeout.
+        await holder.stop()
+        for _ in range(100):
+            await asyncio.sleep(0.01)
+            if follower.holds_lock:
+                break
+        assert follower.holds_lock is True
+        assert started == ["second"]
+    finally:
+        await holder.stop()
+        await follower.stop()
+
+
+@pytest.mark.asyncio
+async def test_collector_lock_is_released_when_the_holder_is_killed(tmp_path):
+    """SIGKILL leaves no chance to clean up, so the lock must be kernel-owned."""
+    settings = _settings(tmp_path)
+    lock_path = collector_lock_path(settings)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    holder = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-c",
+        "import fcntl, os, sys\n"
+        "fd = os.open(sys.argv[1], os.O_CREAT | os.O_RDWR)\n"
+        "fcntl.flock(fd, fcntl.LOCK_EX)\n"
+        "print('locked', flush=True)\n"
+        "sys.stdin.read()\n",
+        str(lock_path),
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+    )
+    try:
+        assert (await holder.stdout.readline()).strip() == b"locked"
+
+        contender = SingletonCollector(settings)
+        assert contender._acquire() is False
+
+        holder.kill()
+        await holder.wait()
+
+        assert contender._acquire() is True
+        await contender.stop()
+    finally:
+        if holder.returncode is None:
+            holder.kill()
+            await holder.wait()
