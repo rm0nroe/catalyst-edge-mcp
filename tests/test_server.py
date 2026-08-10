@@ -149,9 +149,11 @@ def test_main_treats_operator_cancellation_as_clean_shutdown(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_server_lifespan_starts_and_stops_collection_lifecycle(monkeypatch):
-    from catalyst_edge_mcp import server
+async def test_server_lifespan_starts_and_stops_collection_lifecycle(monkeypatch, tmp_path):
+    from catalyst_edge_mcp import collection_lifecycle, server
 
+    # An isolated store keeps the election off the lock a real local server may hold.
+    monkeypatch.setenv("CATALYST_EDGE_EVIDENCE_STORE", str(tmp_path / "evidence.sqlite3"))
     calls = []
 
     class RecordingLifecycle:
@@ -162,13 +164,39 @@ async def test_server_lifespan_starts_and_stops_collection_lifecycle(monkeypatch
             calls.append("stop")
 
     lifecycle = RecordingLifecycle()
-    monkeypatch.setattr(server, "build_collection_lifecycle", lambda settings: lifecycle)
+    monkeypatch.setattr(
+        collection_lifecycle, "build_collection_lifecycle", lambda settings: lifecycle
+    )
 
     async with server.server_lifespan(None) as context:
         assert calls == ["start"]
         assert context["collection_lifecycle"] is lifecycle
+        assert context["collection_owner"] is True
 
     assert calls == ["start", "stop"]
+
+
+@pytest.mark.asyncio
+async def test_server_lifespan_follower_serves_cache_without_collecting(
+    monkeypatch, tmp_path
+):
+    from catalyst_edge_mcp import collection_lifecycle, server
+
+    monkeypatch.setenv("CATALYST_EDGE_EVIDENCE_STORE", str(tmp_path / "evidence.sqlite3"))
+    monkeypatch.setattr(
+        collection_lifecycle,
+        "build_collection_lifecycle",
+        lambda settings: pytest.fail("a follower must not build a collection lifecycle"),
+    )
+
+    holder = collection_lifecycle.SingletonCollector(Settings.from_env())
+    assert holder._acquire() is True
+    try:
+        async with server.server_lifespan(None) as context:
+            assert context["collection_owner"] is False
+            assert context["collection_lifecycle"] is None
+    finally:
+        await holder.stop()
 
 
 @pytest.mark.parametrize("provider", ["flowalgo", "cheddarflow", "yfinance"])
