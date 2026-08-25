@@ -5,11 +5,13 @@ from both company_tickers_exchange.json and company_tickers.json, so a real 10-Q
 8-K filed inside the lookback window were reported as no_observations.
 """
 
+import asyncio
 from datetime import timedelta
 
 import httpx
 import pytest
 
+import catalyst_edge_mcp.sec_filings as sec_filings_module
 from catalyst_edge_mcp.models import ReasonCode, SourceStatus
 from catalyst_edge_mcp.sec_filings import SecFilingsAdapter
 from catalyst_edge_mcp.sec_ownership import SecInsiderAdapter
@@ -171,3 +173,81 @@ async def test_company_search_is_not_called_when_map_resolves():
         await SecFilingsAdapter(UA, client=client, clock=lambda: AS_OF).collect("NVDA", 14)
 
     assert "/cgi-bin/browse-edgar" not in calls
+
+
+@pytest.mark.asyncio
+async def test_sibling_sec_adapters_share_unresolved_ticker_resolution():
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if request.url.path == "/files/company_tickers_exchange.json":
+            return _map_without_aep()
+        if request.url.path == "/cgi-bin/browse-edgar":
+            return httpx.Response(200, text=COMPANY_SEARCH_MISS)
+        return httpx.Response(404)
+
+    resolver_type = getattr(sec_filings_module, "SecCikResolver", None)
+    assert resolver_type is not None, "shared SEC CIK resolver is missing"
+    resolver = resolver_type()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        filings, insider = await asyncio.gather(
+            SecFilingsAdapter(
+                UA, client=client, clock=lambda: AS_OF, cik_resolver=resolver
+            ).collect("VMW", 14),
+            SecInsiderAdapter(
+                UA, client=client, clock=lambda: AS_OF, cik_resolver=resolver
+            ).collect("VMW", 14),
+        )
+
+    assert calls.count("/files/company_tickers_exchange.json") == 1
+    assert calls.count("/cgi-bin/browse-edgar") == 1
+    assert all(
+        any(reason.detail == "cik_unresolved" for reason in result.reason_records)
+        for result in (filings, insider)
+    )
+
+
+@pytest.mark.asyncio
+async def test_resolved_inactive_ticker_retains_sec_lifecycle_reason():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/files/company_tickers_exchange.json":
+            return httpx.Response(
+                200,
+                json={
+                    "fields": ["cik", "name", "ticker", "exchange"],
+                    "data": [[1124610, "VMWARE LLC", "VMW", "NYSE"]],
+                },
+            )
+        if request.url.path == "/submissions/CIK0001124610.json":
+            return httpx.Response(
+                200,
+                json={
+                    "name": "VMWARE LLC",
+                    "tickers": [],
+                    "exchanges": [],
+                    "filings": {"recent": {"form": []}},
+                },
+            )
+        return httpx.Response(404)
+
+    resolver_type = getattr(sec_filings_module, "SecCikResolver", None)
+    assert resolver_type is not None
+    resolver = resolver_type()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        filings, insider = await asyncio.gather(
+            SecFilingsAdapter(
+                UA, client=client, clock=lambda: AS_OF, cik_resolver=resolver
+            ).collect("VMW", 14),
+            SecInsiderAdapter(
+                UA, client=client, clock=lambda: AS_OF, cik_resolver=resolver
+            ).collect("VMW", 14),
+        )
+
+    assert all(
+        any(
+            reason.detail == "ticker_not_current_for_sec_issuer"
+            for reason in result.reason_records
+        )
+        for result in (filings, insider)
+    )

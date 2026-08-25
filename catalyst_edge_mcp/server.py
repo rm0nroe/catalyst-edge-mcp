@@ -26,7 +26,7 @@ from catalyst_edge_mcp.models import (
 )
 from catalyst_edge_mcp.registry_config import RegistryBundle, load_registry_bundle
 from catalyst_edge_mcp.replay.runtime import load_runtime_scorer
-from catalyst_edge_mcp.sec_filings import SecFilingsAdapter
+from catalyst_edge_mcp.sec_filings import SecCikResolver, SecFilingsAdapter
 from catalyst_edge_mcp.sec_funds import SecFundAdapter
 from catalyst_edge_mcp.sec_ownership import SecInsiderAdapter
 from catalyst_edge_mcp.service import CatalystService
@@ -49,17 +49,20 @@ def build_service(
     adapters = []
     if settings.sec_user_agent:
         fund_tickers = frozenset(registry.fund_identity_index)
+        cik_resolver = SecCikResolver()
         adapters.extend(
             [
                 SecFilingsAdapter(
                     settings.sec_user_agent,
                     fund_tickers=fund_tickers,
                     store_path=settings.evidence_store_path,
+                    cik_resolver=cik_resolver,
                 ),
                 SecInsiderAdapter(
                     settings.sec_user_agent,
                     fund_tickers=fund_tickers,
                     store_path=settings.evidence_store_path,
+                    cik_resolver=cik_resolver,
                 ),
                 SecFundAdapter(
                     settings.sec_user_agent,

@@ -38,6 +38,7 @@ def _reviewable(item: Evidence) -> bool:
         and item.confidence >= 0.50
         and materiality not in {"discovery_only", "not_material"}
         and bool(item.sources)
+        and bool(_claim_id(item))
     )
 
 

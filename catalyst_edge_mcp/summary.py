@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
+from urllib.parse import urlsplit
 
-from catalyst_edge_mcp.models import Direction, Evidence, RiskMode, Summary
+from catalyst_edge_mcp.models import Direction, Evidence, RiskMode, ScopedReason, Source, Summary
 
 FAMILY_LABELS = {
     "filings_news": "Filings and news",
@@ -190,12 +192,29 @@ def build_summary(evidence: list[Evidence], missing: set[str], risk_mode: RiskMo
     )
 
 
+def _is_sec_source(source: Source) -> bool:
+    url = source.canonical_url or source.url
+    host = (urlsplit(str(url)).hostname or "").lower() if url else ""
+    return source.source_id in {"sec", "sec_funds"} and (
+        host == "sec.gov" or host.endswith(".sec.gov")
+    )
+
+
 def evidence_check(item: Evidence) -> str | None:
     source = item.sources[0] if item.sources else None
     accession = source.accession_or_record_id if source is not None else None
     context = item.context
-    if item.family == "filings_news" and accession:
+    if item.family == "filings_news" and accession and source and _is_sec_source(source):
         return f"Open SEC accession {accession} and review the filed item text and exhibits."
+    if source is not None and (
+        source.source_id == "gdelt"
+        or source.source_tier == "discovery"
+        or (context is not None and context.materiality == "discovery_only")
+    ):
+        return (
+            "Open the publisher source and verify the underlying event against an issuer or "
+            "regulator primary source."
+        )
     if context is not None and context.event_type.startswith("open_market_"):
         return (
             "Verify each Form 4 transaction code, shares, price, ownership form, and "
@@ -208,11 +227,52 @@ def evidence_check(item: Evidence) -> str | None:
     return None
 
 
+def _typed_recovery_checks(reason_records: Sequence[ScopedReason]) -> list[str]:
+    details = {reason.detail for reason in reason_records if reason.detail}
+    if "unsupported_no_series_class" in details:
+        return [
+            "Use the sponsor-primary fund source; SEC N-CEN/NPORT collection is unsupported "
+            "without a verified series/class identity.",
+            "Confirm the fund's current series/class identity against official SEC records.",
+        ]
+    if "unsupported_non_investment_company" in details:
+        return [
+            "Use the sponsor-primary trust source; this product is outside the SEC "
+            "N-CEN/NPORT fund lane.",
+            "Verify material trust disclosures on the sponsor-primary notice surface.",
+        ]
+    if details & {"fund_uses_distinct_sec_lane", "fund_has_no_corporate_insider_semantics"}:
+        return [
+            "Check recent N-CEN/NPORT filings and sponsor-primary fund notices; corporate "
+            "filing and insider checks do not apply.",
+            "Confirm the reviewed fund series/class identity before changing its SEC lane.",
+        ]
+    if "cik_unresolved" in details:
+        return [
+            "Resolve the ticker's current issuer lifecycle (renamed, acquired, delisted, "
+            "bankrupt, or otherwise inactive) before retrying SEC collection.",
+            "Search issuer or acquirer SEC filings by legal name or CIK, not the stale ticker.",
+        ]
+    if "ticker_not_current_for_sec_issuer" in details:
+        return [
+            "The requested ticker is no longer current for the SEC issuer; review acquisition, "
+            "delisting, renaming, or other lifecycle records before widening the lookback.",
+            "Search the issuer or acquirer by legal name or CIK for the current filing record.",
+        ]
+    return []
+
+
 def next_checks(
-    evidence: list[Evidence], risk_mode: RiskMode, lookback_days: int
+    evidence: list[Evidence],
+    risk_mode: RiskMode,
+    lookback_days: int,
+    *,
+    reason_records: Sequence[ScopedReason] = (),
 ) -> list[str]:
     if not evidence:
-        checks = []
+        checks = _typed_recovery_checks(reason_records)
+        if checks:
+            return checks
         if lookback_days < 30:
             checks.append("Retry with lookback_days=30 to check a wider filing window.")
         checks.extend(

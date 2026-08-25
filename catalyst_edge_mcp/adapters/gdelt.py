@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping
 from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -44,6 +45,9 @@ MAX_RESPONSE_BYTES = 2_000_000
 MAX_ARTICLES = 50
 MAX_RETRY_AFTER_SECONDS = 300.0
 GDELT_GATE = ProviderGate(name="gdelt", concurrency=1, requests_per_second=1 / 6)
+URL_PUBLICATION_DATE = re.compile(
+    r"(?<!\d)(20\d{2})[/-](0[1-9]|1[0-2])[/-](0[1-9]|[12]\d|3[01])(?!\d)"
+)
 
 
 class GdeltAdapter:
@@ -255,8 +259,11 @@ class GdeltAdapter:
     ) -> EventObservation | None:
         title = " ".join(str(article.get("title") or "").split())[:240]
         url = str(article.get("url") or "").strip()
-        published_at = self._article_datetime(article.get("seendate"))
-        if not title or not url or published_at is None:
+        observed_at = self._article_datetime(article.get("seendate"))
+        published_at = self._url_publication_datetime(url)
+        if not title or not url or observed_at is None or published_at is None:
+            return None
+        if published_at > observed_at + timedelta(days=1):
             return None
         parsed = urlsplit(url)
         if parsed.scheme.lower() != "https" or not parsed.hostname:
@@ -271,7 +278,7 @@ class GdeltAdapter:
             canonical_url=url,
             title=title,
             published_at=published_at,
-            observed_at=now,
+            observed_at=observed_at,
             retrieved_at=now,
             raw_sha256=raw_sha256,
             parser_version=PARSER_VERSION,
@@ -306,6 +313,7 @@ class GdeltAdapter:
             since,
             title_predicate=title_predicate,
         )
+        events = [event for event in events if self._event_is_recent(event, since)]
         evidence = [self._evidence(event) for event in events]
         effective_status = status or (
             SourceStatus.FRESH if evidence else SourceStatus.NO_OBSERVATIONS
@@ -467,6 +475,24 @@ class GdeltAdapter:
         except ValueError:
             return None
         return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
+
+    @staticmethod
+    def _url_publication_datetime(url: str) -> datetime | None:
+        match = URL_PUBLICATION_DATE.search(urlsplit(url).path)
+        if match is None:
+            return None
+        try:
+            return datetime(*(int(value) for value in match.groups()), tzinfo=UTC)
+        except ValueError:
+            return None
+
+    @classmethod
+    def _event_is_recent(cls, event: StoredEvent, since: datetime) -> bool:
+        source = event.primary_source
+        if source.parser_version.startswith(PARSER_VERSION):
+            published_at = cls._url_publication_datetime(source.canonical_url)
+            return published_at is not None and published_at >= since
+        return event.published_at >= since
 
     @staticmethod
     def _retry_after(value: str | None, now: datetime) -> float | None:

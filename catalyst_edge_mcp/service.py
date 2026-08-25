@@ -322,7 +322,12 @@ class CatalystService:
         compact = self._compact(scored.evidence)
         attributions = source_attributions(used_source_ids)
         summary = build_summary(compact, missing, request.risk_mode)
-        checks = next_checks(compact, request.risk_mode, request.lookback_days)
+        checks = next_checks(
+            compact,
+            request.risk_mode,
+            request.lookback_days,
+            reason_records=reason_records,
+        )
         research = build_research_assessment(
             compact,
             missing_families=missing,
