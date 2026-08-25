@@ -202,6 +202,7 @@ def _validate_no_data(result) -> dict[str, object]:
         "edge",
         "summary",
         "evidence",
+        "research",
         "attributions",
         "data_quality",
         "next_checks",
@@ -211,7 +212,8 @@ def _validate_no_data(result) -> dict[str, object]:
     edge = payload["edge"]
     data_quality = payload["data_quality"]
     evidence = payload["evidence"]
-    if not isinstance(edge, dict) or not isinstance(data_quality, dict):
+    research = payload["research"]
+    if not all(isinstance(item, dict) for item in (edge, data_quality, research)):
         raise ValueError("installed response has malformed nested structures")
     if not isinstance(evidence, list):
         raise ValueError("installed response evidence must be a list")
@@ -223,6 +225,17 @@ def _validate_no_data(result) -> dict[str, object]:
         raise ValueError("installed response uses an unexpected model status")
     if data_quality.get("coverage") != "none" or evidence or payload["attributions"]:
         raise ValueError("offline installed response is not the typed no-data case")
+    if (
+        research.get("disposition") != "insufficient_evidence"
+        or research.get("primary_claim_id") is not None
+        or research.get("supporting_claim_ids") != []
+        or research.get("contradicting_claim_ids") != []
+        or not isinstance(research.get("blocking_gaps"), list)
+        or not all(isinstance(gap, str) for gap in research["blocking_gaps"])
+        or not isinstance(research.get("next_action"), str)
+        or not research["next_action"]
+    ):
+        raise ValueError("offline installed response has an invalid research assessment")
     return payload
 
 

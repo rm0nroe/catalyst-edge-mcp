@@ -15,6 +15,7 @@ Ticker = Annotated[
     BeforeValidator(normalize_ticker),
     Field(pattern=r"^[A-Z][A-Z0-9.-]{0,11}$", min_length=1, max_length=12),
 ]
+ClaimId = Annotated[str, Field(pattern=r"^clm_[0-9a-f]{64}$")]
 
 
 class Direction(str, Enum):
@@ -27,6 +28,12 @@ class RiskMode(str, Enum):
     RESEARCH = "research"
     ALERT_TRIAGE = "alert_triage"
     THESIS_REVIEW = "thesis_review"
+
+
+class ResearchDisposition(str, Enum):
+    REVIEW_NOW = "review_now"
+    MONITOR = "monitor"
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 
 class SourceStatus(str, Enum):
@@ -231,6 +238,17 @@ class DataQuality(BaseModel):
     reason_records_truncated: bool = False
 
 
+class ResearchAssessment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    disposition: ResearchDisposition
+    primary_claim_id: ClaimId | None = None
+    supporting_claim_ids: list[ClaimId] = Field(default_factory=list, max_length=20)
+    contradicting_claim_ids: list[ClaimId] = Field(default_factory=list, max_length=20)
+    blocking_gaps: list[str] = Field(default_factory=list, max_length=20)
+    next_action: str = Field(min_length=1, max_length=500)
+
+
 class ClaimSourceReference(BaseModel):
     """One immutable supporting source reference for a grouped claim."""
 
@@ -272,6 +290,7 @@ class CatalystEdgeResponse(BaseModel):
     edge: Edge
     summary: Summary
     evidence: list[Evidence]
+    research: ResearchAssessment
     attributions: list[Attribution] = Field(default_factory=list)
     data_quality: DataQuality
     next_checks: list[str]

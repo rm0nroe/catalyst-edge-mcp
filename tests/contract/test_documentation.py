@@ -9,6 +9,12 @@ def test_README_JSON_EXAMPLES_PARSE_AND_INCLUDE_REQUIRED_BEHAVIORS():
 
     responses = [example for example in examples if "edge" in example and "data_quality" in example]
     assert len(responses) >= 3
+    assert {response["research"]["disposition"] for response in responses} >= {
+        "review_now",
+        "monitor",
+        "insufficient_evidence",
+    }
+    assert all(response["research"]["next_action"] for response in responses)
     assert any(
         response["data_quality"]["coverage"] == "none"
         and "options_flow" in response["data_quality"]["missing_families"]

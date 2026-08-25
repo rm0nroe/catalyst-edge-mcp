@@ -32,7 +32,7 @@ email address.
 codex mcp add catalyst-edge \
   --env 'CATALYST_EDGE_SEC_USER_AGENT=YOUR_ORGANIZATION YOUR_EMAIL' \
   --env 'CATALYST_EDGE_EVIDENCE_STORE=/absolute/local/path/evidence.sqlite3' \
-  -- uvx --from 'catalyst-edge-mcp==0.1.6' catalyst-edge-mcp
+  -- uvx --from 'catalyst-edge-mcp==0.1.7' catalyst-edge-mcp
 ```
 
 Start a fresh task and verify that Codex discovers these two tools:
@@ -44,7 +44,7 @@ Start a fresh task and verify that Codex discovers these two tools:
 
 ### Claude Desktop
 
-Download [`catalyst-edge-mcp-0.1.6.mcpb`](https://github.com/rm0nroe/catalyst-edge-mcp/releases/download/v0.1.6/catalyst-edge-mcp-0.1.6.mcpb),
+Download [`catalyst-edge-mcp-0.1.7.mcpb`](https://github.com/rm0nroe/catalyst-edge-mcp/releases/download/v0.1.7/catalyst-edge-mcp-0.1.7.mcpb),
 then choose **Settings → Extensions → Advanced settings → Install Extension…**.
 Enter the same SEC identity when prompted. The extension is an unsigned custom bundle;
 review the source and published checksum before accepting Claude Desktop's warning.
@@ -79,10 +79,10 @@ partial score.
 
 ```bash
 # Run the local stdio MCP server
-uvx --from 'catalyst-edge-mcp==0.1.6' catalyst-edge-mcp
+uvx --from 'catalyst-edge-mcp==0.1.7' catalyst-edge-mcp
 
 # Get a dossier directly
-uvx --from 'catalyst-edge-mcp==0.1.6' catalyst-edge-score NVDA --lookback-days 14
+uvx --from 'catalyst-edge-mcp==0.1.7' catalyst-edge-score NVDA --lookback-days 14
 ```
 
 ---
@@ -105,7 +105,7 @@ The default evidence store is local SQLite at
 
 ```bash
 CATALYST_EDGE_SEC_USER_AGENT='YOUR_ORGANIZATION YOUR_EMAIL' \
-uvx --from 'catalyst-edge-mcp==0.1.6' catalyst-edge-smoke NVDA --lookback-days 14
+uvx --from 'catalyst-edge-mcp==0.1.7' catalyst-edge-smoke NVDA --lookback-days 14
 ```
 
 The smoke check reports sanitized configuration, provenance, coverage, and readiness
@@ -116,7 +116,9 @@ status. It never prints credentials or provider payloads.
 ## How to read a result
 
 Each dossier includes a deterministic `score`, `direction`, `confidence`, source-linked
-evidence, missing or stale families, and next checks. `model_status` is always
+evidence, missing or stale families, and next checks. `research.disposition` tells an
+agent whether to review the evidence now, monitor it, or report insufficient evidence;
+it prioritizes research only and is not a trade signal. `model_status` is always
 `not_trained` in this release. A neutral or no-data result is a valid answer: missing
 evidence is uncertainty, not bearish evidence.
 
@@ -128,6 +130,7 @@ parsers, and policy decisions.
 {
   "ticker": "NVDA",
   "edge": {"score": 62, "direction": "bullish", "confidence": 0.69, "scoring_method": "deterministic_v1", "model_status": "not_trained"},
+  "research": {"disposition": "review_now", "primary_claim_id": "clm_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "supporting_claim_ids": [], "contradicting_claim_ids": [], "blocking_gaps": [], "next_action": "Open SEC accession 0001045810-26-000001 and review the filed item text and exhibits."},
   "data_quality": {"coverage": "partial", "missing_families": [], "warnings": ["Deterministic v1 scoring is not backtested."]}
 }
 ```
@@ -136,6 +139,7 @@ parsers, and policy decisions.
 {
   "ticker": "NVDA",
   "edge": {"score": 50, "direction": "neutral", "confidence": 0, "scoring_method": "deterministic_v1", "model_status": "not_trained"},
+  "research": {"disposition": "monitor", "primary_claim_id": null, "supporting_claim_ids": [], "contradicting_claim_ids": [], "blocking_gaps": ["options_flow"], "next_action": "Check whether a sector-wide event explains the observation."},
   "data_quality": {"coverage": "none", "missing_families": ["options_flow"], "warnings": ["options_flow provider yfinance is private diagnostic only; no production evidence or coverage credit was granted."]}
 }
 ```
@@ -144,6 +148,7 @@ parsers, and policy decisions.
 {
   "ticker": "NVDA",
   "edge": {"score": 50, "direction": "neutral", "confidence": 0, "scoring_method": "deterministic_v1", "model_status": "not_trained"},
+  "research": {"disposition": "insufficient_evidence", "primary_claim_id": null, "supporting_claim_ids": [], "contradicting_claim_ids": [], "blocking_gaps": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "next_action": "Retry with lookback_days=30 to check a wider filing window."},
   "data_quality": {"coverage": "none", "missing_families": ["filings_news", "insider_trading", "options_flow", "social", "technical"], "warnings": ["No live evidence adapters are configured."]}
 }
 ```
