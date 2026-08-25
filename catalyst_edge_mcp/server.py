@@ -15,7 +15,7 @@ from pydantic import Field
 from catalyst_edge_mcp.adapters.bluesky import BlueskyAdapter
 from catalyst_edge_mcp.adapters.gdelt import GdeltAdapter
 from catalyst_edge_mcp.adapters.issuer_feeds import IssuerFeedAdapter
-from catalyst_edge_mcp.collection_lifecycle import build_collection_lifecycle
+from catalyst_edge_mcp.collection_lifecycle import SingletonCollector
 from catalyst_edge_mcp.evidence_store import EvidenceStore
 from catalyst_edge_mcp.models import (
     CatalystEdgeResponse,
@@ -126,15 +126,20 @@ _service = build_service(_initial_settings)
 
 @asynccontextmanager
 async def server_lifespan(_server):
-    """Own automatic collectors outside every MCP request path."""
-    lifecycle = build_collection_lifecycle(Settings.from_env())
-    if lifecycle is not None:
-        lifecycle.start()
+    """Own automatic collectors outside every MCP request path.
+
+    Collection is elected across processes: every client spawns its own stdio
+    server, but only the lock holder refreshes. Followers serve the shared cache.
+    """
+    collector = SingletonCollector(Settings.from_env())
+    collector.start()
     try:
-        yield {"collection_lifecycle": lifecycle}
+        yield {
+            "collection_lifecycle": collector.lifecycle,
+            "collection_owner": collector.holds_lock,
+        }
     finally:
-        if lifecycle is not None:
-            await lifecycle.stop()
+        await collector.stop()
 
 
 mcp = FastMCP(

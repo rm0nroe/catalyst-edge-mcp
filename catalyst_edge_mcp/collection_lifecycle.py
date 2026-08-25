@@ -6,12 +6,19 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
 from typing import Any
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - POSIX-only lock; elsewhere every process collects
+    fcntl = None  # type: ignore[assignment]
 
 from catalyst_edge_mcp.adapters.bluesky import BlueskyAdapter
 from catalyst_edge_mcp.compat import UTC
@@ -420,6 +427,107 @@ def build_collection_lifecycle(settings: Settings) -> CollectionLifecycleGroup |
     if settings.bluesky_enabled:
         lifecycles.append(BlueskyCollectionLifecycle(settings))
     return CollectionLifecycleGroup(lifecycles) if lifecycles else None
+
+
+COLLECTOR_LOCK_RETRY_SECONDS = 60
+
+
+def collector_lock_path(settings: Settings) -> Path:
+    """One lock per evidence store, since the store is what collectors duplicate."""
+    return Path(settings.evidence_store_path).parent / "collector.lock"
+
+
+class SingletonCollector:
+    """Run the collection lifecycle in exactly one process per evidence store.
+
+    Every MCP client spawns its own stdio server, and each one used to run a full
+    collection lifecycle against the same store: N processes, N identical refresh
+    loops, N cores. This elects one collector across processes.
+
+    ``fcntl.flock`` is held by the open file description, so the kernel releases it
+    when the holder exits for any reason, including ``SIGKILL``. That is why there
+    is no heartbeat file and no takeover timeout: followers simply retry, and the
+    first retry after a holder dies promotes a replacement.
+    """
+
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        retry_seconds: float = COLLECTOR_LOCK_RETRY_SECONDS,
+    ) -> None:
+        self.settings = settings
+        self.lock_path = collector_lock_path(settings)
+        self._retry_seconds = retry_seconds
+        self._fd: int | None = None
+        self._lifecycle: CollectionLifecycleGroup | None = None
+        self._task: asyncio.Task[None] | None = None
+        self._holds_lock = False
+
+    @property
+    def lifecycle(self) -> CollectionLifecycleGroup | None:
+        """The running lifecycle, or None as a follower or with every collector off."""
+        return self._lifecycle
+
+    @property
+    def holds_lock(self) -> bool:
+        """Ownership is the lock, not the lifecycle: enabling no collector still elects."""
+        return self._holds_lock
+
+    def start(self) -> None:
+        if self._acquire():
+            self._start_lifecycle()
+            return
+        LOGGER.info(
+            "Another process owns %s; serving cached evidence only",
+            self.lock_path.name,
+        )
+        self._task = asyncio.create_task(
+            self._await_promotion(),
+            name="catalyst-edge-collector-election",
+        )
+
+    async def stop(self) -> None:
+        task = self._task
+        self._task = None
+        if task is not None and not task.done():
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+        if self._lifecycle is not None:
+            await self._lifecycle.stop()
+            self._lifecycle = None
+        self._holds_lock = False
+        if self._fd is not None:
+            # Closing the descriptor is what releases the flock.
+            os.close(self._fd)
+            self._fd = None
+
+    def _acquire(self) -> bool:
+        if fcntl is None:  # pragma: no cover - POSIX-only lock
+            return True
+        if self._fd is None:
+            self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+            self._fd = os.open(self.lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+        try:
+            fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return False
+        return True
+
+    def _start_lifecycle(self) -> None:
+        self._holds_lock = True
+        self._lifecycle = build_collection_lifecycle(self.settings)
+        if self._lifecycle is not None:
+            self._lifecycle.start()
+
+    async def _await_promotion(self) -> None:
+        while True:
+            await asyncio.sleep(self._retry_seconds)
+            if self._acquire():
+                LOGGER.info("Promoted to collection owner for %s", self.lock_path.name)
+                self._start_lifecycle()
+                return
 
 
 def _parse_datetime(value: object) -> datetime | None:
