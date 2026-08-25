@@ -26,6 +26,20 @@ class _Result:
         "edge": {"scoring_method": "deterministic_v1", "model_status": "not_trained"},
         "summary": {},
         "evidence": [],
+        "research": {
+            "disposition": "insufficient_evidence",
+            "primary_claim_id": None,
+            "supporting_claim_ids": [],
+            "contradicting_claim_ids": [],
+            "blocking_gaps": [
+                "filings_news",
+                "insider_trading",
+                "options_flow",
+                "social",
+                "technical",
+            ],
+            "next_action": "Retry with lookback_days=30 to check a wider filing window.",
+        },
         "attributions": [],
         "data_quality": {"coverage": "none"},
         "next_checks": [],
@@ -56,6 +70,22 @@ def _write_sdist(path, *extra_names, symlink=None):
 def test_release_verifier_accepts_typed_no_data_response():
     payload = _validate_no_data(_Result())
     assert payload["edge"]["model_status"] == "not_trained"
+
+
+def test_release_verifier_rejects_malformed_research_gaps():
+    result = SimpleNamespace(
+        isError=False,
+        structuredContent={
+            **_Result.structuredContent,
+            "research": {
+                **_Result.structuredContent["research"],
+                "blocking_gaps": "filings_news",
+            },
+        },
+    )
+
+    with pytest.raises(ValueError, match="invalid research assessment"):
+        _validate_no_data(result)
 
 
 def test_release_verifier_rejects_secret_configuration(tmp_path):

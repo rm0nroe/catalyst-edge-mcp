@@ -225,11 +225,22 @@ async def test_CT_RESPONSE_SCHEMA():
         "edge",
         "summary",
         "evidence",
+        "research",
         "data_quality",
         "next_checks",
     ]
     assert "source_count" in tool.outputSchema["$defs"]["Evidence"]["required"]
     assert "reason_records" in tool.outputSchema["$defs"]["DataQuality"]["properties"]
+    research = tool.outputSchema["$defs"]["ResearchAssessment"]
+    assert research["properties"]["disposition"]["$ref"] == "#/$defs/ResearchDisposition"
+    assert set(tool.outputSchema["$defs"]["ResearchDisposition"]["enum"]) == {
+        "review_now",
+        "monitor",
+        "insufficient_evidence",
+    }
+    assert research["properties"]["supporting_claim_ids"]["items"]["pattern"] == (
+        r"^clm_[0-9a-f]{64}$"
+    )
 
 
 @pytest.mark.asyncio
