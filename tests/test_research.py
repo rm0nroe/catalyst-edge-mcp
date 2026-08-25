@@ -77,6 +77,21 @@ def test_non_reviewable_primary_is_monitor(direction, confidence, materiality, w
     assert result.disposition == ResearchDisposition.MONITOR
 
 
+def test_primary_without_canonical_claim_is_not_review_now():
+    item = claim_evidence("a")
+    item.context.claim_id = None
+
+    result = build_research_assessment(
+        [item],
+        missing_families=set(),
+        stale_families=set(),
+        checks=["Fallback check."],
+    )
+
+    assert result.disposition == ResearchDisposition.MONITOR
+    assert result.primary_claim_id is None
+
+
 def test_review_now_ranks_and_deduplicates_canonical_claims():
     primary = claim_evidence("a", contribution=8, direction=Direction.BULLISH)
     supporting = claim_evidence("b", contribution=4, direction=Direction.BULLISH)
@@ -99,6 +114,8 @@ def test_review_now_ranks_and_deduplicates_canonical_claims():
 
 def test_primary_observation_owns_next_action():
     primary = claim_evidence("a", contribution=8, direction=Direction.BULLISH)
+    primary.sources[0].source_id = "sec"
+    primary.sources[0].canonical_url = "https://www.sec.gov/Archives/edgar/data/1045810/a.htm"
     primary.sources[0].accession_or_record_id = "0001045810-26-000001"
 
     result = build_research_assessment(
@@ -110,4 +127,24 @@ def test_primary_observation_owns_next_action():
 
     assert result.next_action == (
         "Open SEC accession 0001045810-26-000001 and review the filed item text and exhibits."
+    )
+
+
+def test_publisher_discovery_record_gets_publisher_action_not_sec_action():
+    primary = claim_evidence("a")
+    primary.sources[0].source_id = "gdelt"
+    primary.sources[0].source_tier = "discovery"
+    primary.sources[0].canonical_url = "https://publisher.example/story"
+    primary.sources[0].accession_or_record_id = "https://publisher.example/story"
+
+    result = build_research_assessment(
+        [primary],
+        missing_families=set(),
+        stale_families=set(),
+        checks=["Generic fallback."],
+    )
+
+    assert result.next_action == (
+        "Open the publisher source and verify the underlying event against an issuer or "
+        "regulator primary source."
     )

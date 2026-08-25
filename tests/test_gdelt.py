@@ -67,7 +67,7 @@ async def test_PT_GDELT_NORMALIZATION_is_neutral_metadata_only(tmp_path):
     assert item.sources[0].source_tier == "discovery"
     assert item.sources[0].policy_decision == PolicyDecision.APPROVED_DISCOVERY
     assert str(item.sources[0].canonical_url) == (
-        "https://publisher.example/nvidia-announces-new-platform"
+        "https://publisher.example/2026/07/12/nvidia-announces-new-platform"
     )
     assert item.sources[0].raw_sha256
     assert item.sources[0].parser_version == "gdelt-doc-v1"
@@ -122,6 +122,39 @@ async def test_gdelt_empty_result_is_typed_no_observations(tmp_path):
         transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"articles": []}))
     ) as client:
         result = await _adapter(tmp_path, client).collect("NVDA", 14)
+
+    assert result.status == SourceStatus.NO_OBSERVATIONS
+    assert result.evidence == []
+
+
+@pytest.mark.asyncio
+async def test_gdelt_seen_date_does_not_make_stale_articles_recent(tmp_path):
+    payload = {
+        "articles": [
+            {
+                "url": "https://publisher.example/2020/01/02/tesla-old-story",
+                "title": "Tesla old story",
+                "seendate": "20260712T153000Z",
+                "domain": "publisher.example",
+            },
+            {
+                "url": "https://publisher.example/2025/06/03/tesla-less-old-story",
+                "title": "Tesla less old story",
+                "seendate": "20260712T153100Z",
+                "domain": "publisher.example",
+            },
+        ]
+    }
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+    ) as client:
+        result = await GdeltAdapter(
+            str(tmp_path / "events.sqlite3"),
+            registry={"TSLA": TSLA},
+            client=client,
+            gate=ProviderGate(concurrency=1),
+            clock=lambda: AS_OF,
+        ).collect("TSLA", 14)
 
     assert result.status == SourceStatus.NO_OBSERVATIONS
     assert result.evidence == []
@@ -335,6 +368,47 @@ async def test_gdelt_request_path_filters_legacy_unaligned_cached_titles(tmp_pat
     assert result.evidence == []
     assert [reason.code for reason in result.reason_records] == [ReasonCode.ENTITY_REJECTED]
     assert result.reason_records[0].detail == "cached_title_not_aligned=1"
+
+
+@pytest.mark.asyncio
+async def test_gdelt_request_path_filters_legacy_false_publication_date(tmp_path):
+    store = EvidenceStore(str(tmp_path / "events.sqlite3"))
+    store.ingest_event(
+        EventObservation(
+            source_id="gdelt",
+            source_name="GDELT discovery (publisher.example)",
+            source_tier="discovery",
+            issuer_key=TSLA.issuer_key,
+            record_id="legacy-stale",
+            canonical_url="https://publisher.example/2020/02/20/tesla-old-story",
+            title="Tesla old story",
+            published_at=AS_OF,
+            observed_at=AS_OF,
+            retrieved_at=AS_OF,
+            raw_sha256="a" * 64,
+            parser_version="gdelt-doc-v1",
+            policy_decision=PolicyDecision.APPROVED_DISCOVERY,
+        )
+    )
+    store.update_collector_state(
+        source_id="gdelt",
+        issuer_key=TSLA.issuer_key,
+        feed_url=GDELT_ENDPOINT,
+        status=SourceStatus.FRESH.value,
+        checked_at=AS_OF,
+        succeeded=True,
+    )
+
+    result = await GdeltAdapter(
+        str(tmp_path / "events.sqlite3"),
+        registry={"TSLA": TSLA},
+        store=store,
+        clock=lambda: AS_OF,
+        live_refresh=False,
+    ).collect("TSLA", 14)
+
+    assert result.status is SourceStatus.NO_OBSERVATIONS
+    assert result.evidence == []
 
 
 @pytest.mark.asyncio
@@ -558,7 +632,7 @@ def test_gdelt_graph_merge_preserves_issuer_primary_ranking_and_source_views(tmp
 
 @pytest.mark.asyncio
 async def test_gdelt_long_publisher_url_is_bounded_for_public_source_contract(tmp_path):
-    long_url = "https://publisher.example/" + "segment-" * 40
+    long_url = "https://publisher.example/2026/07/12/" + "segment-" * 40
     payload = {
         "articles": [
             {

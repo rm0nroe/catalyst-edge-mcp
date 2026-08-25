@@ -112,7 +112,7 @@ async def test_all_success_fixture_has_complete_coverage(fixed_clock):
     assert response.data_quality.coverage == "complete"
     assert response.data_quality.missing_families == []
     assert response.edge.direction == Direction.BULLISH
-    assert response.research.disposition == ResearchDisposition.REVIEW_NOW
+    assert response.research.disposition == ResearchDisposition.MONITOR
     assert len(response.evidence) == 5
     assert str(response.evidence[0].sources[0].url).startswith("https://example.com/")
 
@@ -238,6 +238,72 @@ async def test_no_adapter_response_is_explicit(fixed_clock):
         "Retry with lookback_days=30 to check a wider filing window."
     )
     assert not any("the observation" in check for check in response.next_checks)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("provider", "detail", "expected"),
+    [
+        (
+            "sec_funds",
+            "unsupported_no_series_class",
+            "Use the sponsor-primary fund source; SEC N-CEN/NPORT collection is unsupported "
+            "without a verified series/class identity.",
+        ),
+        (
+            "sec_funds",
+            "unsupported_non_investment_company",
+            "Use the sponsor-primary trust source; this product is outside the SEC "
+            "N-CEN/NPORT fund lane.",
+        ),
+        (
+            "sec",
+            "fund_uses_distinct_sec_lane",
+            "Check recent N-CEN/NPORT filings and sponsor-primary fund notices; corporate "
+            "filing and insider checks do not apply.",
+        ),
+        (
+            "sec",
+            "cik_unresolved",
+            "Resolve the ticker's current issuer lifecycle (renamed, acquired, delisted, "
+            "bankrupt, or otherwise inactive) before retrying SEC collection.",
+        ),
+        (
+            "sec",
+            "ticker_not_current_for_sec_issuer",
+            "The requested ticker is no longer current for the SEC issuer; review acquisition, "
+            "delisting, renaming, or other lifecycle records before widening the lookback.",
+        ),
+    ],
+)
+async def test_typed_no_evidence_state_owns_recovery_action(
+    fixed_clock, provider, detail, expected
+):
+    result = AdapterResult(
+        family="filings_news",
+        provider=provider,
+        status=SourceStatus.UNSUPPORTED,
+        collected_at=AS_OF,
+        reason_records=[
+            scoped_reason(
+                ReasonCode.SOURCE_UNSUPPORTED,
+                ReasonScope.EVALUATION,
+                "fixture",
+                source_id=provider,
+                family="filings_news",
+                observed_at=AS_OF,
+                detail=detail,
+            )
+        ],
+    )
+    response = await CatalystService(
+        [StaticAdapter("filings_news", result, provider=provider)],
+        clock=fixed_clock,
+        expected_families=frozenset({"filings_news"}),
+    ).evaluate(ToolInput(ticker="VMW"))
+
+    assert response.next_checks[0] == expected
+    assert not any(check.startswith("Retry with lookback_days") for check in response.next_checks)
 
 
 @pytest.mark.asyncio

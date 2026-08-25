@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import re
 from datetime import datetime, timedelta
@@ -263,6 +264,16 @@ def resolve_sec_ticker(ticker_to_cik: dict[str, str], ticker: str) -> str | None
     return ticker_to_cik.get(ticker) or ticker_to_cik.get(ticker.replace(".", "-"))
 
 
+def sec_ticker_is_current(payload: dict[str, Any], ticker: str) -> bool | None:
+    """Use the issuer's current SEC ticker list when the field is available."""
+    values = payload.get("tickers")
+    if not isinstance(values, list):
+        return None
+    requested = {ticker, ticker.replace(".", "-"), ticker.replace("-", ".")}
+    current = {str(value).upper() for value in values}
+    return bool(requested & current)
+
+
 async def lookup_cik_via_company_search(client: httpx.AsyncClient, ticker: str) -> str | None:
     """Resolve a ticker SEC's mapping file omits, via EDGAR company search.
 
@@ -284,6 +295,55 @@ async def lookup_cik_via_company_search(client: httpx.AsyncClient, ticker: str) 
     return match.group(1).zfill(10) if match else None
 
 
+class SecCikResolver:
+    """Share bounded SEC ticker resolution across sibling adapters."""
+
+    def __init__(self, *, miss_ttl_seconds: float = 60.0) -> None:
+        self._ticker_to_cik: dict[str, str] | None = None
+        self._map_lock = asyncio.Lock()
+        self._ticker_locks: dict[str, asyncio.Lock] = {}
+        self._fallback_cache: dict[str, tuple[float, str | None]] = {}
+        self._miss_ttl_seconds = miss_ttl_seconds
+
+    async def resolve(self, client: httpx.AsyncClient, ticker: str) -> str | None:
+        mapping = await self._mapping(client)
+        mapped = resolve_sec_ticker(mapping, ticker)
+        if mapped is not None:
+            return mapped
+
+        lock = self._ticker_locks.setdefault(ticker, asyncio.Lock())
+        async with lock:
+            now = asyncio.get_running_loop().time()
+            cached = self._fallback_cache.get(ticker)
+            if cached is not None and cached[0] > now:
+                return cached[1]
+            resolved = await lookup_cik_via_company_search(client, ticker)
+            self._fallback_cache[ticker] = (now + self._miss_ttl_seconds, resolved)
+            return resolved
+
+    async def _mapping(self, client: httpx.AsyncClient) -> dict[str, str]:
+        if self._ticker_to_cik is not None:
+            return self._ticker_to_cik
+        async with self._map_lock:
+            if self._ticker_to_cik is None:
+                async with SEC_GATE.request():
+                    response = await client.get(TICKER_MAP_URL)
+                response.raise_for_status()
+                payload = response.json()
+                fields = payload.get("fields", [])
+                try:
+                    ticker_index = fields.index("ticker")
+                    cik_index = fields.index("cik")
+                except ValueError as exc:
+                    raise ValueError("Unexpected SEC ticker mapping schema") from exc
+                self._ticker_to_cik = {
+                    str(row[ticker_index]).upper(): str(row[cik_index]).zfill(10)
+                    for row in payload.get("data", [])
+                    if len(row) > max(ticker_index, cik_index)
+                }
+        return self._ticker_to_cik
+
+
 class SecFilingsAdapter:
     """Collect recent filing metadata from the official SEC submissions API."""
 
@@ -298,13 +358,14 @@ class SecFilingsAdapter:
         clock=None,
         fund_tickers: frozenset[str] = frozenset(),
         store_path: str | None = None,
+        cik_resolver: SecCikResolver | None = None,
     ) -> None:
         if "@" not in user_agent:
             raise ValueError("SEC User-Agent must include a contact email address")
         self.user_agent = user_agent
         self._client = client
         self._clock = clock or (lambda: datetime.now(UTC))
-        self._ticker_to_cik: dict[str, str] | None = None
+        self._cik_resolver = cik_resolver or SecCikResolver()
         self._fund_tickers = fund_tickers
         self.store = EvidenceStore(store_path) if store_path else None
 
@@ -374,8 +435,29 @@ class SecFilingsAdapter:
         response.raise_for_status()
         retrieved_at = self._as_utc(self._clock())
         cutoff = retrieved_at - timedelta(days=lookback_days)
-        evidence = self._normalize_recent(response.json(), cik, cutoff, retrieved_at)
-        warnings = []
+        payload = response.json()
+        evidence = self._normalize_recent(payload, cik, cutoff, retrieved_at)
+        current_identity = sec_ticker_is_current(payload, ticker)
+        warnings = (
+            [f"SEC issuer {cik} no longer lists {ticker} as a current ticker."]
+            if current_identity is False
+            else []
+        )
+        reason_records = (
+            [
+                scoped_reason(
+                    ReasonCode.ENTITY_REJECTED,
+                    ReasonScope.EVALUATION,
+                    ticker,
+                    source_id=self.provider,
+                    family=self.family,
+                    observed_at=retrieved_at,
+                    detail="ticker_not_current_for_sec_issuer",
+                )
+            ]
+            if current_identity is False
+            else []
+        )
         for item in evidence:
             source = item.sources[0]
             accession = source.accession_or_record_id
@@ -408,6 +490,7 @@ class SecFilingsAdapter:
             status=SourceStatus.FRESH if evidence else SourceStatus.NO_OBSERVATIONS,
             policy_decision=PolicyDecision.APPROVED,
             collected_at=retrieved_at,
+            reason_records=reason_records,
         )
 
     async def _exhibit_links(
@@ -590,25 +673,7 @@ class SecFilingsAdapter:
             raise ValueError("SEC primary document URL is outside the official archive")
 
     async def _resolve_cik(self, client: httpx.AsyncClient, ticker: str) -> str | None:
-        if self._ticker_to_cik is None:
-            async with SEC_GATE.request():
-                response = await client.get(TICKER_MAP_URL)
-            response.raise_for_status()
-            payload = response.json()
-            fields = payload.get("fields", [])
-            try:
-                ticker_index = fields.index("ticker")
-                cik_index = fields.index("cik")
-            except ValueError as exc:
-                raise ValueError("Unexpected SEC ticker mapping schema") from exc
-            self._ticker_to_cik = {
-                str(row[ticker_index]).upper(): str(row[cik_index]).zfill(10)
-                for row in payload.get("data", [])
-                if len(row) > max(ticker_index, cik_index)
-            }
-        return resolve_sec_ticker(self._ticker_to_cik, ticker) or await (
-            lookup_cik_via_company_search(client, ticker)
-        )
+        return await self._cik_resolver.resolve(client, ticker)
 
     @classmethod
     def _normalize_recent(

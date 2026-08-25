@@ -30,9 +30,8 @@ from catalyst_edge_mcp.reason_records import scoped_reason
 from catalyst_edge_mcp.sec_filings import (
     SEC_GATE,
     SUBMISSIONS_URL,
-    TICKER_MAP_URL,
-    lookup_cik_via_company_search,
-    resolve_sec_ticker,
+    SecCikResolver,
+    sec_ticker_is_current,
 )
 
 OWNERSHIP_FORMS = frozenset({"3", "3/A", "4", "4/A", "5", "5/A"})
@@ -254,13 +253,14 @@ class SecInsiderAdapter:
         clock=None,
         fund_tickers: frozenset[str] = frozenset(),
         store_path: str | None = None,
+        cik_resolver: SecCikResolver | None = None,
     ) -> None:
         if "@" not in user_agent:
             raise ValueError("SEC User-Agent must include a contact email address")
         self.user_agent = user_agent
         self._client = client
         self._clock = clock or (lambda: datetime.now(UTC))
-        self._ticker_to_cik: dict[str, str] | None = None
+        self._cik_resolver = cik_resolver or SecCikResolver()
         self._fund_tickers = fund_tickers
         self.store = EvidenceStore(store_path) if store_path else None
 
@@ -322,13 +322,33 @@ class SecInsiderAdapter:
                 ],
             )
         payload = await self._get_json(client, SUBMISSIONS_URL.format(cik=cik))
+        current_identity = sec_ticker_is_current(payload, ticker)
         recent = payload.get("filings", {}).get("recent", {})
         if not isinstance(recent, dict) or not isinstance(recent.get("form"), list):
             raise ValueError("Unexpected SEC submissions schema")
         cutoff = now - timedelta(days=lookback_days)
         records: list[dict[str, Any]] = []
         proposed_sales: list[Evidence] = []
-        warnings: list[str] = []
+        warnings = (
+            [f"SEC issuer {cik} no longer lists {ticker} as a current ticker."]
+            if current_identity is False
+            else []
+        )
+        reason_records = (
+            [
+                scoped_reason(
+                    ReasonCode.ENTITY_REJECTED,
+                    ReasonScope.EVALUATION,
+                    ticker,
+                    source_id=self.provider,
+                    family=self.family,
+                    observed_at=now,
+                    detail="ticker_not_current_for_sec_issuer",
+                )
+            ]
+            if current_identity is False
+            else []
+        )
         planned = self._plan_ownership_documents(recent, cutoff, warnings)
         if len(planned) > MAX_OWNERSHIP_DOCUMENTS:
             # Never truncate silently. Measured p99 is 20 documents and the observed
@@ -383,7 +403,7 @@ class SecInsiderAdapter:
         self._record_grouped_claims(ticker, evidence)
         if not evidence:
             warnings.append(f"No qualifying direct SEC insider activity found for {ticker}.")
-        return self._result(evidence, warnings, now)
+        return self._result(evidence, warnings, now, reason_records=reason_records)
 
     async def _parsed_documents(
         self,
@@ -688,22 +708,7 @@ class SecInsiderAdapter:
         )
 
     async def _resolve_cik(self, client: httpx.AsyncClient, ticker: str) -> str | None:
-        if self._ticker_to_cik is None:
-            payload = await self._get_json(client, TICKER_MAP_URL)
-            fields = payload.get("fields", [])
-            try:
-                ticker_index = fields.index("ticker")
-                cik_index = fields.index("cik")
-            except ValueError as exc:
-                raise ValueError("Unexpected SEC ticker mapping schema") from exc
-            self._ticker_to_cik = {
-                str(row[ticker_index]).upper(): str(row[cik_index]).zfill(10)
-                for row in payload.get("data", [])
-                if len(row) > max(ticker_index, cik_index)
-            }
-        return resolve_sec_ticker(self._ticker_to_cik, ticker) or await (
-            lookup_cik_via_company_search(client, ticker)
-        )
+        return await self._cik_resolver.resolve(client, ticker)
 
     async def _get_json(self, client: httpx.AsyncClient, url: str) -> dict[str, Any]:
         async with SEC_GATE.request():
