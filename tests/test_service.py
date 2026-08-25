@@ -17,6 +17,7 @@ from catalyst_edge_mcp.models import (
     ToolInput,
 )
 from catalyst_edge_mcp.reason_records import scoped_reason
+from catalyst_edge_mcp.scorer import DeterministicScorer
 from catalyst_edge_mcp.service import CatalystService
 from tests.conftest import AS_OF, make_evidence, make_result
 
@@ -60,6 +61,24 @@ class TickerScopedAdapter:
     async def collect(self, ticker, lookback_days):
         self.called = True
         return AdapterResult(family=self.family, provider=self.provider)
+
+
+@dataclass
+class ShadowScorer:
+    fail: bool = False
+    calls: int = 0
+    method: str = "trained_softmax"
+
+    def score(self, evidence, *, as_of, lookback_days, expected_families):
+        self.calls += 1
+        if self.fail:
+            raise RuntimeError("shadow secret that must not leak")
+        return DeterministicScorer().score(
+            evidence,
+            as_of=as_of,
+            lookback_days=lookback_days,
+            expected_families=expected_families,
+        )
 
 
 @pytest.mark.asyncio
@@ -144,9 +163,7 @@ async def test_collector_timeout_is_partial(fixed_clock):
             httpx.HTTPStatusError(
                 "limited",
                 request=httpx.Request("GET", "https://example.com"),
-                response=httpx.Response(
-                    429, request=httpx.Request("GET", "https://example.com")
-                ),
+                response=httpx.Response(429, request=httpx.Request("GET", "https://example.com")),
             ),
             SourceStatus.RATE_LIMITED,
         ),
@@ -154,9 +171,7 @@ async def test_collector_timeout_is_partial(fixed_clock):
             httpx.HTTPStatusError(
                 "forbidden",
                 request=httpx.Request("GET", "https://example.com"),
-                response=httpx.Response(
-                    403, request=httpx.Request("GET", "https://example.com")
-                ),
+                response=httpx.Response(403, request=httpx.Request("GET", "https://example.com")),
             ),
             SourceStatus.PERMISSION_REQUIRED,
         ),
@@ -164,9 +179,7 @@ async def test_collector_timeout_is_partial(fixed_clock):
         (httpx.ReadTimeout("slow"), SourceStatus.TIMEOUT),
     ],
 )
-async def test_provider_failures_map_to_typed_statuses(
-    fixed_clock, exception, expected_status
-):
+async def test_provider_failures_map_to_typed_statuses(fixed_clock, exception, expected_status):
     response = await CatalystService(
         [ExceptionAdapter("social", exception)], clock=fixed_clock
     ).evaluate(ToolInput(ticker="NVDA"))
@@ -212,6 +225,21 @@ async def test_no_adapter_response_is_explicit(fixed_clock):
         "Retry with lookback_days=30 to check a wider filing window."
     )
     assert not any("the observation" in check for check in response.next_checks)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fail", [False, True])
+async def test_shadow_scoring_never_changes_public_output(fixed_clock, fail, caplog):
+    baseline = await CatalystService(clock=fixed_clock).evaluate(ToolInput(ticker="NVDA"))
+    shadow = ShadowScorer(fail=fail)
+    response = await CatalystService(
+        clock=fixed_clock,
+        shadow_scorer=shadow,
+    ).evaluate(ToolInput(ticker="NVDA"))
+
+    assert response == baseline
+    assert shadow.calls == 1
+    assert "shadow secret" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -284,9 +312,7 @@ async def test_scoped_reasons_retain_all_codes_in_deterministic_display_order(fi
     response = await CatalystService(
         adapters,
         clock=fixed_clock,
-        expected_families=frozenset(
-            {"filings_news", "social", "technical", "insider_trading"}
-        ),
+        expected_families=frozenset({"filings_news", "social", "technical", "insider_trading"}),
     ).evaluate(ToolInput(ticker="NVDA"))
 
     assert [item.code for item in response.data_quality.reason_records] == [

@@ -52,12 +52,11 @@ def test_launch_configuration_does_not_treat_conditional_key_as_rights(
     assert status["missing_environment_variables"] == []
     assert status["invalid_environment_variables"] == []
     assert status["conditional_providers_require_policy_approval"]
-    assert conditional_name.removesuffix("_API_KEY").lower() in status[
-        "conditional_credentials_present"
-    ]
-    assert conditional_name.removesuffix("_API_KEY").lower() not in status[
-        "configured_providers"
-    ]
+    assert (
+        conditional_name.removesuffix("_API_KEY").lower()
+        in status["conditional_credentials_present"]
+    )
+    assert conditional_name.removesuffix("_API_KEY").lower() not in status["configured_providers"]
 
 
 def test_launch_configuration_rejects_invalid_sec_identity(monkeypatch):
@@ -201,3 +200,20 @@ def test_sentiment_model_is_explicitly_disabled(monkeypatch):
     monkeypatch.setenv("CATALYST_EDGE_SENTIMENT_MODEL", "vader")
     with pytest.raises(ValueError, match="must remain 'disabled'"):
         Settings.from_env()
+
+
+def test_trained_model_runtime_is_disabled_and_fail_closed_by_default(monkeypatch):
+    settings = Settings.from_env()
+    assert settings.model_mode == "disabled"
+    assert settings.model_artifact_path is None
+    assert settings.model_manifest_path is None
+
+    monkeypatch.setenv("CATALYST_EDGE_MODEL_MODE", "shadow")
+    with pytest.raises(ValueError, match="CATALYST_EDGE_MODEL_ARTIFACT"):
+        Settings.from_env()
+
+    monkeypatch.setenv("CATALYST_EDGE_MODEL_ARTIFACT", "/tmp/artifact.json")
+    monkeypatch.setenv("CATALYST_EDGE_MODEL_MANIFEST", "/tmp/manifest.json")
+    configured = Settings.from_env()
+    assert configured.model_mode == "shadow"
+    assert configured.launch_configuration()["model_artifact_configured"] is True

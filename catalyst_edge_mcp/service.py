@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import re
 from collections import defaultdict
 from collections.abc import Callable, Sequence
@@ -31,6 +32,8 @@ from catalyst_edge_mcp.redaction import bounded_raw
 from catalyst_edge_mcp.scorer import CANONICAL_FAMILIES, CatalystScorer, DeterministicScorer
 from catalyst_edge_mcp.source_policy import SOURCE_POLICIES, source_attributions
 from catalyst_edge_mcp.summary import build_summary, next_checks
+
+logger = logging.getLogger(__name__)
 
 Clock = Callable[[], datetime]
 MAX_EVIDENCE_PER_FAMILY = 3
@@ -71,12 +74,14 @@ class CatalystService:
         adapters: Sequence[CatalystSignalAdapter] = (),
         *,
         scorer: CatalystScorer | None = None,
+        shadow_scorer: CatalystScorer | None = None,
         adapter_timeout_seconds: float = 8.0,
         clock: Clock | None = None,
         expected_families: frozenset[str] = CANONICAL_FAMILIES,
     ) -> None:
         self.adapters = tuple(adapters)
         self.scorer = scorer or DeterministicScorer()
+        self.shadow_scorer = shadow_scorer
         self.adapter_timeout_seconds = adapter_timeout_seconds
         self.clock = clock or (lambda: datetime.now(UTC))
         self.expected_families = expected_families
@@ -291,14 +296,27 @@ class CatalystService:
             lookback_days=request.lookback_days,
             expected_families=self.expected_families,
         )
+        if self.shadow_scorer is not None:
+            try:
+                self.shadow_scorer.score(
+                    evidence,
+                    as_of=as_of,
+                    lookback_days=request.lookback_days,
+                    expected_families=self.expected_families,
+                )
+                logger.debug("trained_softmax shadow inference completed")
+            except Exception as exc:
+                logger.warning(
+                    "trained_softmax shadow inference failed closed: %s",
+                    type(exc).__name__,
+                )
         for family in sorted({item.family for item in scored.evidence if item.confidence < 0.50}):
             warnings.append(f"{family} contains evidence with confidence below 0.50.")
         if scored.edge.confidence < 0.50:
             warnings.append("Overall confidence is below 0.50.")
-        caveats = [
-            "Deterministic v1 scoring is not backtested.",
-            "This dossier does not provide an investment recommendation.",
-        ]
+        caveats = ["This dossier does not provide an investment recommendation."]
+        if self.scorer.method == "deterministic_v1":
+            caveats.insert(0, "Deterministic v1 scoring is not backtested.")
 
         compact = self._compact(scored.evidence)
         attributions = source_attributions(used_source_ids)
@@ -364,9 +382,7 @@ class CatalystService:
                 family_statuses=family_statuses,
                 reason_records=ordered_reason_records[:MAX_REASON_RECORDS],
                 reason_record_count=len(ordered_reason_records),
-                reason_records_truncated=(
-                    len(ordered_reason_records) > MAX_REASON_RECORDS
-                ),
+                reason_records_truncated=(len(ordered_reason_records) > MAX_REASON_RECORDS),
             ),
             next_checks=checks,
         )
@@ -381,9 +397,7 @@ class CatalystService:
             if item.sources and item.sources[0].accession_or_record_id
             else ""
         )
-        payload = "\x1f".join(
-            (item.family, item.signal, item.timestamp.isoformat(), source_record)
-        )
+        payload = "\x1f".join((item.family, item.signal, item.timestamp.isoformat(), source_record))
         return f"candidate_{hashlib.sha256(payload.encode()).hexdigest()}"
 
     async def _collect(
