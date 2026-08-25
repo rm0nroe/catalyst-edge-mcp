@@ -190,6 +190,24 @@ def build_summary(evidence: list[Evidence], missing: set[str], risk_mode: RiskMo
     )
 
 
+def evidence_check(item: Evidence) -> str | None:
+    source = item.sources[0] if item.sources else None
+    accession = source.accession_or_record_id if source is not None else None
+    context = item.context
+    if item.family == "filings_news" and accession:
+        return f"Open SEC accession {accession} and review the filed item text and exhibits."
+    if context is not None and context.event_type.startswith("open_market_"):
+        return (
+            "Verify each Form 4 transaction code, shares, price, ownership form, and "
+            "10b5-1 footnotes."
+        )
+    if context is not None and context.event_type == "proposed_insider_sale":
+        return "Track later Form 4 filings; the Form 144 records proposed intent, not execution."
+    if context is not None and context.novelty == "correction":
+        return "Compare the correction with the prior canonical event version."
+    return None
+
+
 def next_checks(
     evidence: list[Evidence], risk_mode: RiskMode, lookback_days: int
 ) -> list[str]:
@@ -210,24 +228,9 @@ def next_checks(
 
     checks: list[str] = []
     for item in sorted(evidence, key=lambda value: -value.timestamp.timestamp()):
-        source = item.sources[0] if item.sources else None
-        accession = source.accession_or_record_id if source is not None else None
-        context = item.context
-        if item.family == "filings_news" and accession:
-            checks.append(
-                f"Open SEC accession {accession} and review the filed item text and exhibits."
-            )
-        elif context is not None and context.event_type.startswith("open_market_"):
-            checks.append(
-                "Verify each Form 4 transaction code, shares, price, ownership form, and "
-                "10b5-1 footnotes."
-            )
-        elif context is not None and context.event_type == "proposed_insider_sale":
-            checks.append(
-                "Track later Form 4 filings; the Form 144 records proposed intent, not execution."
-            )
-        elif context is not None and context.novelty == "correction":
-            checks.append("Compare the correction with the prior canonical event version.")
+        check = evidence_check(item)
+        if check:
+            checks.append(check)
         if len(checks) >= 3:
             break
 

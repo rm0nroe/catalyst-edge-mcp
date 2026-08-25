@@ -29,6 +29,7 @@ from catalyst_edge_mcp.models import (
 )
 from catalyst_edge_mcp.reason_records import ordered_reasons, scoped_reason
 from catalyst_edge_mcp.redaction import bounded_raw
+from catalyst_edge_mcp.research import build_research_assessment
 from catalyst_edge_mcp.scorer import CANONICAL_FAMILIES, CatalystScorer, DeterministicScorer
 from catalyst_edge_mcp.source_policy import SOURCE_POLICIES, source_attributions
 from catalyst_edge_mcp.summary import build_summary, next_checks
@@ -322,6 +323,12 @@ class CatalystService:
         attributions = source_attributions(used_source_ids)
         summary = build_summary(compact, missing, request.risk_mode)
         checks = next_checks(compact, request.risk_mode, request.lookback_days)
+        research = build_research_assessment(
+            compact,
+            missing_families=missing,
+            stale_families=stale,
+            checks=checks,
+        )
         output = self._apply_options(compact, request)
         coverage = (
             "none"
@@ -373,6 +380,7 @@ class CatalystService:
             edge=scored.edge,
             summary=summary,
             evidence=output,
+            research=research,
             attributions=attributions,
             data_quality=DataQuality(
                 coverage=coverage,

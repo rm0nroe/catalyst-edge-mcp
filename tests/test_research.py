@@ -95,3 +95,19 @@ def test_review_now_ranks_and_deduplicates_canonical_claims():
     assert result.supporting_claim_ids == [supporting.context.claim_id]
     assert result.contradicting_claim_ids == [contradiction.context.claim_id]
     assert result.blocking_gaps == ["options_flow"]
+
+
+def test_primary_observation_owns_next_action():
+    primary = claim_evidence("a", contribution=8, direction=Direction.BULLISH)
+    primary.sources[0].accession_or_record_id = "0001045810-26-000001"
+
+    result = build_research_assessment(
+        [primary],
+        missing_families=set(),
+        stale_families=set(),
+        checks=["Generic fallback."],
+    )
+
+    assert result.next_action == (
+        "Open SEC accession 0001045810-26-000001 and review the filed item text and exhibits."
+    )

@@ -12,6 +12,7 @@ from catalyst_edge_mcp.models import (
     EvidenceContext,
     ReasonCode,
     ReasonScope,
+    ResearchDisposition,
     RiskMode,
     SourceStatus,
     ToolInput,
@@ -111,6 +112,7 @@ async def test_all_success_fixture_has_complete_coverage(fixed_clock):
     assert response.data_quality.coverage == "complete"
     assert response.data_quality.missing_families == []
     assert response.edge.direction == Direction.BULLISH
+    assert response.research.disposition == ResearchDisposition.REVIEW_NOW
     assert len(response.evidence) == 5
     assert str(response.evidence[0].sources[0].url).startswith("https://example.com/")
 
@@ -219,6 +221,17 @@ async def test_no_adapter_response_is_explicit(fixed_clock):
     response = await CatalystService(clock=fixed_clock).evaluate(ToolInput(ticker="NVDA"))
 
     assert response.edge.score == 50
+    assert response.research.disposition == ResearchDisposition.INSUFFICIENT_EVIDENCE
+    assert response.research.blocking_gaps == [
+        "filings_news",
+        "insider_trading",
+        "options_flow",
+        "social",
+        "technical",
+    ]
+    assert response.research.next_action == (
+        "Retry with lookback_days=30 to check a wider filing window."
+    )
     assert response.data_quality.coverage == "none"
     assert "No live evidence adapters are configured." in response.data_quality.warnings
     assert response.next_checks[0] == (
@@ -344,6 +357,7 @@ async def test_sources_and_raw_signals_are_optional(fixed_clock):
     assert default.evidence[0].source_count == 0
     assert default.evidence[0].raw_signal is None
     assert included.evidence[0].raw_signal == {"mentions": 125, "account": "redacted"}
+    assert default.research == included.research
 
 
 @pytest.mark.asyncio

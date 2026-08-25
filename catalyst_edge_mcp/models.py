@@ -290,6 +290,7 @@ class CatalystEdgeResponse(BaseModel):
     edge: Edge
     summary: Summary
     evidence: list[Evidence]
+    research: ResearchAssessment
     attributions: list[Attribution] = Field(default_factory=list)
     data_quality: DataQuality
     next_checks: list[str]

@@ -8,6 +8,7 @@ from catalyst_edge_mcp.models import (
     ResearchAssessment,
     ResearchDisposition,
 )
+from catalyst_edge_mcp.summary import evidence_check
 
 
 def _claim_id(item: Evidence) -> str | None:
@@ -82,5 +83,5 @@ def build_research_assessment(
         supporting_claim_ids=supporting,
         contradicting_claim_ids=contradicting,
         blocking_gaps=gaps,
-        next_action=checks[0],
+        next_action=evidence_check(primary) or checks[0],
     )
