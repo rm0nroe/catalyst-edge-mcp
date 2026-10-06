@@ -34,7 +34,7 @@ def test_validation_workflow_contract():
         "uv build --no-sources",
         "scripts/verify_release.py artifact",
         "npm ci --ignore-scripts",
-        "npm audit --audit-level=low",
+        "scripts/audit_npm.py",
         "npm run mcpb:validate",
         "npm run mcpb:pack",
         "scripts/verify_mcpb.py",

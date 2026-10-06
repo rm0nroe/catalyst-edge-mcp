@@ -108,7 +108,7 @@ jobs:
         shell: bash
         run: |
           npm ci --ignore-scripts
-          npm audit --audit-level=low
+          uv run --frozen python scripts/audit_npm.py
           npm run mcpb:validate
           npm run mcpb:pack
           uv run --frozen python scripts/verify_mcpb.py \
